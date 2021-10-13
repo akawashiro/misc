@@ -8,9 +8,45 @@ OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64",
 OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
 SEARCH_DIR("=/usr/local/lib/x86_64-linux-gnu"); SEARCH_DIR("=/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/lib/x86_64-linux-gnu64"); SEARCH_DIR("=/usr/local/lib64"); SEARCH_DIR("=/lib64"); SEARCH_DIR("=/usr/lib64"); SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib"); SEARCH_DIR("=/usr/x86_64-linux-gnu/lib64"); SEARCH_DIR("=/usr/x86_64-linux-gnu/lib");
+
+PHDRS
+{
+  headers PT_PHDR PHDRS ;
+  interp PT_INTERP ;
+  text PT_LOAD FILEHDR PHDRS ;
+  data PT_LOAD ;
+  dynamic PT_DYNAMIC ;
+}
+
 SECTIONS
 {
-  PROVIDE (__executable_start = 0x1000); . = 0x1000 + SIZEOF_HEADERS;
+  PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x10000)); . = SEGMENT_START("text-segment", 0x10000) + SIZEOF_HEADERS;
+  .init           :
+  {
+    KEEP (*(SORT_NONE(.init)))
+  } :dynamic
+  .plt            : { *(.plt) *(.iplt) }
+.plt.got        : { *(.plt.got) }
+.plt.sec        : { *(.plt.sec) }
+  .text           :
+  {
+    *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+    *(.text.exit .text.exit.*)
+    *(.text.startup .text.startup.*)
+    *(.text.hot .text.hot.*)
+    *(SORT(.text.sorted.*))
+    *(.text .stub .text.* .gnu.linkonce.t.*)
+    /* .gnu.warning sections are handled specially by elf.em.  */
+    *(.gnu.warning)
+  }
+  .fini           :
+  {
+    KEEP (*(SORT_NONE(.fini)))
+  }
+  PROVIDE (__etext = .);
+  PROVIDE (_etext = .);
+  PROVIDE (etext = .);
+  . = 0x20000;
   .interp         : { *(.interp) }
   .note.gnu.build-id  : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
@@ -43,32 +79,6 @@ SECTIONS
       *(.rela.plt)
       *(.rela.iplt)
     }
-  . = ALIGN(CONSTANT (MAXPAGESIZE));
-  .init           :
-  {
-    KEEP (*(SORT_NONE(.init)))
-  }
-  .plt            : { *(.plt) *(.iplt) }
-.plt.got        : { *(.plt.got) }
-.plt.sec        : { *(.plt.sec) }
-  .text           :
-  {
-    *(.text.unlikely .text.*_unlikely .text.unlikely.*)
-    *(.text.exit .text.exit.*)
-    *(.text.startup .text.startup.*)
-    *(.text.hot .text.hot.*)
-    *(SORT(.text.sorted.*))
-    *(.text .stub .text.* .gnu.linkonce.t.*)
-    /* .gnu.warning sections are handled specially by elf.em.  */
-    *(.gnu.warning)
-  }
-  .fini           :
-  {
-    KEEP (*(SORT_NONE(.fini)))
-  }
-  PROVIDE (__etext = .);
-  PROVIDE (_etext = .);
-  PROVIDE (etext = .);
   . = ALIGN(CONSTANT (MAXPAGESIZE));
   /* Adjust the address for the rodata segment.  We want to adjust up to
      the same address within the page on the next page up.  */

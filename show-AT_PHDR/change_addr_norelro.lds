@@ -1,15 +1,3 @@
-GNU ld (GNU Binutils for Ubuntu) 2.34
-  Supported emulations:
-   elf_x86_64
-   elf32_x86_64
-   elf_i386
-   elf_iamcu
-   elf_l1om
-   elf_k1om
-   i386pep
-   i386pe
-using internal linker script:
-==================================================
 /* Script for -pie -z combreloc -z separate-code -z relro -z now */
 /* Copyright (C) 2014-2020 Free Software Foundation, Inc.
    Copying and distribution of this script, with or without modification,
@@ -22,7 +10,35 @@ ENTRY(_start)
 SEARCH_DIR("=/usr/local/lib/x86_64-linux-gnu"); SEARCH_DIR("=/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/lib/x86_64-linux-gnu64"); SEARCH_DIR("=/usr/local/lib64"); SEARCH_DIR("=/lib64"); SEARCH_DIR("=/usr/lib64"); SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib"); SEARCH_DIR("=/usr/x86_64-linux-gnu/lib64"); SEARCH_DIR("=/usr/x86_64-linux-gnu/lib");
 SECTIONS
 {
-  PROVIDE (__executable_start = SEGMENT_START("text-segment", 0)); . = SEGMENT_START("text-segment", 0) + SIZEOF_HEADERS;
+  PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x10000)); . = SEGMENT_START("text-segment", 0x10000) + SIZEOF_HEADERS;
+  . = ALIGN(CONSTANT (MAXPAGESIZE));
+  .init           :
+  {
+    KEEP (*(SORT_NONE(.init)))
+  }
+  .plt            : { *(.plt) *(.iplt) }
+.plt.got        : { *(.plt.got) }
+.plt.sec        : { *(.plt.sec) }
+  .text           :
+  {
+    *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+    *(.text.exit .text.exit.*)
+    *(.text.startup .text.startup.*)
+    *(.text.hot .text.hot.*)
+    *(SORT(.text.sorted.*))
+    *(.text .stub .text.* .gnu.linkonce.t.*)
+    /* .gnu.warning sections are handled specially by elf.em.  */
+    *(.gnu.warning)
+  }
+  .fini           :
+  {
+    KEEP (*(SORT_NONE(.fini)))
+  }
+  PROVIDE (__etext = .);
+  PROVIDE (_etext = .);
+  PROVIDE (etext = .);
+  . = ALIGN(CONSTANT (MAXPAGESIZE));
+
   .interp         : { *(.interp) }
   .note.gnu.build-id  : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
@@ -56,31 +72,6 @@ SECTIONS
       *(.rela.iplt)
     }
   . = ALIGN(CONSTANT (MAXPAGESIZE));
-  .init           :
-  {
-    KEEP (*(SORT_NONE(.init)))
-  }
-  .plt            : { *(.plt) *(.iplt) }
-.plt.got        : { *(.plt.got) }
-.plt.sec        : { *(.plt.sec) }
-  .text           :
-  {
-    *(.text.unlikely .text.*_unlikely .text.unlikely.*)
-    *(.text.exit .text.exit.*)
-    *(.text.startup .text.startup.*)
-    *(.text.hot .text.hot.*)
-    *(SORT(.text.sorted.*))
-    *(.text .stub .text.* .gnu.linkonce.t.*)
-    /* .gnu.warning sections are handled specially by elf.em.  */
-    *(.gnu.warning)
-  }
-  .fini           :
-  {
-    KEEP (*(SORT_NONE(.fini)))
-  }
-  PROVIDE (__etext = .);
-  PROVIDE (_etext = .);
-  PROVIDE (etext = .);
   . = ALIGN(CONSTANT (MAXPAGESIZE));
   /* Adjust the address for the rodata segment.  We want to adjust up to
      the same address within the page on the next page up.  */
@@ -246,64 +237,3 @@ SECTIONS
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
 }
-
-
-==================================================
-/bin/ld: mode elf_x86_64
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
-attempt to open /tmp/ccrA724h.o succeeded
-/tmp/ccrA724h.o
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.so failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so succeeded
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-attempt to open libgcc_s.so.1 failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so.1 failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libgcc_s.so.1 succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libgcc_s.so.1
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.so failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libc.so failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libc.a failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libc.so succeeded
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libc.so
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libc.so
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libc.so
-attempt to open /lib/x86_64-linux-gnu/libc.so.6 succeeded
-/lib/x86_64-linux-gnu/libc.so.6
-attempt to open /usr/lib/x86_64-linux-gnu/libc_nonshared.a succeeded
-/usr/lib/x86_64-linux-gnu/libc_nonshared.a
-(/usr/lib/x86_64-linux-gnu/libc_nonshared.a)elf-init.oS
-attempt to open /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 succeeded
-/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-/usr/lib/x86_64-linux-gnu/libc_nonshared.a
-/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.so failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so succeeded
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-opened script file /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
-attempt to open libgcc_s.so.1 failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so.1 failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libgcc_s.so.1 succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/libgcc_s.so.1
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.so failed
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o
-attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o succeeded
-/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
-ld-linux-x86-64.so.2 needed by /lib/x86_64-linux-gnu/libc.so.6
-found ld-linux-x86-64.so.2 at /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2

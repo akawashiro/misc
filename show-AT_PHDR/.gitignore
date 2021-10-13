@@ -1,0 +1,7 @@
+a.out
+lds.out
+main.norelro.out
+main.out
+main.static.out
+main.static.out.broken.reorderd
+main.static.out.reorderd

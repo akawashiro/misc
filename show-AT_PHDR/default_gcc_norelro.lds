@@ -256,8 +256,8 @@ attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
 attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o succeeded
 /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
-attempt to open /tmp/ccrA724h.o succeeded
-/tmp/ccrA724h.o
+attempt to open /tmp/cceosUjZ.o succeeded
+/tmp/cceosUjZ.o
 attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.so failed
 attempt to open /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a succeeded
 /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
