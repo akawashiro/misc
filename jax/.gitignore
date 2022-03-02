@@ -2,3 +2,6 @@ hlo_proto
 mnist_as_hlo_text.txt
 mnist_hlo_proto.txt
 mnist.hlo_proto
+mnist_as_hlo_dot_graph.dot
+mnist_as_hlo_dot_graph.ps
+__pycache__

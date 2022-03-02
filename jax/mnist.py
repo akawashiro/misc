@@ -47,6 +47,8 @@ def loss(params, batch):
   print(c.as_hlo_text())  # doctest: +SKIP
   with open("mnist_as_hlo_text.txt", "w") as f:
       f.write(c.as_hlo_text())
+  with open("mnist_as_hlo_dot_graph.dot", "w") as f:
+      f.write(c.as_hlo_dot_graph())
   # print(c.as_serialized_hlo_module_proto())
   # hlo_proto = c.encode()
   hlo_proto = c.as_serialized_hlo_module_proto()
