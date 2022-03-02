@@ -45,10 +45,17 @@ def loss(params, batch):
   c = jax.xla_computation(predict)(params, inputs)
   print(type(c))
   print(c.as_hlo_text())  # doctest: +SKIP
+  with open("mnist_as_hlo_text.txt", "w") as f:
+      f.write(c.as_hlo_text())
   # print(c.as_serialized_hlo_module_proto())
   # hlo_proto = c.encode()
   hlo_proto = c.as_serialized_hlo_module_proto()
-  print(hlo_proto)
+  print(type(hlo_proto))
+  # print(hlo_proto)
+  with open("mnist.hlo_proto", "wb") as f:
+      f.write(hlo_proto)
+  import sys
+  sys.exit()
 
   preds = predict_jit(params, inputs)
   return -jnp.mean(jnp.sum(preds * targets, axis=1))
