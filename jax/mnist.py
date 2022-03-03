@@ -72,7 +72,7 @@ init_random_params, predict = stax.serial(
     Dense(1024), Relu,
     Dense(1024), Relu,
     Dense(10), LogSoftmax)
-predict_jit = jit(predict)
+predict_jit = jit(predict, inline=True)
 print(predict_jit)
 print(type(predict_jit))
 
