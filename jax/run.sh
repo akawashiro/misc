@@ -12,8 +12,8 @@
 # python3 load_hlo_proto.py
 # dot -Tps mnist_as_hlo_dot_graph.dot -o mnist_as_hlo_dot_graph.ps
 
-isort xla_to_onnx.py
-black xla_to_onnx.py
+# isort xla_to_onnx.py
+# black xla_to_onnx.py
 pytest -s xla_to_onnx.py
 dot -Tps add_as_hlo_dot_graph.dot -o add_as_hlo_dot_graph.ps
 dot -Tps sum_as_hlo_dot_graph.dot -o sum_as_hlo_dot_graph.ps
