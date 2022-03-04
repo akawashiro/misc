@@ -62,7 +62,7 @@ def t_instruction(instruction):
         "exponential",
         "log",
         "dot",
-        "subtract"
+        "subtract",
     ]
     if instruction.opcode == "parameter":
         name = str(instruction.id)
@@ -201,6 +201,21 @@ def test_add(shape):
     assert np.allclose(output_values, outputs[0])
 
 
+@pytest.mark.parametrize("shapes", [((32, 32), (32,))])
+def test_add_broadcast(shapes):
+    test_name = "add_broadcast"
+
+    input_values = [
+        np.random.normal(size=shapes[0]).astype(np.float32),
+        np.random.normal(size=shapes[1]).astype(np.float32),
+    ]
+    fn = jnp.add
+    output_values = fn(*input_values)
+
+    outputs = translate_and_run(fn, input_values, test_name)
+    assert np.allclose(output_values, outputs[0])
+
+
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
 def test_sub(shape):
     test_name = "sub"
@@ -279,6 +294,36 @@ def test_log(shape):
 
     outputs = translate_and_run(fn, input_values, test_name)
     assert np.allclose(output_values, outputs[0])
+
+
+@pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
+def test_add(shape):
+    test_name = "add_exp"
+
+    input_values = [
+        np.random.normal(size=shape).astype(np.float32),
+        np.random.normal(size=shape).astype(np.float32),
+    ]
+    fn = lambda x, y: jnp.exp(jnp.add(x, y))
+    output_values = fn(*input_values)
+
+    outputs = translate_and_run(fn, input_values, test_name)
+    assert np.allclose(output_values, outputs[0])
+
+
+# @pytest.mark.parametrize("shapes", [([32], [64, 32])])
+# def test_broadcast(shapes):
+#     print(shapes)
+#     test_name = "broadcast"
+#
+#     x = np.random.normal(size=shapes[0]).astype(np.float32)
+#     input_values = [x, shapes[1]]
+#     fn = jnp.broadcast_to
+#     output_values = fn(*input_values)
+#
+#     outputs = translate_and_run(fn, input_values, test_name)
+#     # assert output_values.shape == shapes[1]
+#     # assert np.allclose(output_values, outputs[0])
 
 
 # def test_sum():
