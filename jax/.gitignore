@@ -1,7 +1,8 @@
 hlo_proto
-mnist_as_hlo_text.txt
-mnist_hlo_proto.txt
-mnist.hlo_proto
-mnist_as_hlo_dot_graph.dot
-mnist_as_hlo_dot_graph.ps
+*_as_hlo_text.txt
+*_hlo_proto.txt
+*.hlo_proto
+*_as_hlo_dot_graph.dot
+*_as_hlo_dot_graph.ps
+*.onnx
 __pycache__
