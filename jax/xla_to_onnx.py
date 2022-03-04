@@ -336,7 +336,7 @@ def test_log(shape):
 
 
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
-def test_add(shape):
+def test_add_exp(shape):
     test_name = "add_exp"
 
     input_values = [
