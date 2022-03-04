@@ -253,7 +253,7 @@ def test_add(shape):
     assert np.allclose(output_values, outputs[0])
 
 
-@pytest.mark.parametrize("shapes", [((32, 32), (32,))])
+@pytest.mark.parametrize("shapes", [((32, 32), (32,)), ((64, 32, 32), (32,))])
 def test_add_broadcast(shapes):
     test_name = "add_broadcast"
 
