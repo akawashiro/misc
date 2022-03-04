@@ -23,6 +23,13 @@ def translate_dtype(element_type):
         return TensorProto.FLOAT
 
 
+def shape_proto_to_zeros(name: str, shape_proto):
+    dims = shape_proto.dimensions
+    dtype = translate_dtype(shape_proto.element_type)
+    zeros = np.zeros(dims)
+    return helper.make_tensor(name, data_type=dtype, dims=dims, vals=zeros)
+
+
 def shape_proto_to_value_info_proto(name: str, shape_proto):
     dims = shape_proto.dimensions
     dtype = translate_dtype(shape_proto.element_type)
@@ -49,7 +56,16 @@ def translate_outputs(tuple_shapes):
     return (names, values)
 
 
-# Instruction -> (name, ValueInfo, Node)
+gensym_id = 0
+
+
+def gensym(prefix=""):
+    global gensym_id
+    gensym_id += 1
+    return prefix + "gensym_" + str(gensym_id)
+
+
+# Instruction -> [(name, ValueInfo, Node)]
 def t_instruction(instruction):
     # XLA: https://www.tensorflow.org/xla/operation_semantics
     # ONNX: https://github.com/onnx/onnx/blob/main/docs/Operators.md
@@ -63,49 +79,85 @@ def t_instruction(instruction):
         "log",
         "dot",
         "subtract",
+        "broadcast",
+        "reshape",
     ]
     if instruction.opcode == "parameter":
         name = str(instruction.id)
         value = shape_proto_to_value_info_proto(str(instruction.id), instruction.shape)
-        return (name, value, None)
+        return [(name, value, None)]
     elif instruction.opcode == "constant":
         # TODO:
-        return (str(instruction.id), None, None)
+        return [(str(instruction.id), None, None)]
     elif instruction.opcode == "add":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Add", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "subtract":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Sub", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "maximum":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Max", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "exponential":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Exp", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "log":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Log", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "dot":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Gemm", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
     elif instruction.opcode == "tuple":
         # TODO:
         assert len(instruction.operand_ids) == 1
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Identity", inputs, [str(instruction.id)])
-        return (str(instruction.id), None, node)
+        return [(str(instruction.id), None, node)]
+    elif instruction.opcode == "broadcast":
+        # TODO: Adding dummy broadcasted value is wasteful clearly. I hope
+        # post-process remove this dummy value with constant propagation.
+        zero_id = gensym("broadcast_zero_")
+        dummy_zeros = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=[zero_id],
+            value=shape_proto_to_zeros(
+                gensym("broadcast_shape_proto_to_zeros_"), instruction.shape
+            ),
+        )
+        inputs = list(map(lambda x: str(x), instruction.operand_ids)) + [zero_id]
+        node = helper.make_node("Add", inputs, [str(instruction.id)])
+        # Note: Nodes must be topologically sorted
+        return [(zero_id, None, dummy_zeros), (str(instruction.id), None, node)]
+    elif instruction.opcode == "reshape":
+        shape_id = gensym("reshape_shape_")
+        shape_node = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=[shape_id],
+            value=helper.make_tensor(
+                gensym("reshape_tensor_"),
+                data_type=TensorProto.INT64,
+                dims=[len(instruction.shape.dimensions)],
+                vals=instruction.shape.dimensions,
+            ),
+        )
+        inputs = list(map(lambda x: str(x), instruction.operand_ids)) + [shape_id]
+        node = helper.make_node("Reshape", inputs=inputs, outputs=[str(instruction.id)])
+        return [(shape_id, None, shape_node), (str(instruction.id), None, node)]
+    else:
+        raise RuntimeError()
 
 
 # See https://github.com/onnx/onnx/blob/main/docs/PythonAPIOverview.md#creating-an-onnx-model-using-helper-functions
 def t_computation(computation, onnx_filename):
-    name_value_nodes = list(map(t_instruction, computation.instructions))
+    name_value_nodes = sum(map(t_instruction, computation.instructions), [])
     input_values = []
     nodes = []
     for n, v, node in name_value_nodes:
