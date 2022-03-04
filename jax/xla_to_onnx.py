@@ -69,19 +69,6 @@ def gensym(prefix=""):
 def t_instruction(instruction):
     # XLA: https://www.tensorflow.org/xla/operation_semantics
     # ONNX: https://github.com/onnx/onnx/blob/main/docs/Operators.md
-    assert instruction.opcode in [
-        "parameter",
-        "constant",
-        "add",
-        "tuple",
-        "maximum",
-        "exponential",
-        "log",
-        "dot",
-        "subtract",
-        "broadcast",
-        "reshape",
-    ]
     if instruction.opcode == "parameter":
         name = str(instruction.id)
         value = shape_proto_to_value_info_proto(str(instruction.id), instruction.shape)
@@ -152,7 +139,7 @@ def t_instruction(instruction):
         node = helper.make_node("Reshape", inputs=inputs, outputs=[str(instruction.id)])
         return [(shape_id, None, shape_node), (str(instruction.id), None, node)]
     else:
-        raise RuntimeError()
+        raise RuntimeError(instruction.opcode + " is not supported yet!")
 
 
 # See https://github.com/onnx/onnx/blob/main/docs/PythonAPIOverview.md#creating-an-onnx-model-using-helper-functions
