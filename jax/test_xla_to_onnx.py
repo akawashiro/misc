@@ -185,7 +185,7 @@ def test_max(shape):
         pytest.param(((1024, 32), (32, 128))),
         pytest.param(((32,), (32,)), marks=pytest.mark.xfail),
         pytest.param(((64, 32), (32,))),
-        pytest.param(((32, ), (32, 64))),
+        pytest.param(((32,), (32, 64))),
     ],
 )
 def test_dot(shapes):
