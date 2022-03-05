@@ -59,6 +59,10 @@ def translate_and_run(fn, input_values, test_name):
 
     inputs = gen_onnx_inputs(onnx_name, input_values)
     ort_sess = ort.InferenceSession(onnx_name)
+
+    for k, v in inputs.items():
+        assert isinstance(v, np.ndarray), f"type(inputs[{k}]) = {type(v)}"
+
     outputs = ort_sess.run(None, inputs)
     return outputs
 
@@ -68,7 +72,7 @@ def test_mnist():
     # init_random_params, predict = stax.serial(
     #     Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax
     # )
-    init_random_params, predict = stax.serial(Dense(1024))
+    init_random_params, predict = stax.serial(Dense(1024), Relu)
 
     train_images, train_labels, test_images, test_labels = datasets.mnist()
     rng = random.PRNGKey(0)
@@ -85,7 +89,7 @@ def test_mnist():
     output_values = fn(*input_values)
     outputs = translate_and_run(fn, input_values, test_name)
 
-    assert np.allclose(output_values, outputs[0])
+    assert np.allclose(output_values, outputs[0], rtol=1e-4)
 
 
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])

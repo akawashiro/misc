@@ -376,7 +376,7 @@ def gen_onnx_inputs(onnx_name, input_values):
         + str(len(flattened))
     )
     for n, v in zip(input_names, flattened):
-        inputs[n] = v
+        inputs[n] = np.array(v)
     return inputs
 
 
