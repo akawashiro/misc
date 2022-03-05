@@ -67,7 +67,9 @@ def gensym(prefix: str = "") -> str:
 
 
 # Instruction -> [(name, ValueInfo, Node)]
-def t_instruction(instruction) -> List[Tuple[str, Optional[Any], Optional[Any]]]:
+def t_instruction(
+    hlo_proto, instruction
+) -> List[Tuple[str, Optional[Any], Optional[Any]]]:
     # XLA: https://www.tensorflow.org/xla/operation_semantics
     # ONNX: https://github.com/onnx/onnx/blob/main/docs/Operators.md
     if instruction.opcode == "parameter":
@@ -139,13 +141,41 @@ def t_instruction(instruction) -> List[Tuple[str, Optional[Any], Optional[Any]]]
         inputs = list(map(lambda x: str(x), instruction.operand_ids)) + [shape_id]
         node = helper.make_node("Reshape", inputs=inputs, outputs=[str(instruction.id)])
         return [(shape_id, None, shape_node), (str(instruction.id), None, node)]
+    elif instruction.opcode == "reduce":
+        assert (
+            len(instruction.called_computation_ids) == 1
+        ), "Calling multiple computations in reduce opcode. It must be strange."
+        reduce_op = get_computation(hlo_proto, instruction.called_computation_ids[0])
+        if is_sum_reduce_op(reduce_op):
+            assert len(instruction.operand_ids) == 2
+            # TODO: The second oprand of reduce_sum must be 0 as the identity of monoid. We can ignore it for now.
+            inputs = list(map(lambda x: str(x), instruction.operand_ids[:1]))
+            node = helper.make_node("ReduceSum", inputs, [str(instruction.id)])
+            return [(str(instruction.id), None, node)]
+        raise RuntimeError()
     else:
         raise RuntimeError(instruction.opcode + " is not supported yet!")
 
 
+def is_sum_reduce_op(reduce_op):
+    return (
+        len(reduce_op.instructions) == 4 and reduce_op.instructions[3].opcode == "add"
+    )
+
+
+def get_computation(hlo_proto, computation_id):
+    for c in hlo_proto.computations:
+        if c.id == computation_id:
+            return c
+    raise RuntimeError("Cannot find computation of " + computation_id)
+
+
 # See https://github.com/onnx/onnx/blob/main/docs/PythonAPIOverview.md#creating-an-onnx-model-using-helper-functions
-def t_computation(computation, onnx_filename):
-    name_value_nodes = sum(map(t_instruction, computation.instructions), [])
+# Pass hlo_proto also because some operators such as reduce call other sub-computation.
+def t_computation(hlo_proto, computation, onnx_filename):
+    name_value_nodes = []
+    for i in computation.instructions:
+        name_value_nodes.extend(t_instruction(hlo_proto, i))
     input_values = []
     nodes = []
     for n, v, node in name_value_nodes:
@@ -173,7 +203,11 @@ def t_computation(computation, onnx_filename):
 
 
 def hlo_proto_to_onnx(hlo_proto, onnx_filename):
-    t_computation(hlo_proto.computations[0], onnx_filename)
+    main_computation = hlo_proto.computations[-1]
+    assert (
+        hlo_proto.entry_computation_name == main_computation.name
+    ), "TODO: Translate only the main computation"
+    t_computation(hlo_proto, main_computation, onnx_filename)
 
 
 def gen_onnx_inputs(onnx_name, input_values):
@@ -235,6 +269,21 @@ def test_add(shape):
         np.random.normal(size=shape).astype(np.float32),
     ]
     fn = jnp.add
+    output_values = fn(*input_values)
+
+    outputs = translate_and_run(fn, input_values, test_name)
+    assert np.allclose(output_values, outputs[0])
+
+
+# TODO: Test axis
+@pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
+def test_sum(shape):
+    test_name = "sum"
+
+    input_values = [
+        np.random.normal(size=shape).astype(np.float32),
+    ]
+    fn = jnp.sum
     output_values = fn(*input_values)
 
     outputs = translate_and_run(fn, input_values, test_name)

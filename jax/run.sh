@@ -12,5 +12,4 @@
 # python3 load_hlo_proto.py
 # dot -Tps mnist_as_hlo_dot_graph.dot -o mnist_as_hlo_dot_graph.ps
 
-mypy xla_to_onnx.py --ignore-missing-imports
 pytest -s xla_to_onnx.py
