@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import pytest
@@ -14,7 +15,7 @@ import hlo_pb2
 import onnx
 import onnxruntime as ort
 import xla_data_pb2
-from onnx import AttributeProto, GraphProto, TensorProto, helper
+from onnx import AttributeProto, GraphProto, TensorProto, TypeProto, helper
 
 
 def translate_dtype(element_type):
@@ -36,7 +37,7 @@ def shape_proto_to_value_info_proto(name: str, shape_proto):
     return helper.make_tensor_value_info(name, dtype, dims)
 
 
-def translate_inputs(parameters):
+def translate_inputs(parameters: List[Any]) -> Tuple[List[str], List[Any]]:
     names = []
     values = []
     for i in range(len(parameters)):
@@ -45,7 +46,7 @@ def translate_inputs(parameters):
     return (names, values)
 
 
-def translate_outputs(tuple_shapes):
+def translate_outputs(tuple_shapes: List[Any]) -> Tuple[List[str], List[Any]]:
     names = []
     values = []
     for i in range(len(tuple_shapes)):
@@ -59,14 +60,14 @@ def translate_outputs(tuple_shapes):
 gensym_id = 0
 
 
-def gensym(prefix=""):
+def gensym(prefix: str = "") -> str:
     global gensym_id
     gensym_id += 1
     return prefix + "gensym_" + str(gensym_id)
 
 
 # Instruction -> [(name, ValueInfo, Node)]
-def t_instruction(instruction):
+def t_instruction(instruction) -> List[Tuple[str, Optional[Any], Optional[Any]]]:
     # XLA: https://www.tensorflow.org/xla/operation_semantics
     # ONNX: https://github.com/onnx/onnx/blob/main/docs/Operators.md
     if instruction.opcode == "parameter":
@@ -348,6 +349,162 @@ def test_add_exp(shape):
 
     outputs = translate_and_run(fn, input_values, test_name)
     assert np.allclose(output_values, outputs[0])
+
+
+# Copied from onnx/backend/test/case/node/__init__.py
+def _extract_value_info(
+    input: Union[List[Any], np.ndarray, None],
+    name: str,
+    type_proto: Optional[TypeProto] = None,
+) -> onnx.ValueInfoProto:
+    if type_proto is None:
+        if input is None:
+            raise NotImplementedError(
+                "_extract_value_info: both input and type_proto arguments cannot be None."
+            )
+        elif isinstance(input, list):
+            elem_type = onnx.mapping.NP_TYPE_TO_TENSOR_TYPE[input[0].dtype]
+            shape = None
+            tensor_type_proto = onnx.helper.make_tensor_type_proto(elem_type, shape)
+            type_proto = onnx.helper.make_sequence_type_proto(tensor_type_proto)
+        else:
+            elem_type = onnx.mapping.NP_TYPE_TO_TENSOR_TYPE[input.dtype]
+            shape = input.shape
+            type_proto = onnx.helper.make_tensor_type_proto(elem_type, shape)
+
+    return onnx.helper.make_value_info(name, type_proto)
+
+
+def test_onnx_loop():
+    # Given a tensor x of values [x1, ..., xN],
+    # Return a sequence of tensors of
+    #   [[x1], [x1, x2], ..., [x1, ..., xN]]
+
+    seq_in = onnx.helper.make_tensor_sequence_value_info(
+        "seq_in", onnx.TensorProto.FLOAT, None
+    )
+    seq_out = onnx.helper.make_tensor_sequence_value_info(
+        "seq_out", onnx.TensorProto.FLOAT, None
+    )
+    cond_in = onnx.helper.make_tensor_value_info("cond_in", onnx.TensorProto.BOOL, [])
+    cond_out = onnx.helper.make_tensor_value_info("cond_out", onnx.TensorProto.BOOL, [])
+    iter_count = onnx.helper.make_tensor_value_info(
+        "iter_count", onnx.TensorProto.INT64, []
+    )
+
+    x = np.array([1, 2, 3, 4, 5]).astype(np.float32)
+
+    x_const_node = onnx.helper.make_node(
+        "Constant",
+        inputs=[],
+        outputs=["x"],
+        value=onnx.helper.make_tensor(
+            name="const_tensor_x",
+            data_type=onnx.TensorProto.FLOAT,
+            dims=x.shape,
+            vals=x.flatten().astype(float),
+        ),
+    )
+
+    one_const_node = onnx.helper.make_node(
+        "Constant",
+        inputs=[],
+        outputs=["one"],
+        value=onnx.helper.make_tensor(
+            name="const_tensor_one", data_type=onnx.TensorProto.INT64, dims=(), vals=[1]
+        ),
+    )
+
+    zero_const_node = onnx.helper.make_node(
+        "Constant",
+        inputs=[],
+        outputs=["slice_start"],
+        value=onnx.helper.make_tensor(
+            name="const_tensor_zero",
+            data_type=onnx.TensorProto.INT64,
+            dims=(1,),
+            vals=[0],
+        ),
+    )
+
+    axes_node = onnx.helper.make_node(
+        "Constant",
+        inputs=[],
+        outputs=["axes"],
+        value=onnx.helper.make_tensor(
+            name="const_tensor_axes",
+            data_type=onnx.TensorProto.INT64,
+            dims=(),
+            vals=[0],
+        ),
+    )
+
+    add_node = onnx.helper.make_node(
+        "Add", inputs=["iter_count", "one"], outputs=["end"]
+    )
+
+    end_unsqueeze_node = onnx.helper.make_node(
+        "Unsqueeze", inputs=["end", "axes"], outputs=["slice_end"]
+    )
+
+    slice_node = onnx.helper.make_node(
+        "Slice", inputs=["x", "slice_start", "slice_end"], outputs=["slice_out"]
+    )
+
+    insert_node = onnx.helper.make_node(
+        "SequenceInsert", inputs=["seq_in", "slice_out"], outputs=["seq_out"]
+    )
+
+    identity_node = onnx.helper.make_node(
+        "Identity", inputs=["cond_in"], outputs=["cond_out"]
+    )
+
+    loop_body = onnx.helper.make_graph(
+        [
+            identity_node,
+            x_const_node,
+            one_const_node,
+            zero_const_node,
+            add_node,
+            axes_node,
+            end_unsqueeze_node,
+            slice_node,
+            insert_node,
+        ],
+        "loop_body",
+        [iter_count, cond_in, seq_in],
+        [cond_out, seq_out],
+    )
+
+    node = onnx.helper.make_node(
+        "Loop",
+        inputs=["trip_count", "cond", "seq_empty"],
+        outputs=["seq_res"],
+        body=loop_body,
+    )
+
+    trip_count = np.array(5).astype(np.int64)
+    seq_empty: List[Any] = []
+    seq_res = [x[: int(i)] for i in x]
+    cond = np.array(1).astype(bool)
+
+    trip_count_info = _extract_value_info(trip_count, "trip_count")
+    cond_info = _extract_value_info(trip_count, "cond")
+    seq_empty_info = _extract_value_info(trip_count, "seq_empty")
+    seq_res_info = _extract_value_info(seq_res, "seq_res")
+
+    graph_def = helper.make_graph(
+        [node],
+        "test-model",
+        [trip_count_info, cond_info, seq_empty_info],
+        [seq_res_info],
+    )
+    model_def = helper.make_model(
+        graph_def, opset_imports=[onnx.helper.make_opsetid("", 13)]
+    )
+
+    onnx.checker.check_model(model_def)
+    onnx.save(model_def, "onnx_loop.onnx")
 
 
 # @pytest.mark.parametrize("shapes", [([32], [64, 32])])
