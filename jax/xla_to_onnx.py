@@ -152,6 +152,12 @@ def t_instruction(
             inputs = list(map(lambda x: str(x), instruction.operand_ids[:1]))
             node = helper.make_node("ReduceSum", inputs, [str(instruction.id)])
             return [(str(instruction.id), None, node)]
+        if is_max_reduce_op(reduce_op):
+            assert len(instruction.operand_ids) == 2
+            # TODO: The second oprand of reduce_max must be -inf as the identity of monoid. We can ignore it for now.
+            inputs = list(map(lambda x: str(x), instruction.operand_ids[:1]))
+            node = helper.make_node("ReduceMax", inputs, [str(instruction.id)])
+            return [(str(instruction.id), None, node)]
         raise RuntimeError()
     else:
         raise RuntimeError(instruction.opcode + " is not supported yet!")
@@ -160,6 +166,13 @@ def t_instruction(
 def is_sum_reduce_op(reduce_op):
     return (
         len(reduce_op.instructions) == 4 and reduce_op.instructions[3].opcode == "add"
+    )
+
+
+def is_max_reduce_op(reduce_op):
+    return (
+        len(reduce_op.instructions) == 4
+        and reduce_op.instructions[3].opcode == "maximum"
     )
 
 
@@ -298,12 +311,11 @@ def test_reduce_max(shape):
     input_values = [
         np.random.normal(size=shape).astype(np.float32),
     ]
-    fn = jnp.sum
+    fn = jnp.max
     output_values = fn(*input_values)
 
     outputs = translate_and_run(fn, input_values, test_name)
     assert np.allclose(output_values, outputs[0])
-
 
 
 @pytest.mark.parametrize("shapes", [((32, 32), (32,)), ((64, 32, 32), (32,))])
