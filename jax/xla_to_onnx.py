@@ -168,6 +168,62 @@ def t_instruction(
                 (result_shape_id, None, result_shape_node),
                 (result_reshape_id, None, result_reshape_node),
             ]
+        elif len(op1_dim) == 1 and len(op2_dim) == 2:
+            assert op1_dim[0] == op2_dim[0], "Must be Vector-Matrix multiplication"
+
+            op1_name = str(instruction.operand_ids[0])
+            op2_name = str(instruction.operand_ids[1])
+
+            op1_shape_id = gensym("dot_op1_reshape_shape_")
+            op1_shape_node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[op1_shape_id],
+                value=helper.make_tensor(
+                    gensym("dot_op1_reshape_tensor_"),
+                    data_type=TensorProto.INT64,
+                    dims=[2],
+                    vals=[1, op1_dim[0]],
+                ),
+            )
+
+            op1_reshape_id = gensym("dot_op1_reshape_")
+            op1_reshape_node = helper.make_node(
+                "Reshape", inputs=[op1_name, op1_shape_id], outputs=[op1_reshape_id]
+            )
+
+            gemm_result_id = gensym("dot_gemm_")
+            gemm_node = helper.make_node(
+                "Gemm", [op1_reshape_id, op2_name], [gemm_result_id]
+            )
+
+            result_shape_id = gensym("dot_result_reshape_shape_")
+            result_shape_node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[result_shape_id],
+                value=helper.make_tensor(
+                    gensym("dot_result_reshape_tensor_"),
+                    data_type=TensorProto.INT64,
+                    dims=[1],
+                    vals=[op2_dim[1]],
+                ),
+            )
+
+            result_reshape_id = str(instruction.id)
+            result_reshape_node = helper.make_node(
+                "Reshape",
+                inputs=[gemm_result_id, result_shape_id],
+                outputs=[result_reshape_id],
+            )
+
+            return [
+                (op1_shape_id, None, op1_shape_node),
+                (op1_reshape_id, None, op1_reshape_node),
+                (gemm_result_id, None, gemm_node),
+                (result_shape_id, None, result_shape_node),
+                (result_reshape_id, None, result_reshape_node),
+            ]
         else:
             raise RuntimeError(
                 "Unspported pair of dimensions: " + str(op1_dim) + ", " + str(op2_dim)

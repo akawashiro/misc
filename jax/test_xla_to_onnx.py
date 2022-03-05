@@ -181,10 +181,11 @@ def test_max(shape):
 @pytest.mark.parametrize(
     "shapes",
     [
-        # pytest.param(((32, 32), (32, 32))),
-        # pytest.param(((1024, 32), (32, 128))),
-        # pytest.param(((32,), (32,)), marks=pytest.mark.xfail),
+        pytest.param(((32, 32), (32, 32))),
+        pytest.param(((1024, 32), (32, 128))),
+        pytest.param(((32,), (32,)), marks=pytest.mark.xfail),
         pytest.param(((64, 32), (32,))),
+        pytest.param(((32, ), (32, 64))),
     ],
 )
 def test_dot(shapes):
@@ -198,7 +199,7 @@ def test_dot(shapes):
     output_values = fn(*input_values)
 
     outputs = translate_and_run(fn, input_values, test_name)
-    assert np.allclose(output_values, outputs[0])
+    assert np.allclose(output_values, outputs[0], rtol=1e-4)
 
 
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
