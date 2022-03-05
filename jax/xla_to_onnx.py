@@ -290,6 +290,22 @@ def test_sum(shape):
     assert np.allclose(output_values, outputs[0])
 
 
+# TODO: Test axis
+@pytest.mark.parametrize("shape", [(32, 32), (32, 64)])
+def test_reduce_max(shape):
+    test_name = "reduce_max"
+
+    input_values = [
+        np.random.normal(size=shape).astype(np.float32),
+    ]
+    fn = jnp.sum
+    output_values = fn(*input_values)
+
+    outputs = translate_and_run(fn, input_values, test_name)
+    assert np.allclose(output_values, outputs[0])
+
+
+
 @pytest.mark.parametrize("shapes", [((32, 32), (32,)), ((64, 32, 32), (32,))])
 def test_add_broadcast(shapes):
     test_name = "add_broadcast"
@@ -556,6 +572,8 @@ def test_onnx_loop():
     onnx.save(model_def, "onnx_loop.onnx")
 
 
+# TODO: Cannot test broadcast_to alone. Instead of this, I made add_broadcast
+# test.
 # @pytest.mark.parametrize("shapes", [([32], [64, 32])])
 # def test_broadcast(shapes):
 #     print(shapes)
@@ -569,31 +587,3 @@ def test_onnx_loop():
 #     outputs = translate_and_run(fn, input_values, test_name)
 #     # assert output_values.shape == shapes[1]
 #     # assert np.allclose(output_values, outputs[0])
-
-
-# def test_sum():
-#     x = np.random.normal(size=(32, 32)).astype(np.float32)
-#     # y = jnp.sum(x)
-#
-#     print(x)
-#
-#     sum_jit = jit(jnp.sum, inline=True)
-#     xla = jax.xla_computation(sum_jit)(x)
-#     print(xla.as_hlo_text())
-#
-#     with open("sum_as_hlo_text.txt", "w") as f:
-#         f.write(xla.as_hlo_text())
-#     with open("sum_as_hlo_dot_graph.dot", "w") as f:
-#         f.write(xla.as_hlo_dot_graph())
-#
-#     hlo_proto = xla.as_serialized_hlo_module_proto()
-#     with open("sum.hlo_proto", "wb") as f:
-#         f.write(hlo_proto)
-#
-#     with open("sum.hlo_proto", "rb") as f:
-#         add_hlo_proto_data = f.read()
-#         add_hlo_proto = hlo_pb2.HloModuleProto()
-#         add_hlo_proto.ParseFromString(add_hlo_proto_data)
-#
-#     with open("sum_hlo_proto.txt", "w") as f:
-#         f.write(str(add_hlo_proto))
