@@ -3,14 +3,18 @@ import sys
 from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
+import numpy.random as npr
 import onnx
 import onnxruntime as ort
 import pytest
 from onnx import AttributeProto, GraphProto, TypeProto, helper
 
+import datasets
 import jax
 import jax.numpy as jnp
-from jax import grad, jit, vmap
+from jax import grad, jit, random, vmap
+from jax.example_libraries import stax
+from jax.example_libraries.stax import Dense, LogSoftmax, Relu
 from xla_to_onnx import gen_onnx_inputs, hlo_proto_to_onnx
 
 sys.path.append("hlo_proto")  # nopep8
@@ -57,6 +61,25 @@ def translate_and_run(fn, input_values, test_name):
     ort_sess = ort.InferenceSession(onnx_name)
     outputs = ort_sess.run(None, inputs)
     return outputs
+
+
+def test_mnist():
+    test_name = "mnist"
+    init_random_params, predict = stax.serial(
+        Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax
+    )
+
+    train_images, train_labels, test_images, test_labels = datasets.mnist()
+    rng = random.PRNGKey(0)
+    _, init_params = init_random_params(rng, (-1, 28 * 28))
+
+    fn = predict
+    input_values = [init_params, train_images[0]]
+
+    output_values = fn(*input_values)
+    outputs = translate_and_run(fn, input_values, test_name)
+
+    assert np.allclose(output_values, outputs[0])
 
 
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])

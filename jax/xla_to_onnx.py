@@ -202,8 +202,8 @@ def t_computation(hlo_proto, computation, onnx_filename):
             str(computation.root_id), computation.program_shape.result.tuple_shapes[0]
         )
     ]
-    print(name_value_nodes)
-    print("input_values = ", input_values)
+    # print(name_value_nodes)
+    # print("input_values = ", input_values)
 
     graph_def = helper.make_graph(nodes, "test-model", input_values, output_values)
 
