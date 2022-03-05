@@ -12,4 +12,4 @@
 # python3 load_hlo_proto.py
 # dot -Tps mnist_as_hlo_dot_graph.dot -o mnist_as_hlo_dot_graph.ps
 
-pytest -s xla_to_onnx.py
+pytest -s test_xla_to_onnx.py

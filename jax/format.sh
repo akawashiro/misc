@@ -1,5 +1,8 @@
 #! /bin/bash -eux
 
-mypy xla_to_onnx.py --ignore-missing-imports
-isort xla_to_onnx.py
-black xla_to_onnx.py
+for s in xla_to_onnx.py test_xla_to_onnx.py; do
+    mypy ${s} --ignore-missing-imports
+    isort ${s}
+    autopep8 ${s} --in-place
+    black ${s}
+done
