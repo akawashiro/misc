@@ -65,9 +65,10 @@ def translate_and_run(fn, input_values, test_name):
 
 def test_mnist():
     test_name = "mnist"
-    init_random_params, predict = stax.serial(
-        Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax
-    )
+    # init_random_params, predict = stax.serial(
+    #     Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax
+    # )
+    init_random_params, predict = stax.serial(Dense(1024))
 
     train_images, train_labels, test_images, test_labels = datasets.mnist()
     rng = random.PRNGKey(0)
@@ -75,6 +76,11 @@ def test_mnist():
 
     fn = predict
     input_values = [init_params, train_images[0]]
+    print(type(init_params))
+    print(len(init_params))
+    print(type(init_params[0]))
+    print(len(init_params[0]))
+    print(train_images[0].shape)
 
     output_values = fn(*input_values)
     outputs = translate_and_run(fn, input_values, test_name)
@@ -175,10 +181,10 @@ def test_max(shape):
 @pytest.mark.parametrize(
     "shapes",
     [
-        pytest.param(((32, 32), (32, 32))),
-        pytest.param(((1024, 32), (32, 128))),
-        pytest.param(((32,), (32,)), marks=pytest.mark.xfail),
-        pytest.param(((64, 32), (32,)), marks=pytest.mark.xfail),
+        # pytest.param(((32, 32), (32, 32))),
+        # pytest.param(((1024, 32), (32, 128))),
+        # pytest.param(((32,), (32,)), marks=pytest.mark.xfail),
+        pytest.param(((64, 32), (32,))),
     ],
 )
 def test_dot(shapes):

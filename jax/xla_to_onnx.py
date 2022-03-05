@@ -68,7 +68,7 @@ def gensym(prefix: str = "") -> str:
 
 # Instruction -> [(name, ValueInfo, Node)]
 def t_instruction(
-    hlo_proto, instruction
+    hlo_proto, computation, instruction
 ) -> List[Tuple[str, Optional[Any], Optional[Any]]]:
     # XLA: https://www.tensorflow.org/xla/operation_semantics
     # ONNX: https://github.com/onnx/onnx/blob/main/docs/Operators.md
@@ -100,9 +100,78 @@ def t_instruction(
         node = helper.make_node("Log", inputs, [str(instruction.id)])
         return [(str(instruction.id), None, node)]
     elif instruction.opcode == "dot":
-        inputs = list(map(lambda x: str(x), instruction.operand_ids))
-        node = helper.make_node("Gemm", inputs, [str(instruction.id)])
-        return [(str(instruction.id), None, node)]
+        assert len(instruction.operand_ids) == 2
+        op1_dim = get_instruction(
+            computation, instruction.operand_ids[0]
+        ).shape.dimensions
+        op2_dim = get_instruction(
+            computation, instruction.operand_ids[1]
+        ).shape.dimensions
+        if len(op1_dim) == 2 and len(op2_dim) == 2:
+            assert op1_dim[1] == op2_dim[0], "Must be Matrix-Matrix multiplication"
+            inputs = list(map(lambda x: str(x), instruction.operand_ids))
+            node = helper.make_node("Gemm", inputs, [str(instruction.id)])
+            return [(str(instruction.id), None, node)]
+        elif len(op1_dim) == 2 and len(op2_dim) == 1:
+            assert op1_dim[1] == op2_dim[0], "Must be Matrix-Vector multiplication"
+
+            op1_name = str(instruction.operand_ids[0])
+            op2_name = str(instruction.operand_ids[1])
+
+            op2_shape_id = gensym("dot_op2_reshape_shape_")
+            op2_shape_node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[op2_shape_id],
+                value=helper.make_tensor(
+                    gensym("dot_op2_reshape_tensor_"),
+                    data_type=TensorProto.INT64,
+                    dims=[2],
+                    vals=[op2_dim[0], 1],
+                ),
+            )
+
+            op2_reshape_id = gensym("dot_op2_reshape_")
+            op2_reshape_node = helper.make_node(
+                "Reshape", inputs=[op2_name, op2_shape_id], outputs=[op2_reshape_id]
+            )
+
+            gemm_result_id = gensym("dot_gemm_")
+            gemm_node = helper.make_node(
+                "Gemm", [op1_name, op2_reshape_id], [gemm_result_id]
+            )
+
+            result_shape_id = gensym("dot_result_reshape_shape_")
+            result_shape_node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[result_shape_id],
+                value=helper.make_tensor(
+                    gensym("dot_result_reshape_tensor_"),
+                    data_type=TensorProto.INT64,
+                    dims=[1],
+                    vals=[op1_dim[0]],
+                ),
+            )
+
+            result_reshape_id = str(instruction.id)
+            result_reshape_node = helper.make_node(
+                "Reshape",
+                inputs=[gemm_result_id, result_shape_id],
+                outputs=[result_reshape_id],
+            )
+
+            return [
+                (op2_shape_id, None, op2_shape_node),
+                (op2_reshape_id, None, op2_reshape_node),
+                (gemm_result_id, None, gemm_node),
+                (result_shape_id, None, result_shape_node),
+                (result_reshape_id, None, result_reshape_node),
+            ]
+        else:
+            raise RuntimeError(
+                "Unspported pair of dimensions: " + str(op1_dim) + ", " + str(op2_dim)
+            )
     elif instruction.opcode == "tuple":
         # TODO:
         assert len(instruction.operand_ids) == 1
@@ -184,12 +253,19 @@ def get_computation(hlo_proto, computation_id):
     raise RuntimeError("Cannot find computation of " + computation_id)
 
 
+def get_instruction(computation, instruction_id):
+    for i in computation.instructions:
+        if i.id == instruction_id:
+            return i
+    raise RuntimeError("Cannot find instruction of " + instruction_id)
+
+
 # See https://github.com/onnx/onnx/blob/main/docs/PythonAPIOverview.md#creating-an-onnx-model-using-helper-functions
 # Pass hlo_proto also because some operators such as reduce call other sub-computation.
 def t_computation(hlo_proto, computation, onnx_filename):
     name_value_nodes = []
     for i in computation.instructions:
-        name_value_nodes.extend(t_instruction(hlo_proto, i))
+        name_value_nodes.extend(t_instruction(hlo_proto, computation, i))
     input_values = []
     nodes = []
     for n, v, node in name_value_nodes:
@@ -228,8 +304,22 @@ def gen_onnx_inputs(onnx_name, input_values):
     m = onnx.load(onnx_name)
     input_names = list(map(lambda x: x.name, m.graph.input))
     inputs = {}
-    assert len(input_names) == len(input_values)
-    for n, v in zip(input_names, input_values):
+    flattened = []
+    for v in input_values:
+        # TODO: Dirty hack
+        if isinstance(v, list):
+            assert len(v) == 1
+            assert isinstance(v[0], tuple)
+            flattened.extend(list(v[0]))
+        else:
+            flattened.append(v)
+    assert len(input_names) == len(flattened), (
+        "len(input_names) = "
+        + str(len(input_names))
+        + ", len(flattened) = "
+        + str(len(flattened))
+    )
+    for n, v in zip(input_names, flattened):
         inputs[n] = v
     return inputs
 
