@@ -69,7 +69,9 @@ def translate_and_run(fn, input_values, test_name):
 
 def test_mnist():
     test_name = "mnist"
-    init_random_params, predict = stax.serial(Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax)
+    init_random_params, predict = stax.serial(
+        Dense(1024), Relu, Dense(1024), Relu, Dense(10), LogSoftmax
+    )
 
     train_images, train_labels, test_images, test_labels = datasets.mnist()
     rng = random.PRNGKey(0)
@@ -90,7 +92,9 @@ def test_mnist():
     rd = np.abs(output_values - outputs[0]) / np.abs(outputs[0])
     rtol = np.max(rd[~np.isnan(rd)])
 
-    assert np.allclose(output_values, outputs[0], rtol=1e-3), f"atol = {atol} rtol = {rtol}"
+    assert np.allclose(
+        output_values, outputs[0], rtol=1e-3
+    ), f"atol = {atol} rtol = {rtol}"
 
 
 @pytest.mark.parametrize("shape", [(32, 32), (32, 64)])

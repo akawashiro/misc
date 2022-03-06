@@ -95,7 +95,10 @@ def t_instruction(
             # know why...
             return []
         else:
-            raise RuntimeError("element_type other than F32 is not supported yet: " + str(instruction.shape.element_type))
+            raise RuntimeError(
+                "element_type other than F32 is not supported yet: "
+                + str(instruction.shape.element_type)
+            )
     # TODO:
     # return [(str(instruction.id), None, None)]
     elif instruction.opcode == "add":
