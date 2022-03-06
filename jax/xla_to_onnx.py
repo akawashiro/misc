@@ -77,8 +77,27 @@ def t_instruction(
         value = shape_proto_to_value_info_proto(str(instruction.id), instruction.shape)
         return [(name, value, None)]
     elif instruction.opcode == "constant":
-        # TODO:
-        return [(str(instruction.id), None, None)]
+        if instruction.shape.element_type == xla_data_pb2.F32:
+            node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[str(instruction.id)],
+                value=helper.make_tensor(
+                    gensym("dot_op2_reshape_tensor_"),
+                    data_type=TensorProto.FLOAT,
+                    dims=list(instruction.shape.dimensions),
+                    vals=np.array(instruction.literal.f32s),
+                ),
+            )
+            return [(str(instruction.id), None, node)]
+        elif instruction.shape.element_type == xla_data_pb2.PRED:
+            # TODO: Currently, it works without this kind of constant. I don't
+            # know why...
+            return []
+        else:
+            raise RuntimeError("element_type other than F32 is not supported yet: " + str(instruction.shape.element_type))
+    # TODO:
+    # return [(str(instruction.id), None, None)]
     elif instruction.opcode == "add":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Add", inputs, [str(instruction.id)])
@@ -318,7 +337,7 @@ def get_instruction(computation, instruction_id):
 
 # See https://github.com/onnx/onnx/blob/main/docs/PythonAPIOverview.md#creating-an-onnx-model-using-helper-functions
 # Pass hlo_proto also because some operators such as reduce call other sub-computation.
-def t_computation(hlo_proto, computation, onnx_filename):
+def t_computation(hlo_proto, computation, onnx_filename: str):
     name_value_nodes = []
     for i in computation.instructions:
         name_value_nodes.extend(t_instruction(hlo_proto, computation, i))
@@ -348,7 +367,7 @@ def t_computation(hlo_proto, computation, onnx_filename):
     onnx.save(model_def, onnx_filename)
 
 
-def hlo_proto_to_onnx(hlo_proto, onnx_filename):
+def hlo_proto_to_onnx(hlo_proto, onnx_filename: str):
     main_computation = hlo_proto.computations[-1]
     assert (
         hlo_proto.entry_computation_name == main_computation.name
@@ -356,7 +375,7 @@ def hlo_proto_to_onnx(hlo_proto, onnx_filename):
     t_computation(hlo_proto, main_computation, onnx_filename)
 
 
-def gen_onnx_inputs(onnx_name, input_values):
+def gen_onnx_inputs(onnx_name: str, input_values):
     m = onnx.load(onnx_name)
     input_names = list(map(lambda x: x.name, m.graph.input))
     inputs = {}
@@ -364,9 +383,9 @@ def gen_onnx_inputs(onnx_name, input_values):
     for v in input_values:
         # TODO: Dirty hack
         if isinstance(v, list):
-            assert len(v) == 1
-            assert isinstance(v[0], tuple)
-            flattened.extend(list(v[0]))
+            for t in v:
+                assert isinstance(t, tuple)
+                flattened.extend(list(t))
         else:
             flattened.append(v)
     assert len(input_names) == len(flattened), (
