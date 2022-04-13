@@ -1,4 +1,4 @@
-from jax.example_libraries.stax import MaxPool
+from jax.example_libraries.stax import MaxPool, BatchNorm
 from jax import random as random
 import functools
 import tensorflow as tf
@@ -12,7 +12,8 @@ image_size = 16
 channel_size = 1
 input_shape = (batch_size, image_size, image_size, channel_size)
 
-init_fun, predict_fun = MaxPool((3, 3))
+# init_fun, predict_fun = MaxPool((3, 3))
+init_fun, predict_fun = BatchNorm()
 _, init_params = init_fun(rng_key, input_shape)
 
 print(init_params)
