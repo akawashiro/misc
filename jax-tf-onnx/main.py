@@ -9,12 +9,13 @@ import haiku as hk
 
 
 def f(x):
-    return hk.nets.MLP([300, 100, 10])(x)
+    # return hk.nets.MLP([300, 100, 10])(x)
+    return hk.nets.ResNet18(1000)(x, True)
 
 
-f = hk.transform(f)
+f = hk.transform_with_state(f)
 rng = jax.random.PRNGKey(42)
-x = jnp.ones([1, 1])
+x = jnp.ones([1, 3, 224, 224])
 params = f.init(rng, x)
 
 # If you want to save an "inference only" version of your function just close
@@ -34,8 +35,10 @@ inference_tf = tf.function(inference_tf, autograph=False)
 import tf2onnx
 
 inference_onnx = tf2onnx.convert.from_function(
-    inference_tf, input_signature=[tf.TensorSpec([1, 1])]
+    inference_tf, input_signature=[tf.TensorSpec([1, 3, 224, 224])]
 )
 model_proto, external_tensor_storage = inference_onnx
 
-print(model_proto)
+print("hoge")
+# print(type(model_proto))
+# print(model_proto)

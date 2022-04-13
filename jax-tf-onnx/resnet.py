@@ -55,30 +55,30 @@ def IdentityBlock(kernel_size, filters):
 
 def ResNet50(num_classes):
     return stax.serial(
-        GeneralConv(("HWCN", "OIHW", "NHWC"), 64, (7, 7), (2, 2), "SAME"),
-        BatchNorm(),
-        Relu,
+        # GeneralConv(("HWCN", "OIHW", "NHWC"), 64, (7, 7), (2, 2), "SAME"),
+        # BatchNorm(),
+        # Relu,
         MaxPool((3, 3), strides=(2, 2)),
-        ConvBlock(3, [64, 64, 256], strides=(1, 1)),
-        IdentityBlock(3, [64, 64]),
-        IdentityBlock(3, [64, 64]),
-        ConvBlock(3, [128, 128, 512]),
-        IdentityBlock(3, [128, 128]),
-        IdentityBlock(3, [128, 128]),
-        IdentityBlock(3, [128, 128]),
-        ConvBlock(3, [256, 256, 1024]),
-        IdentityBlock(3, [256, 256]),
-        IdentityBlock(3, [256, 256]),
-        IdentityBlock(3, [256, 256]),
-        IdentityBlock(3, [256, 256]),
-        IdentityBlock(3, [256, 256]),
-        ConvBlock(3, [512, 512, 2048]),
-        IdentityBlock(3, [512, 512]),
-        IdentityBlock(3, [512, 512]),
+        # ConvBlock(3, [64, 64, 256], strides=(1, 1)),
+        # IdentityBlock(3, [64, 64]),
+        # IdentityBlock(3, [64, 64]),
+        # ConvBlock(3, [128, 128, 512]),
+        # IdentityBlock(3, [128, 128]),
+        # IdentityBlock(3, [128, 128]),
+        # IdentityBlock(3, [128, 128]),
+        # ConvBlock(3, [256, 256, 1024]),
+        # IdentityBlock(3, [256, 256]),
+        # IdentityBlock(3, [256, 256]),
+        # IdentityBlock(3, [256, 256]),
+        # IdentityBlock(3, [256, 256]),
+        # IdentityBlock(3, [256, 256]),
+        # ConvBlock(3, [512, 512, 2048]),
+        # IdentityBlock(3, [512, 512]),
+        # IdentityBlock(3, [512, 512]),
         AvgPool((7, 7)),
-        Flatten,
-        Dense(num_classes),
-        LogSoftmax,
+        # Flatten,
+        # Dense(num_classes),
+        # LogSoftmax,
     )
 
 
@@ -95,6 +95,8 @@ init_fun, predict_fun = ResNet50(num_classes)
 
 inference_tf = jax2tf.convert(predict_fun, enable_xla=False)
 inference_tf = tf.function(inference_tf, autograph=False)
+
+print(inference_tf)
 
 inference_onnx = tf2onnx.convert.from_function(
     inference_tf, input_signature=[tf.TensorSpec([1, 1])]
