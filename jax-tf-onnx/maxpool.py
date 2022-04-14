@@ -12,14 +12,12 @@ image_size = 16
 channel_size = 1
 input_shape = (batch_size, image_size, image_size, channel_size)
 
-# init_fun, predict_fun = MaxPool((3, 3))
-init_fun, predict_fun = BatchNorm()
+init_fun, predict_fun = MaxPool((3, 3))
 _, init_params = init_fun(rng_key, input_shape)
 
 print(init_params)
 
 
-# inference = functools.partial(predict_fun, init_params, None)
 inference = predict_fun
 
 inference_tf = jax2tf.convert(inference, enable_xla=False)
