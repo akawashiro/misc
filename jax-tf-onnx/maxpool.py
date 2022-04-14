@@ -1,6 +1,7 @@
 from jax.example_libraries.stax import MaxPool, BatchNorm
 from jax import random as random
 import functools
+import onnx
 import tensorflow as tf
 from jax.experimental import jax2tf
 import tf2onnx
@@ -33,4 +34,4 @@ inference_onnx = tf2onnx.convert.from_function(
     inference_tf, input_signature=[tf.TensorSpec(()), tf.TensorSpec(input_shape)]
 )
 model_proto, external_tensor_storage = inference_onnx
-print(model_proto)
+onnx.save(model_proto, "maxpool.onnx")
