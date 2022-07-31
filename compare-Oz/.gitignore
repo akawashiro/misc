@@ -1,0 +1,6 @@
+ninja/*
+ninja-build-*/*
+objdump-*
+sections-*
+segments-*
+file_size_compare
