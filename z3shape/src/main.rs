@@ -87,6 +87,11 @@ fn main() {
             } else if op_type == "Concat" {
                 assert_eq!(node.input.len(), 2);
                 assert_eq!(node.output.len(), 1);
+                assert_eq!(node.attribute.len(), 1);
+                let att = &node.attribute[0];
+                assert_eq!(att.name, Some(String::from("axis")));
+                let axis = att.i.unwrap();
+                println!("{:#?}", node.attribute[0]);
             }
         }
     }
