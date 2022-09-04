@@ -15,12 +15,14 @@ use onnx::ModelProto;
 #[derive(PartialEq, Eq, Hash)]
 enum Z3Type {
     Int,
+    List(Box<Z3Type>),
 }
 
 impl fmt::Display for Z3Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Z3Type::Int => write!(f, "Int"),
+            Z3Type::List(ty) => write!(f, "(List {:})", ty),
         }
     }
 }
@@ -64,18 +66,27 @@ fn main() {
 
     for node in model.graph.node.iter() {
         if let Some(op_type) = &node.op_type {
-            if op_type == "Relu" {
+            if op_type == "Relu" || op_type == "Dropout" {
                 assert_eq!(node.input.len(), 1);
                 assert_eq!(node.input.len(), node.output.len());
 
-                let i = node.input[0].clone() + "_dim_0";
-                let o = node.output[0].clone() + "_dim_0";
-                decares.insert(Z3Exp::DecareConst(i.clone(), Z3Type::Int));
-                decares.insert(Z3Exp::DecareConst(o.clone(), Z3Type::Int));
+                let i = node.input[0].clone() + "_shape";
+                let o = node.output[0].clone() + "_shape";
+                decares.insert(Z3Exp::DecareConst(
+                    i.clone(),
+                    Z3Type::List(Box::new(Z3Type::Int)),
+                ));
+                decares.insert(Z3Exp::DecareConst(
+                    o.clone(),
+                    Z3Type::List(Box::new(Z3Type::Int)),
+                ));
                 conditions.push(Z3Exp::Assert(Box::new(Z3Exp::Equal(
                     Box::new(Z3Exp::Variable(i)),
                     Box::new(Z3Exp::Variable(o)),
                 ))));
+            } else if op_type == "Concat" {
+                assert_eq!(node.input.len(), 2);
+                assert_eq!(node.output.len(), 1);
             }
         }
     }

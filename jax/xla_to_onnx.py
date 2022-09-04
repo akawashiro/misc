@@ -99,8 +99,6 @@ def t_instruction(
                 "element_type other than F32 is not supported yet: "
                 + str(instruction.shape.element_type)
             )
-    # TODO:
-    # return [(str(instruction.id), None, None)]
     elif instruction.opcode == "add":
         inputs = list(map(lambda x: str(x), instruction.operand_ids))
         node = helper.make_node("Add", inputs, [str(instruction.id)])
@@ -356,8 +354,6 @@ def t_computation(hlo_proto, computation, onnx_filename: str):
             str(computation.root_id), computation.program_shape.result.tuple_shapes[0]
         )
     ]
-    # print(name_value_nodes)
-    # print("input_values = ", input_values)
 
     graph_def = helper.make_graph(nodes, "test-model", input_values, output_values)
 
@@ -376,27 +372,3 @@ def hlo_proto_to_onnx(hlo_proto, onnx_filename: str):
         hlo_proto.entry_computation_name == main_computation.name
     ), "TODO: Translate only the main computation"
     t_computation(hlo_proto, main_computation, onnx_filename)
-
-
-def gen_onnx_inputs(onnx_name: str, input_values):
-    m = onnx.load(onnx_name)
-    input_names = list(map(lambda x: x.name, m.graph.input))
-    inputs = {}
-    flattened = []
-    for v in input_values:
-        # TODO: Dirty hack
-        if isinstance(v, list):
-            for t in v:
-                assert isinstance(t, tuple)
-                flattened.extend(list(t))
-        else:
-            flattened.append(v)
-    assert len(input_names) == len(flattened), (
-        "len(input_names) = "
-        + str(len(input_names))
-        + ", len(flattened) = "
-        + str(len(flattened))
-    )
-    for n, v in zip(input_names, flattened):
-        inputs[n] = np.array(v)
-    return inputs

@@ -15,12 +15,36 @@ import jax.numpy as jnp
 from jax import grad, jit, random, vmap
 from jax.example_libraries import stax
 from jax.example_libraries.stax import Dense, LogSoftmax, Relu
-from xla_to_onnx import gen_onnx_inputs, hlo_proto_to_onnx
+from xla_to_onnx import hlo_proto_to_onnx
 
 sys.path.append("hlo_proto")  # nopep8
 
 import hlo_pb2  # nopep8
 import xla_data_pb2  # nopep8
+
+
+def gen_onnx_inputs(onnx_name: str, input_values):
+    m = onnx.load(onnx_name)
+    input_names = list(map(lambda x: x.name, m.graph.input))
+    inputs = {}
+    flattened = []
+    for v in input_values:
+        # TODO: Dirty hack
+        if isinstance(v, list):
+            for t in v:
+                assert isinstance(t, tuple)
+                flattened.extend(list(t))
+        else:
+            flattened.append(v)
+    assert len(input_names) == len(flattened), (
+        "len(input_names) = "
+        + str(len(input_names))
+        + ", len(flattened) = "
+        + str(len(flattened))
+    )
+    for n, v in zip(input_names, flattened):
+        inputs[n] = np.array(v)
+    return inputs
 
 
 def translate_and_run(fn, input_values, test_name):
@@ -79,12 +103,7 @@ def test_mnist():
 
     fn = predict
     input_values = [init_params, train_images[0]]
-    print(type(init_params))
-    print(len(init_params))
-    print(type(init_params[0]))
-    print(len(init_params[0]))
-    print(train_images[0].shape)
-
+    
     output_values = fn(*input_values)
     outputs = translate_and_run(fn, input_values, test_name)
 
