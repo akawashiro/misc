@@ -40,6 +40,7 @@ enum Z3Exp {
     Plus(Box<Z3Exp>, Box<Z3Exp>),
     Mul(Box<Z3Exp>, Box<Z3Exp>),
     Sub(Box<Z3Exp>, Box<Z3Exp>),
+    Div(Box<Z3Exp>, Box<Z3Exp>),
     Int(i64),
 }
 
@@ -57,6 +58,7 @@ impl fmt::Display for Z3Exp {
             Z3Exp::Plus(exp1, exp2) => write!(f, "(+ {:} {:})", exp1, exp2),
             Z3Exp::Mul(exp1, exp2) => write!(f, "(* {:} {:})", exp1, exp2),
             Z3Exp::Sub(exp1, exp2) => write!(f, "(- {:} {:})", exp1, exp2),
+            Z3Exp::Div(exp1, exp2) => write!(f, "(div {:} {:})", exp1, exp2),
             Z3Exp::Int(i) => write!(f, "{:}", i),
         }
     }
@@ -122,7 +124,7 @@ fn main() {
         Z3Exp::Tail(Box::new(e))
     }
 
-    fn plus(e1: Z3Exp, e2: Z3Exp) -> Z3Exp{
+    fn plus(e1: Z3Exp, e2: Z3Exp) -> Z3Exp {
         Z3Exp::Plus(Box::new(e1), Box::new(e2))
     }
 
@@ -134,13 +136,71 @@ fn main() {
         Z3Exp::Sub(Box::new(e1), Box::new(e2))
     }
 
+    fn div(e1: Z3Exp, e2: Z3Exp) -> Z3Exp {
+        Z3Exp::Div(Box::new(e1), Box::new(e2))
+    }
+
     fn int(i: i64) -> Z3Exp {
         Z3Exp::Int(i)
     }
 
     for node in model.graph.node.iter() {
         if let Some(op_type) = &node.op_type {
-            if op_type == "Conv" {
+            if op_type == "MaxPool" {
+                assert_eq!(node.input.len(), 1);
+                assert_eq!(node.output.len(), 1);
+
+                let kernel_shape_att = &node.attribute[0];
+                assert_eq!(kernel_shape_att.name, Some(String::from("kernel_shape")));
+                let kernel_shape = &kernel_shape_att.ints;
+                assert_eq!(kernel_shape.len(), 2);
+
+                let pads_att = &node.attribute[1];
+                assert_eq!(pads_att.name, Some(String::from("pads")));
+                let pads = &pads_att.ints;
+                assert_eq!(pads.len(), 4);
+
+                let strides_att = &node.attribute[2];
+                assert_eq!(strides_att.name, Some(String::from("strides")));
+                let strides = &strides_att.ints;
+                assert_eq!(strides.len(), 2);
+
+                decares.insert(dims_dec(node.input[0].clone() + "_shape"));
+                decares.insert(dims_dec(node.output[0].clone() + "_shape"));
+
+                let in_image = Z3Exp::Variable(node.input[0].clone() + "_shape");
+                let out_image = Z3Exp::Variable(node.output[0].clone() + "_shape");
+
+                let in_batch = head(in_image.clone());
+                let out_batch = head(out_image.clone());
+                conditions.push(ass_eq(in_batch, out_batch));
+
+                let in_ch = head(tail(in_image.clone()));
+                let out_ch = head(tail(out_image.clone()));
+                conditions.push(ass_eq(in_ch, out_ch));
+
+                let k_h = kernel_shape[0];
+                let k_w = kernel_shape[1];
+                let in_h = plus(
+                    plus(head(tail(tail(in_image.clone()))), int(pads[0])),
+                    int(pads[2]),
+                );
+                let in_w = plus(
+                    plus(head(tail(tail(tail(in_image)))), int(pads[1])),
+                    int(pads[3]),
+                );
+                let out_h = head(tail(tail(out_image.clone())));
+                let out_w = head(tail(tail(tail(out_image))));
+
+                conditions.push(ass_eq(
+                    plus(div(sub(in_h, int(k_h - 1)), int(strides[0])), int(1)),
+                    out_h,
+                ));
+                conditions.push(ass_eq(
+                    plus(div(sub(in_w, int(k_w - 1)), int(strides[1])), int(1)),
+                    out_w,
+                ));
+            } else if op_type == "Conv" {
                 assert_eq!(node.input.len(), 3);
                 assert_eq!(node.output.len(), 1);
 
@@ -193,7 +253,10 @@ fn main() {
 
                 let k_h = (kernel_shape[0] - 1) * dilations[0] + 1;
                 let k_w = (kernel_shape[1] - 1) * dilations[1] + 1;
-                let in_h = plus(plus(head(tail(tail(in_image.clone()))), int(pads[0])), int(pads[2]));
+                let in_h = plus(
+                    plus(head(tail(tail(in_image.clone()))), int(pads[0])),
+                    int(pads[2]),
+                );
                 let in_w = plus(
                     plus(head(tail(tail(tail(in_image)))), int(pads[1])),
                     int(pads[3]),
@@ -201,22 +264,16 @@ fn main() {
                 let out_h = head(tail(tail(out_image.clone())));
                 let out_w = head(tail(tail(tail(out_image))));
 
-                conditions.push(ass_eq(sub(in_h, int(k_h - 1)), mul(out_h, int(strides[0]))));
-                conditions.push(ass_eq(sub(in_w, int(k_w - 1)), mul(out_w, int(strides[1]))));
+                conditions.push(ass_eq(div(sub(in_h, int(k_h - 1)), int(strides[0])), out_h));
+                conditions.push(ass_eq(div(sub(in_w, int(k_w - 1)), int(strides[1])), out_w));
             } else if op_type == "Relu" || op_type == "Dropout" {
                 assert_eq!(node.input.len(), 1);
                 assert_eq!(node.input.len(), node.output.len());
 
                 let i = node.input[0].clone() + "_shape";
                 let o = node.output[0].clone() + "_shape";
-                decares.insert(Z3Exp::DecareConst(
-                    i.clone(),
-                    Z3Type::List(Box::new(Z3Type::Int)),
-                ));
-                decares.insert(Z3Exp::DecareConst(
-                    o.clone(),
-                    Z3Type::List(Box::new(Z3Type::Int)),
-                ));
+                decares.insert(dims_dec(i.clone()));
+                decares.insert(dims_dec(o.clone()));
                 conditions.push(Z3Exp::Assert(Box::new(Z3Exp::Equal(
                     Box::new(Z3Exp::Variable(i)),
                     Box::new(Z3Exp::Variable(o)),
