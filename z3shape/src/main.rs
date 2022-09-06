@@ -73,7 +73,7 @@ fn main() {
     let mut conditions = Vec::new();
 
     for inout in model.graph.input.iter().chain(model.graph.output.iter()) {
-        let name = inout.name.as_ref().unwrap().clone();
+        let name = inout.name.as_ref().unwrap().clone() + "_shape";
         decares.insert(Z3Exp::DecareConst(
             name.clone(),
             Z3Type::List(Box::new(Z3Type::Int)),
@@ -102,9 +102,50 @@ fn main() {
         }
     }
 
+    fn dims_dec(s: String) -> Z3Exp {
+        Z3Exp::DecareConst(s, Z3Type::List(Box::new(Z3Type::Int)))
+    }
+
+    fn ass_eq(e1: Z3Exp, e2: Z3Exp) -> Z3Exp {
+        Z3Exp::Assert(Box::new(Z3Exp::Equal(Box::new(e1), Box::new(e2))))
+    }
+
+    fn head(e: Z3Exp) -> Z3Exp {
+        Z3Exp::Head(Box::new(e))
+    }
+
+    fn tail(e: Z3Exp) -> Z3Exp {
+        Z3Exp::Tail(Box::new(e))
+    }
+
     for node in model.graph.node.iter() {
         if let Some(op_type) = &node.op_type {
-            if op_type == "Relu" || op_type == "Dropout" {
+            if op_type == "Conv" {
+                assert_eq!(node.input.len(), 3);
+                assert_eq!(node.output.len(), 1);
+
+                decares.insert(dims_dec(node.input[0].clone() + "_shape"));
+                decares.insert(dims_dec(node.input[1].clone() + "_shape"));
+                decares.insert(dims_dec(node.input[2].clone() + "_shape"));
+                decares.insert(dims_dec(node.output[0].clone() + "_shape"));
+
+                let in_image = Z3Exp::Variable(node.input[0].clone() + "_shape");
+                let weight = Z3Exp::Variable(node.input[1].clone() + "_shape");
+                let bias = Z3Exp::Variable(node.input[2].clone() + "_shape");
+                let out_image = Z3Exp::Variable(node.output[0].clone() + "_shape");
+
+                let in_batch = head(in_image.clone());
+                let out_batch = head(out_image.clone());
+                conditions.push(ass_eq(in_batch, out_batch));
+
+                let in_ch_eq = ass_eq(head(tail(in_image)), head(tail(weight.clone())));
+                conditions.push(in_ch_eq);
+
+                let out_ch_eq1 = ass_eq(head(weight.clone()), head(tail(out_image)));
+                let out_ch_eq2 = ass_eq(head(weight), head(bias));
+                conditions.push(out_ch_eq1);
+                conditions.push(out_ch_eq2);
+            } else if op_type == "Relu" || op_type == "Dropout" {
                 assert_eq!(node.input.len(), 1);
                 assert_eq!(node.input.len(), node.output.len());
 
