@@ -38,6 +38,8 @@ enum Z3Exp {
     Head(Box<Z3Exp>),
     Tail(Box<Z3Exp>),
     Plus(Box<Z3Exp>, Box<Z3Exp>),
+    Mul(Box<Z3Exp>, Box<Z3Exp>),
+    Sub(Box<Z3Exp>, Box<Z3Exp>),
     Int(i64),
 }
 
@@ -53,6 +55,8 @@ impl fmt::Display for Z3Exp {
             Z3Exp::Head(exp) => write!(f, "(head {:})", exp),
             Z3Exp::Tail(exp) => write!(f, "(tail {:})", exp),
             Z3Exp::Plus(exp1, exp2) => write!(f, "(+ {:} {:})", exp1, exp2),
+            Z3Exp::Mul(exp1, exp2) => write!(f, "(* {:} {:})", exp1, exp2),
+            Z3Exp::Sub(exp1, exp2) => write!(f, "(- {:} {:})", exp1, exp2),
             Z3Exp::Int(i) => write!(f, "{:}", i),
         }
     }
@@ -118,11 +122,52 @@ fn main() {
         Z3Exp::Tail(Box::new(e))
     }
 
+    fn plus(e1: Z3Exp, e2: Z3Exp) -> Z3Exp{
+        Z3Exp::Plus(Box::new(e1), Box::new(e2))
+    }
+
+    fn mul(e1: Z3Exp, e2: Z3Exp) -> Z3Exp {
+        Z3Exp::Mul(Box::new(e1), Box::new(e2))
+    }
+
+    fn sub(e1: Z3Exp, e2: Z3Exp) -> Z3Exp {
+        Z3Exp::Sub(Box::new(e1), Box::new(e2))
+    }
+
+    fn int(i: i64) -> Z3Exp {
+        Z3Exp::Int(i)
+    }
+
     for node in model.graph.node.iter() {
         if let Some(op_type) = &node.op_type {
             if op_type == "Conv" {
                 assert_eq!(node.input.len(), 3);
                 assert_eq!(node.output.len(), 1);
+
+                let dilations_att = &node.attribute[0];
+                assert_eq!(dilations_att.name, Some(String::from("dilations")));
+                let dilations = &dilations_att.ints;
+                assert_eq!(dilations.len(), 2);
+
+                let group_att = &node.attribute[1];
+                assert_eq!(group_att.name, Some(String::from("group")));
+                let group = *&group_att.i.unwrap();
+                assert_eq!(group, 1);
+
+                let kernel_shape_att = &node.attribute[2];
+                assert_eq!(kernel_shape_att.name, Some(String::from("kernel_shape")));
+                let kernel_shape = &kernel_shape_att.ints;
+                assert_eq!(kernel_shape.len(), 2);
+
+                let pads_att = &node.attribute[3];
+                assert_eq!(pads_att.name, Some(String::from("pads")));
+                let pads = &pads_att.ints;
+                assert_eq!(pads.len(), 4);
+
+                let strides_att = &node.attribute[4];
+                assert_eq!(strides_att.name, Some(String::from("strides")));
+                let strides = &strides_att.ints;
+                assert_eq!(strides.len(), 2);
 
                 decares.insert(dims_dec(node.input[0].clone() + "_shape"));
                 decares.insert(dims_dec(node.input[1].clone() + "_shape"));
@@ -138,13 +183,26 @@ fn main() {
                 let out_batch = head(out_image.clone());
                 conditions.push(ass_eq(in_batch, out_batch));
 
-                let in_ch_eq = ass_eq(head(tail(in_image)), head(tail(weight.clone())));
+                let in_ch_eq = ass_eq(head(tail(in_image.clone())), head(tail(weight.clone())));
                 conditions.push(in_ch_eq);
 
-                let out_ch_eq1 = ass_eq(head(weight.clone()), head(tail(out_image)));
+                let out_ch_eq1 = ass_eq(head(weight.clone()), head(tail(out_image.clone())));
                 let out_ch_eq2 = ass_eq(head(weight), head(bias));
                 conditions.push(out_ch_eq1);
                 conditions.push(out_ch_eq2);
+
+                let k_h = (kernel_shape[0] - 1) * dilations[0] + 1;
+                let k_w = (kernel_shape[1] - 1) * dilations[1] + 1;
+                let in_h = plus(plus(head(tail(tail(in_image.clone()))), int(pads[0])), int(pads[2]));
+                let in_w = plus(
+                    plus(head(tail(tail(tail(in_image)))), int(pads[1])),
+                    int(pads[3]),
+                );
+                let out_h = head(tail(tail(out_image.clone())));
+                let out_w = head(tail(tail(tail(out_image))));
+
+                conditions.push(ass_eq(sub(in_h, int(k_h - 1)), mul(out_h, int(strides[0]))));
+                conditions.push(ass_eq(sub(in_w, int(k_w - 1)), mul(out_w, int(strides[1]))));
             } else if op_type == "Relu" || op_type == "Dropout" {
                 assert_eq!(node.input.len(), 1);
                 assert_eq!(node.input.len(), node.output.len());
