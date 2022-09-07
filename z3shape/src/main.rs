@@ -146,7 +146,9 @@ fn main() {
 
     for node in model.graph.node.iter() {
         if let Some(op_type) = &node.op_type {
-            if op_type == "MaxPool" {
+            if op_type == "Reshape" {
+                // TODO (akawashiro): We need constant propagation.
+            } else if op_type == "MaxPool" || op_type == "AveragePool" {
                 assert_eq!(node.input.len(), 1);
                 assert_eq!(node.output.len(), 1);
 
@@ -192,12 +194,20 @@ fn main() {
                 let out_h = head(tail(tail(out_image.clone())));
                 let out_w = head(tail(tail(tail(out_image))));
 
+                let dilation = 1;
+
                 conditions.push(ass_eq(
-                    plus(div(sub(in_h, int(k_h - 1)), int(strides[0])), int(1)),
+                    plus(
+                        div(sub(in_h, int((k_h - 1) * dilation + 1)), int(strides[0])),
+                        int(1),
+                    ),
                     out_h,
                 ));
                 conditions.push(ass_eq(
-                    plus(div(sub(in_w, int(k_w - 1)), int(strides[1])), int(1)),
+                    plus(
+                        div(sub(in_w, int((k_w - 1) * dilation + 1)), int(strides[1])),
+                        int(1),
+                    ),
                     out_w,
                 ));
             } else if op_type == "Conv" {
@@ -228,6 +238,10 @@ fn main() {
                 assert_eq!(strides_att.name, Some(String::from("strides")));
                 let strides = &strides_att.ints;
                 assert_eq!(strides.len(), 2);
+
+                // if node.input[0] == "squeezenet0_pool2_fwd" {
+                //     break
+                // }
 
                 decares.insert(dims_dec(node.input[0].clone() + "_shape"));
                 decares.insert(dims_dec(node.input[1].clone() + "_shape"));
@@ -285,7 +299,6 @@ fn main() {
                 let att = &node.attribute[0];
                 assert_eq!(att.name, Some(String::from("axis")));
                 let axis = att.i.unwrap();
-                // println!("{:#?}", node.attribute[0]);
 
                 let i1 = node.input[0].clone() + "_shape";
                 let i2 = node.input[0].clone() + "_shape";
@@ -314,8 +327,6 @@ fn main() {
                     let eq1 =
                         Z3Exp::Assert(Box::new(Z3Exp::Equal(Box::new(i1h.clone()), Box::new(i2h))));
                     let eq2 = Z3Exp::Assert(Box::new(Z3Exp::Equal(Box::new(i1h), Box::new(oh))));
-                    // println!("{:}", eq1);
-                    // println!("{:}", eq2);
                     conditions.push(eq1);
                     conditions.push(eq2);
 
@@ -331,7 +342,6 @@ fn main() {
                         Box::new(Z3Exp::Head(Box::new(i2exp.clone()))),
                     )),
                 )));
-                // println!("{:}", eq_concat);
                 conditions.push(eq_concat);
 
                 let eq_tail_i = Z3Exp::Assert(Box::new(Z3Exp::Equal(
@@ -342,8 +352,6 @@ fn main() {
                     Box::new(Z3Exp::Tail(Box::new(i1exp))),
                     Box::new(Z3Exp::Tail(Box::new(oexp))),
                 )));
-                // println!("{:}", eq_tail_i);
-                // println!("{:}", eq_tail_o);
                 conditions.push(eq_tail_i);
                 conditions.push(eq_tail_o);
             }
