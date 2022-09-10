@@ -82,7 +82,7 @@ fn gen_constraints(model: &onnx::ModelProto) -> (HashSet<Z3Exp>, Vec<Z3Exp>){
                 if let onnx::tensor_shape_proto::dimension::Value::DimValue(i) =
                     d.value.as_ref().unwrap()
                 {
-                    shape.push(i.clone());
+                    shape.push(*i);
                 }
             }
         }
@@ -211,7 +211,7 @@ fn gen_constraints(model: &onnx::ModelProto) -> (HashSet<Z3Exp>, Vec<Z3Exp>){
 
                 let group_att = &node.attribute[1];
                 assert_eq!(group_att.name, Some(String::from("group")));
-                let group = *&group_att.i.unwrap();
+                let group = group_att.i.unwrap();
                 assert_eq!(group, 1);
 
                 let kernel_shape_att = &node.attribute[2];
