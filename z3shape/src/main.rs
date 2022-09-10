@@ -64,17 +64,7 @@ impl fmt::Display for Z3Exp {
     }
 }
 
-fn main() {
-    assert_eq!(std::env::args().len(), 2);
-    let arg1 = std::env::args().nth(1).unwrap();
-    let onnx_path = Path::new(&arg1);
-    let file = File::open(onnx_path).expect("fail to open file");
-    let mut buffered_reader = BufReader::new(file);
-    let mut cis = CodedInputStream::from_buf_read(&mut buffered_reader);
-
-    let mut model = ModelProto::new();
-    model.merge_from(&mut cis).expect("fail to merge");
-
+fn gen_constraints(model: &onnx::ModelProto) -> (HashSet<Z3Exp>, Vec<Z3Exp>){
     let mut decares = HashSet::new();
     let mut conditions = Vec::new();
 
@@ -239,10 +229,6 @@ fn main() {
                 let strides = &strides_att.ints;
                 assert_eq!(strides.len(), 2);
 
-                // if node.input[0] == "squeezenet0_pool2_fwd" {
-                //     break
-                // }
-
                 decares.insert(dims_dec(node.input[0].clone() + "_shape"));
                 decares.insert(dims_dec(node.input[1].clone() + "_shape"));
                 decares.insert(dims_dec(node.input[2].clone() + "_shape"));
@@ -358,8 +344,24 @@ fn main() {
         }
     }
 
-    let smt_file = arg1 + "_shape_inference.smt";
-    let mut file = File::create(smt_file.clone()).unwrap();
+    (decares, conditions)
+}
+
+fn main() {
+    assert_eq!(std::env::args().len(), 2);
+    let arg1 = std::env::args().nth(1).unwrap();
+    let onnx_path = Path::new(&arg1);
+    let file = File::open(onnx_path).expect("fail to open file");
+    let mut buffered_reader = BufReader::new(file);
+    let mut cis = CodedInputStream::from_buf_read(&mut buffered_reader);
+
+    let mut model = ModelProto::new();
+    model.merge_from(&mut cis).expect("fail to merge");
+
+    let (decares, conditions) = gen_constraints(&model);
+
+    let smt_filename = arg1.clone() + "_shape_inference.smtlib2";
+    let mut smt_file = File::create(smt_filename.clone()).unwrap();
     let mut contents = String::from("");
     for d in decares.iter() {
         contents += &format!("{:}\n", d);
@@ -369,17 +371,21 @@ fn main() {
     }
     contents += &format!("{:}\n", Z3Exp::CheckSat);
     contents += &format!("{:}\n", Z3Exp::GetModel);
-    file.write_all(contents.as_bytes()).unwrap();
+    smt_file.write_all(contents.as_bytes()).unwrap();
 
     let output = Command::new("z3")
         .arg("-smt2")
-        .arg(smt_file)
+        .arg(smt_filename)
         .output()
         .unwrap_or_else(|e| panic!("failed to execute process: {}", e));
 
     if output.status.success() {
-        let s = String::from_utf8_lossy(&output.stdout);
-        print!("{}", s);
+        let result = String::from_utf8_lossy(&output.stdout);
+
+        let result_filename = arg1 + "_shape_inference_result.smtlib2";
+        let mut result_file = File::create(&result_filename).unwrap();
+        result_file.write_all(result.as_bytes()).unwrap();
+        println!("Check: {:}", result_filename);
     } else {
         let s = String::from_utf8_lossy(&output.stderr);
         print!("{}", s);
