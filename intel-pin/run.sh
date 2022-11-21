@@ -10,28 +10,34 @@ cd pin-gcc-linux/pin-3.25-98650-g8f6168173-gcc-linux/source/tools/ManualExamples
 make all TARGET=intel64 -j 40
 
 # Show the number of instructions
+echo =================================
 ../../../pin -t obj-intel64/inscount0.so -o inscount0.log -- /bin/ls
 cat inscount0.log
 
 # Show the number of instructions
+echo =================================
 ../../../pin -t obj-intel64/inscount1.so -o inscount1.log -- /bin/ls
 cat inscount1.log
 
 # Can we show instruction opcode?
 # Show the trace of IP register
+echo =================================
 ../../../pin -t obj-intel64/itrace.so -- /bin/ls
 cat itrace.out
 
 # Show statistics of function calls
+echo =================================
 ../../../pin -t obj-intel64/proccount.so -- /bin/ls
 cat proccount.out
 
 # Show all memory accesses
+echo =================================
 ../../../pin -t obj-intel64/pinatrace.so -- /bin/ls
 cat pinatrace.out
 
 # Show all strace
 # See https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl for syscall table
 # What is https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl#L32?
+echo =================================
 ../../../pin -t obj-intel64/strace.so -- /bin/ls
 cat strace.out
