@@ -1,4 +1,4 @@
-# Linux Device File <!-- omit in toc -->
+# Linuxにおけるデバイスファイルの仕組み <!-- omit in toc -->
 Linuxにおけるデバイスファイルとはデバイスをファイルという概念を通して扱えるようにしたものである。デバイスファイルは通常のファイルと同様に読み書きを行うことができる。しかし、実際には、その読み書きは例えばDMA等のデバイスとの情報のやり取りに変換される。デバイスファイルの例として、`/dev/nvme0` や `/dev/kvm` 等がある。
 
 本稿では、デバイスファイルへの読み書きがどのようにデバイスへの制御に変換されるのかを述べる。ほとんどの内容は[詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)の12章、13章に依る。参照しているLinux Kernelのソースコードのgitハッシュは`commit 830b3c68c1fb1e9176028d02ef86f3cf76aa2476 (v6.1)` である。
@@ -14,6 +14,8 @@ Linuxにおけるデバイスファイルとはデバイスをファイルとい
     - [デバイスファイルのinode](#デバイスファイルのinode)
 - [デバイスドライバとファイルの接続](#デバイスドライバとファイルの接続)
   - [mknod](#mknod)
+    - [ユーザ空間](#ユーザ空間)
+    - [カーネル空間](#カーネル空間)
 - [参考](#参考)
 
 # デバイスドライバ
@@ -139,7 +141,165 @@ Change: 2023-01-28 10:03:26.960000726 +0900
 
 # デバイスドライバとファイルの接続
 ## mknod
-[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)
+### ユーザ空間
+先ほど `sudo mknod /dev/myDevice c 63 1` を使ってデバイスファイル `/dev/myDevice` を作成した。このとき使ったのは [mknod(1)](https://man7.org/linux/man-pages/man1/mknod.1.html)、つまりユーザ向けのコマンドだった。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われる。
+
+straceを使って`mknod(2)`がどのように呼び出されているかを調べる。フルの出力結果は [ここ](https://gist.github.com/akawashiro/4a58ac86873843fa4c1a58d3cf7d13ec) にある。`0x3f`は10進で`63`なので `/dev/myDevice` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いしかない。
+```
+> sudo strace mknod /dev/myDevice c 63 1
+...
+mknodat(AT_FDCWD, "/dev/myDevice", S_IFCHR|0666, makedev(0x3f, 0x1)) = 0
+...
+```
+### カーネル空間
+`mknodat`の本体は [do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) にある。ここからデバイスファイルとデバイスドライバがどのように接続されるかを追う。ここではデバイスはキャラクタデバイス、ファイルシステムはext4であるとする。
+
+キャラクタデバイス、ブロックデバイスの場合は `vfs_mknod` が呼ばれる。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3970-L3972
+```
+		case S_IFCHR: case S_IFBLK:
+			error = vfs_mknod(mnt_userns, path.dentry->d_inode,
+					  dentry, mode, new_decode_dev(dev));
+```
+
+`vfs_mknod`の定義はここ。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3874-L3891
+```
+/**
+ * vfs_mknod - create device node or file
+ * @mnt_userns:	user namespace of the mount the inode was found from
+ * @dir:	inode of @dentry
+ * @dentry:	pointer to dentry of the base directory
+ * @mode:	mode of the new device node or file
+ * @dev:	device number of device to create
+ *
+ * Create a device node or file.
+ *
+ * If the inode has been found through an idmapped mount the user namespace of
+ * the vfsmount must be passed through @mnt_userns. This function will then take
+ * care to map the inode according to @mnt_userns before checking permissions.
+ * On non-idmapped mounts or if permission checking is to be performed on the
+ * raw inode simply passs init_user_ns.
+ */
+int vfs_mknod(struct user_namespace *mnt_userns, struct inode *dir,
+	      struct dentry *dentry, umode_t mode, dev_t dev)
+```
+
+dエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみる。これは僕のマシンが`ext4`を使っていたため。(`df -T` でどのファイルシステムを使っているか調べられる。)
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3915
+```
+	error = dir->i_op->mknod(mnt_userns, dir, dentry, mode, dev);
+```
+
+`ext4` の `mknod` はここで定義されていた。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L4191
+```
+const struct inode_operations ext4_dir_inode_operations = {
+	...
+	.mknod		= ext4_mknod,
+	...
+};
+```
+
+`ext4_mknod` の本体はここ。`init_special_inode` というのがデバイスに関係していそう。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L2830-L2862
+```
+static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
+		      struct dentry *dentry, umode_t mode, dev_t rdev)
+{
+	...
+		init_special_inode(inode, inode->i_mode, rdev);
+	...
+}
+```
+
+キャラクタデバイスの場合は `def_chr_fops` が呼ばれている。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/inode.c#L2291-L2309
+```
+void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
+{
+	inode->i_mode = mode;
+	if (S_ISCHR(mode)) {
+		inode->i_fop = &def_chr_fops;
+		inode->i_rdev = rdev;
+	} else if (S_ISBLK(mode)) {
+    ...
+  }
+}
+EXPORT_SYMBOL(init_special_inode);
+```
+
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
+```
+/*
+ * Dummy default file-operations: the only thing this does
+ * is contain the open that then fills in the correct operations
+ * depending on the special file...
+ */
+const struct file_operations def_chr_fops = {
+	.open = chrdev_open,
+	.llseek = noop_llseek,
+};
+```
+
+`kobj_lookup` でドライバを探していそう。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L370-L424
+```
+/*
+ * Called every time a character special file is opened
+ */
+static int chrdev_open(struct inode *inode, struct file *filp)
+{
+...
+		kobj = kobj_lookup(cdev_map, inode->i_rdev, &idx);
+...
+}
+```
+
+`MAJOR`とか出てくるのでおそらくここで間違いない。ここでファイルにデバイスドライバを紐付けている。
+https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133
+```
+struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
+{
+	struct kobject *kobj;
+	struct probe *p;
+	unsigned long best = ~0UL;
+
+retry:
+	mutex_lock(domain->lock);
+	for (p = domain->probes[MAJOR(dev) % 255]; p; p = p->next) {
+		struct kobject *(*probe)(dev_t, int *, void *);
+		struct module *owner;
+		void *data;
+
+		if (p->dev > dev || p->dev + p->range - 1 < dev)
+			continue;
+		if (p->range - 1 >= best)
+			break;
+		if (!try_module_get(p->owner))
+			continue;
+		owner = p->owner;
+		data = p->data;
+		probe = p->get;
+		best = p->range - 1;
+		*index = dev - p->dev;
+		if (p->lock && p->lock(dev, data) < 0) {
+			module_put(owner);
+			continue;
+		}
+		mutex_unlock(domain->lock);
+		kobj = probe(dev, index, data);
+		/* Currently ->owner protects _only_ ->probe() itself. */
+		module_put(owner);
+		if (kobj)
+			return kobj;
+		goto retry;
+	}
+	mutex_unlock(domain->lock);
+	return NULL;
+}
+
+```
 
 # 参考
 - [詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)
