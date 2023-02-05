@@ -1,7 +1,23 @@
-# Linux Device File
-Linuxにおけるデバイスファイルとはデバイスをファイルという概念を通して扱えるようにしたものである。デバイスファイルは通常のファイルと同様に読み書きを行うことができる。しかし、実際には、その読み書きは例えばDMA等のデバイスとの情報のやり取りに変換される。
+# Linux Device File <!-- omit in toc -->
+Linuxにおけるデバイスファイルとはデバイスをファイルという概念を通して扱えるようにしたものである。デバイスファイルは通常のファイルと同様に読み書きを行うことができる。しかし、実際には、その読み書きは例えばDMA等のデバイスとの情報のやり取りに変換される。デバイスファイルの例として、`/dev/nvme0` や `/dev/kvm` 等がある。
 
-本稿では、デバイスファイルへの読み書きがどのようにデバイスへの制御に変換されるのかを詳細に述べる。ほとんどの内容は[詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)の12章、13章に依る。参照しているLinux Kernelのソースコードのgitハッシュは`commit 830b3c68c1fb1e9176028d02ef86f3cf76aa2476 (v6.1)` である。
+本稿では、デバイスファイルへの読み書きがどのようにデバイスへの制御に変換されるのかを述べる。ほとんどの内容は[詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)の12章、13章に依る。参照しているLinux Kernelのソースコードのgitハッシュは`commit 830b3c68c1fb1e9176028d02ef86f3cf76aa2476 (v6.1)` である。
+
+# 目次 <!-- omit in toc -->
+- [デバイスドライバ](#デバイスドライバ)
+- [ファイル](#ファイル)
+  - [VFS(Virtual Filesytem Switch)](#vfsvirtual-filesytem-switch)
+  - [inode](#inode)
+  - [普通のファイルのinode](#普通のファイルのinode)
+    - [デバイスファイルのinode](#デバイスファイルのinode)
+- [デバイスドライバとファイルの接続](#デバイスドライバとファイルの接続)
+  - [mknod](#mknod)
+- [参考](#参考)
+
+# デバイスドライバ
+
+
+# ファイル
 
 ## VFS(Virtual Filesytem Switch)
 VFSとは標準的なUNIXファイルシステムのすべてのシステムコールを取り扱う、カーネルが提供するソフトウェアレイヤである。提供されているシステムコールとして`open(2)`、`close(2)`、`write(2)` 等がある。このレイヤがあるので、ユーザは`ext4`、`NFS`、`proc` などの全く異なるシステムを同じプログラムでで取り扱うことができる。例えば`cat(1)` は `cat /proc/self/maps` も `cat ./README.md`も可能だが、前者はメモリ割付状態を読み出しており、後者のファイル読み出しとはやっていることが本質的に異なる。
@@ -33,6 +49,13 @@ struct inode {
 	kuid_t			i_uid;
 	kgid_t			i_gid;
 	unsigned int		i_flags;
+  ...
+  union {
+		struct pipe_inode_info	*i_pipe;
+		struct cdev		*i_cdev;
+		char			*i_link;
+		unsigned		i_dir_seq;
+	};
   ...
 };
 ```
@@ -86,3 +109,12 @@ Modify: 2023-01-28 10:03:26.960000726 +0900
 Change: 2023-01-28 10:03:26.960000726 +0900
  Birth: -
 ```
+
+# デバイスドライバとファイルの接続
+## mknod
+[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)
+
+# 参考
+- [詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)
+- [https://github.com/torvalds/linux/tree/v6.1](https://github.com/torvalds/linux/tree/v6.1)
+- [組み込みLinuxデバイスドライバの作り方](https://qiita.com/iwatake2222/items/1fdd2e0faaaa868a2db2)
