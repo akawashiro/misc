@@ -5,6 +5,8 @@ Linuxにおけるデバイスファイルとはデバイスをファイルとい
 
 # 目次 <!-- omit in toc -->
 - [デバイスドライバ](#デバイスドライバ)
+  - [デバイスドライバを作ってみる](#デバイスドライバを作ってみる)
+  - [`MyDeviceDriver.c` からわかること](#mydevicedriverc-からわかること)
 - [ファイル](#ファイル)
   - [VFS(Virtual Filesytem Switch)](#vfsvirtual-filesytem-switch)
   - [inode](#inode)
@@ -15,7 +17,32 @@ Linuxにおけるデバイスファイルとはデバイスをファイルとい
 - [参考](#参考)
 
 # デバイスドライバ
+デバイスドライバとはカーネルルーチンの集合である。実際 [myDeviceDriver.c](./myDeviceDriver.c) を見ると単なる関数の集合であることがわかる。
 
+## デバイスドライバを作ってみる
+[組み込みLinuxデバイスドライバの作り方 (2)](https://qiita.com/iwatake2222/items/580ec7db2e88beeac3de)より引用。
+```
+> make
+> sudo insmod MyDeviceModule.ko
+> cat /proc/devices | grep 63
+ 63 MyDevice_NAME
+> sudo mknod /dev/myDevice c 63 1
+> file /dev/myDevice 
+/dev/myDevice: character special (63/1)
+> sudo chmod 666 /dev/myDevice
+> echo "a" > /dev/myDevice
+> sudo dmesg
+[ 8969.738033] myDevice_init
+[ 9160.327418] myDevice_open
+[ 9160.327426] myDevice_write
+[ 9160.327427] myDevice_write
+[ 9160.327432] myDevice_close
+```
+
+## `MyDeviceDriver.c` からわかること
+デバイスドライバは単なる関数の集合である。`open(2)`は`myDevice_open`を、`read(2)`は`myDevice_read`を呼び出す。また、`static` キーワードがついているのでリンク時にシンボルが外に公開されず、すべての関数は `s_myDevice_fops` 経由で呼び出される。
+
+デバイスドライバはメジャー番号とマイナー番号を持ち、`MyDeviceDriver.c`の場合は`#define DRIVER_MAJOR 63`である。この番号はデバイスファイル作成時に `sudo mknod /dev/myDevice c 63 1` のように使われる。
 
 # ファイル
 
