@@ -378,6 +378,27 @@ retry:
 
 ```
 
+実際にカーネルにパッチを当てて確認する。
+[drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115)
+```
+> git diff --patch "device-file-experiment~1"
+diff --git a/drivers/base/map.c b/drivers/base/map.c
+index 83aeb09ca161..57037223932e 100644
+--- a/drivers/base/map.c
++++ b/drivers/base/map.c
+@@ -111,6 +111,8 @@ struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
+                        break;
+                if (!try_module_get(p->owner))
+                        continue;
++
++               printk("%s:%d MAJOR(dev)=%u MINOR(dev)=%u\n", __FILE__, __LINE__, MAJOR(dev), MINOR(dev));
+                owner = p->owner;
+                data = p->data;
+                probe = p->get;
+```
+![Open myDevice](./open-myDevice.png)
+![dmesg when open myDevice](./dmesg-when-open-myDevice.png)
+
 # 参考
 - [詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)
 - [https://github.com/torvalds/linux/tree/v6.1](https://github.com/torvalds/linux/tree/v6.1)
