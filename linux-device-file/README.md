@@ -5,35 +5,111 @@ Linuxにおけるデバイスファイルとはデバイスをファイルとい
 
 # 目次 <!-- omit in toc -->
 - [デバイスドライバ](#デバイスドライバ)
-  - [デバイスドライバを作ってみる](#デバイスドライバを作ってみる)
-  - [`MyDeviceDriver.c` からわかること](#mydevicedriverc-からわかること)
+	- [デバイスドライバを作ってみる](#デバイスドライバを作ってみる)
+	- [`MyDeviceDriver.c` からわかること](#mydevicedriverc-からわかること)
 - [ファイル](#ファイル)
-  - [VFS(Virtual Filesytem Switch)](#vfsvirtual-filesytem-switch)
-  - [inode](#inode)
-  - [普通のファイルのinode](#普通のファイルのinode)
-    - [デバイスファイルのinode](#デバイスファイルのinode)
+	- [VFS(Virtual Filesytem Switch)](#vfsvirtual-filesytem-switch)
+	- [inode](#inode)
+	- [普通のファイルのinode](#普通のファイルのinode)
+		- [デバイスファイルのinode](#デバイスファイルのinode)
 - [デバイスドライバとファイルの接続](#デバイスドライバとファイルの接続)
-  - [mknod](#mknod)
-    - [ユーザ空間](#ユーザ空間)
-    - [カーネル空間](#カーネル空間)
+	- [mknod](#mknod)
+		- [mknodのユーザ空間での処理](#mknodのユーザ空間での処理)
+		- [mknodのカーネル空間での処理](#mknodのカーネル空間での処理)
 - [参考](#参考)
 
 # デバイスドライバ
 デバイスドライバとはカーネルルーチンの集合である。実際 [myDeviceDriver.c](./myDeviceDriver.c) を見ると単なる関数の集合であることがわかる。
 
-## デバイスドライバを作ってみる
-[組み込みLinuxデバイスドライバの作り方 (2)](https://qiita.com/iwatake2222/items/580ec7db2e88beeac3de)より引用。
 ```
-> make
-> sudo insmod MyDeviceModule.ko
+/* myDeviceDriver.c
+   https://qiita.com/iwatake2222/items/1fdd2e0faaaa868a2db2 よりコピー
+ */
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/types.h>
+#include <linux/kernel.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/sched.h>
+#include <asm/current.h>
+#include <asm/uaccess.h>
+
+#define DRIVER_NAME "MyDevice_NAME"
+#define DRIVER_MAJOR 63
+
+/* open時に呼ばれる関数 */
+static int myDevice_open(struct inode *inode, struct file *file)
+{
+    printk("myDevice_open\n");
+    return 0;
+}
+
+/* close時に呼ばれる関数 */
+static int myDevice_close(struct inode *inode, struct file *file)
+{
+    printk("myDevice_close\n");
+    return 0;
+}
+
+/* read時に呼ばれる関数 */
+static ssize_t myDevice_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+{
+    printk("myDevice_read\n");
+    buf[0] = 'A';
+    return 1;
+}
+
+/* write時に呼ばれる関数 */
+static ssize_t myDevice_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
+{
+    printk("myDevice_write\n");
+    return 1;
+}
+
+/* 各種システムコールに対応するハンドラテーブル */
+struct file_operations s_myDevice_fops = {
+    .open    = myDevice_open,
+    .release = myDevice_close,
+    .read    = myDevice_read,
+    .write   = myDevice_write,
+};
+
+/* ロード(insmod)時に呼ばれる関数 */
+static int myDevice_init(void)
+{
+    printk("myDevice_init\n");
+    /* ★ カーネルに、本ドライバを登録する */
+    register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &s_myDevice_fops);
+    return 0;
+}
+
+/* アンロード(rmmod)時に呼ばれる関数 */
+static void myDevice_exit(void)
+{
+    printk("myDevice_exit\n");
+    unregister_chrdev(DRIVER_MAJOR, DRIVER_NAME);
+}
+
+module_init(myDevice_init);
+module_exit(myDevice_exit);
+
+MODULE_LICENSE("GPL");
+```
+
+## デバイスドライバを作ってみる
+[組み込みLinuxデバイスドライバの作り方 (2)](https://qiita.com/iwatake2222/items/580ec7db2e88beeac3de)より。
+```
+> make # カーネルモジュールのビルド
+> sudo insmod MyDeviceModule.ko 
 > cat /proc/devices | grep 63
  63 MyDevice_NAME
-> sudo mknod /dev/myDevice c 63 1
+> sudo mknod /dev/myDevice c 63 1 # デバイスファイルの作成
 > file /dev/myDevice 
 /dev/myDevice: character special (63/1)
-> sudo chmod 666 /dev/myDevice
-> echo "a" > /dev/myDevice
-> sudo dmesg
+> sudo chmod 666 /dev/myDevice # 一般ユーザも書き込み可にしておく
+> echo "a" > /dev/myDevice # write(3)してみる
+> sudo dmesg # カーネルのログを確認
 [ 8969.738033] myDevice_init
 [ 9160.327418] myDevice_open
 [ 9160.327426] myDevice_write
@@ -141,17 +217,18 @@ Change: 2023-01-28 10:03:26.960000726 +0900
 
 # デバイスドライバとファイルの接続
 ## mknod
-### ユーザ空間
+### mknodのユーザ空間での処理
 先ほど `sudo mknod /dev/myDevice c 63 1` を使ってデバイスファイル `/dev/myDevice` を作成した。このとき使ったのは [mknod(1)](https://man7.org/linux/man-pages/man1/mknod.1.html)、つまりユーザ向けのコマンドだった。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われる。
+> The system call mknod() creates a filesystem node (file, device special file, or named pipe) named pathname, with attributes specified by mode and dev.
 
-straceを使って`mknod(2)`がどのように呼び出されているかを調べる。フルの出力結果は [ここ](https://gist.github.com/akawashiro/4a58ac86873843fa4c1a58d3cf7d13ec) にある。`0x3f`は10進で`63`なので `/dev/myDevice` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いしかない。
+`strace(1)`を使って`mknod(2)`がどのように呼び出されているかを調べる。フルの出力結果は [ここ](https://gist.github.com/akawashiro/4a58ac86873843fa4c1a58d3cf7d13ec) にある。`0x3f`は10進で`63`なので `/dev/myDevice` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いしかない。
 ```
 > sudo strace mknod /dev/myDevice c 63 1
 ...
 mknodat(AT_FDCWD, "/dev/myDevice", S_IFCHR|0666, makedev(0x3f, 0x1)) = 0
 ...
 ```
-### カーネル空間
+### mknodのカーネル空間での処理
 `mknodat`の本体は [do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) にある。ここからデバイスファイルとデバイスドライバがどのように接続されるかを追う。ここではデバイスはキャラクタデバイス、ファイルシステムはext4であるとする。
 
 キャラクタデバイス、ブロックデバイスの場合は `vfs_mknod` が呼ばれる。
@@ -162,7 +239,7 @@ https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa247
 					  dentry, mode, new_decode_dev(dev));
 ```
 
-`vfs_mknod`の定義はここ。
+`vfs_mknod`の定義はここにある。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3874-L3891
 ```
 /**
@@ -185,13 +262,13 @@ int vfs_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 	      struct dentry *dentry, umode_t mode, dev_t dev)
 ```
 
-dエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみる。これは僕のマシンが`ext4`を使っていたため。(`df -T` でどのファイルシステムを使っているか調べられる。)
+`vfs_mknod`はdエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみる。これは僕のマシンが`ext4`を使っていたためである。ちなみに、`df -T` でどのファイルシステムを使っているか調べられる。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3915
 ```
 	error = dir->i_op->mknod(mnt_userns, dir, dentry, mode, dev);
 ```
 
-`ext4` の `mknod` はここで定義されていた。
+`ext4` の `mknod` はここで定義されている。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L4191
 ```
 const struct inode_operations ext4_dir_inode_operations = {
@@ -201,7 +278,7 @@ const struct inode_operations ext4_dir_inode_operations = {
 };
 ```
 
-`ext4_mknod` の本体はここ。`init_special_inode` というのがデバイスに関係していそう。
+`ext4_mknod` の本体はここにある。`init_special_inode` というのがデバイスに関係していそうに見える。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L2830-L2862
 ```
 static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
@@ -213,7 +290,7 @@ static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 }
 ```
 
-キャラクタデバイスの場合は `def_chr_fops` が呼ばれている。
+キャラクタデバイスの場合は `def_chr_fops` が設定されている。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/inode.c#L2291-L2309
 ```
 void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
@@ -229,7 +306,7 @@ void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
 EXPORT_SYMBOL(init_special_inode);
 ```
 
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
+`def_chr_fops`はこんな定義になっていた。 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
 ```
 /*
  * Dummy default file-operations: the only thing this does
@@ -242,7 +319,7 @@ const struct file_operations def_chr_fops = {
 };
 ```
 
-`kobj_lookup` でドライバを探していそう。
+`chrdev_open`が怪しいので定義を見ると `kobj_lookup` でドライバを探していそう。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L370-L424
 ```
 /*
