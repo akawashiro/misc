@@ -19,82 +19,71 @@ Linuxにおけるデバイスファイルとはデバイスをファイルとい
 - [参考](#参考)
 
 # デバイスドライバ
-デバイスドライバとはカーネルルーチンの集合である。実際 [myDeviceDriver.c](./myDeviceDriver.c) を見ると単なる関数の集合であることがわかる。
+デバイスドライバとはカーネルルーチンの集合である。実際 [read_write.c](./read_write.c) を見ると単なる関数の集合であることがわかる。
 
+read_write.c
 ```
-/* myDeviceDriver.c
-   https://qiita.com/iwatake2222/items/1fdd2e0faaaa868a2db2 よりコピー
- */
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/types.h>
-#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
-#include <linux/sched.h>
-#include <asm/current.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
-#define DRIVER_NAME "MyDevice_NAME"
-#define DRIVER_MAJOR 63
+MODULE_LICENSE("GPL");
 
-/* open時に呼ばれる関数 */
-static int myDevice_open(struct inode *inode, struct file *file)
-{
-    printk("myDevice_open\n");
-    return 0;
-}
+#define DRIVER_MAJOR 333
+#define DRIVER_NAME "read_write_driver"
 
-/* close時に呼ばれる関数 */
-static int myDevice_close(struct inode *inode, struct file *file)
-{
-    printk("myDevice_close\n");
-    return 0;
-}
-
-/* read時に呼ばれる関数 */
-static ssize_t myDevice_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
-{
-    printk("myDevice_read\n");
-    buf[0] = 'A';
+static ssize_t driver_read(struct file *File, char *user_buffer, size_t count, loff_t *offs) {
+    user_buffer[0] = 'A';
     return 1;
 }
 
-/* write時に呼ばれる関数 */
-static ssize_t myDevice_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
-{
-    printk("myDevice_write\n");
+static ssize_t driver_write(struct file *File, const char *user_buffer, size_t count, loff_t *offs) {
     return 1;
 }
 
-/* 各種システムコールに対応するハンドラテーブル */
-struct file_operations s_myDevice_fops = {
-    .open    = myDevice_open,
-    .release = myDevice_close,
-    .read    = myDevice_read,
-    .write   = myDevice_write,
+static int driver_open(struct inode *device_file, struct file *instance) {
+	printk("read_write_driver - open was called!\n");
+	return 0;
+}
+
+static int driver_close(struct inode *device_file, struct file *instance) {
+	printk("read_write_driver - close was called!\n");
+	return 0;
+}
+
+static struct file_operations fops = {
+	.open = driver_open,
+	.release = driver_close,
+	.read = driver_read,
+	.write = driver_write
 };
 
-/* ロード(insmod)時に呼ばれる関数 */
-static int myDevice_init(void)
-{
-    printk("myDevice_init\n");
-    /* ★ カーネルに、本ドライバを登録する */
-    register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &s_myDevice_fops);
+static int __init ModuleInit(void) {
+	printk("read_write_driver - ModuleInit was called!\n");
+    register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &fops);
     return 0;
 }
 
-/* アンロード(rmmod)時に呼ばれる関数 */
-static void myDevice_exit(void)
-{
-    printk("myDevice_exit\n");
+static void __exit ModuleExit(void) {
+	printk("read_write_driver - ModuleExit was called!\n");
     unregister_chrdev(DRIVER_MAJOR, DRIVER_NAME);
 }
 
-module_init(myDevice_init);
-module_exit(myDevice_exit);
+module_init(ModuleInit);
+module_exit(ModuleExit);
+```
 
-MODULE_LICENSE("GPL");
+Makefile
+```
+obj-m += read_write.o
+
+all:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
+clean:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 ```
 
 ## デバイスドライバを作ってみる
