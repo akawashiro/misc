@@ -4,7 +4,6 @@
 #include <linux/cdev.h>
 #include <linux/uaccess.h>
 
-/* Meta Information */
 MODULE_LICENSE("GPL");
 
 #define DRIVER_MAJOR 333
@@ -20,17 +19,16 @@ static ssize_t driver_write(struct file *File, const char *user_buffer, size_t c
 }
 
 static int driver_open(struct inode *device_file, struct file *instance) {
-	printk("dev_nr - open was called!\n");
+	printk("read_write_driver - open was called!\n");
 	return 0;
 }
 
 static int driver_close(struct inode *device_file, struct file *instance) {
-	printk("dev_nr - close was called!\n");
+	printk("read_write_driver - close was called!\n");
 	return 0;
 }
 
 static struct file_operations fops = {
-	.owner = THIS_MODULE,
 	.open = driver_open,
 	.release = driver_close,
 	.read = driver_read,
@@ -38,15 +36,14 @@ static struct file_operations fops = {
 };
 
 static int __init ModuleInit(void) {
-	printk("Hello, Kernel!\n");
+	printk("read_write_driver - ModuleInit was called!\n");
     register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &fops);
     return 0;
 }
 
 static void __exit ModuleExit(void) {
-    printk("myDevice_exit\n");
+	printk("read_write_driver - ModuleExit was called!\n");
     unregister_chrdev(DRIVER_MAJOR, DRIVER_NAME);
-	printk("Goodbye, Kernel\n");
 }
 
 module_init(ModuleInit);
