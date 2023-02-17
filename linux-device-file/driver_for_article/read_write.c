@@ -25,18 +25,8 @@ static struct cdev my_device;
  * @brief Read data out of the buffer
  */
 static ssize_t driver_read(struct file *File, char *user_buffer, size_t count, loff_t *offs) {
-	int to_copy, not_copied, delta;
-
-	/* Get amount of data to copy */
-	to_copy = min(count, buffer_pointer);
-
-	/* Copy data to user */
-	not_copied = copy_to_user(user_buffer, buffer, to_copy);
-
-	/* Calculate data */
-	delta = to_copy - not_copied;
-
-	return delta;
+    user_buffer[0] = 'A';
+    return 1;
 }
 
 /**
