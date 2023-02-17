@@ -7,11 +7,6 @@
 /* Meta Information */
 MODULE_LICENSE("GPL");
 
-/* Variables for device and device class */
-static dev_t my_device_nr;
-static struct class *my_class;
-static struct cdev my_device;
-
 #define DRIVER_MAJOR 333
 #define DRIVER_NAME "read_write_driver"
 
