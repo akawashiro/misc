@@ -231,18 +231,8 @@ Change: 2023-01-28 11:19:13.748734093 +0900
  Birth: 2023-01-28 11:19:13.748734093 +0900
 ```
 
-```
-[@goshun](master)~/misc/linux-device-file
-> stat --file-system README.md
-  File: "README.md"
-    ID: 968d19c9b6fe93c Namelen: 255     Type: ext2/ext3
-Block size: 4096       Fundamental block size: 4096
-Blocks: Total: 239511336  Free: 63899717   Available: 51714783
-Inodes: Total: 60907520   Free: 52705995
-```
-
 ### デバイスファイルのinode
-先頭に`c` がついているとキャラクタデバイス、`b` がついているとブロックデバイス。
+デバイスファイルのiノード情報も表示してみます。`ls il`で表示したときに先頭に`c` がついているとキャラクタデバイス、`b` がついているとブロックデバイスです。
 ```
 [@goshun]/dev
 > ls -il /dev/nvme0*                                                         
@@ -268,33 +258,37 @@ Change: 2023-01-28 10:03:26.960000726 +0900
 
 # デバイスドライバとファイルの接続
 ## mknod
-`mknod(1)` はブロックデバイスファイルもしくはキャラクタデバイスファイルを作るためのコマンドです。[デバイスドライバの実例](#デバイスドライバの実例) では `sudo mknod /dev/myDevice c 63 1` を使ってデバイスファイル `/dev/myDevice` を作成しました。このとき使ったのは [mknod(1)](https://man7.org/linux/man-pages/man1/mknod.1.html)、つまりユーザ向けのコマンドだった。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われます。
+`mknod(1)` はブロックデバイスファイルもしくはキャラクタデバイスファイルを作るためのコマンドです。[デバイスドライバの実例](#デバイスドライバの実例) では `sudo mknod /dev/read_write c 333 1` を使ってデバイスファイル `/dev/read_write` を作成しました。このとき使ったのは [mknod(1)](https://man7.org/linux/man-pages/man1/mknod.1.html)、つまりユーザ向けのコマンドだった。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われます。
 > The system call mknod() creates a filesystem node (file, device special file, or named pipe) named pathname, with attributes specified by mode and dev.
 
 ### mknodのユーザ空間での処理
-`strace(1)`を使って`mknod(2)`がどのように呼び出されているかを調べる。フルの出力結果は [ここ](https://gist.github.com/akawashiro/4a58ac86873843fa4c1a58d3cf7d13ec) にある。`0x3f`は10進で`63`なので `/dev/myDevice` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いしかない。
+`strace(1)`を使って`mknod(2)`がどのように呼び出されているかを調べます。`0x14d`は10進で`333`なので `/dev/read_write` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いです。
 ```
-> sudo strace mknod /dev/myDevice c 63 1
+# strace mknod /dev/read_write c 333 1
 ...
-mknodat(AT_FDCWD, "/dev/myDevice", S_IFCHR|0666, makedev(0x3f, 0x1)) = 0
-...
+close(3)                                = 0
+mknodat(AT_FDCWD, "/dev/read_write", S_IFCHR|0666, makedev(0x14d, 0x1)) = 0
+close(1)                                = 0
+close(2)                                = 0
+exit_group(0)                           = ?
++++ exited with 0 +++
 ```
 ### mknodのカーネル空間での処理
-`mknodat`の本体は [do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) にある。ここからデバイスファイルとデバイスドライバがどのように接続されるかを追う。ここではデバイスはキャラクタデバイス、ファイルシステムはext4であるとする。
+`mknodat`の本体は [do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) にあります。ここからデバイスファイルとデバイスドライバがどのように接続されるかを追っていきます。ここではデバイスはキャラクタデバイス、ファイルシステムはext4であるとします。
 ```
 static int do_mknodat(int dfd, struct filename *name, umode_t mode,
 		unsigned int dev)
 ```
 
 
-キャラクタデバイス、ブロックデバイスを扱う場合、[do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) は[fs/namei.c#L3970-L3972](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3970-L3972)で `vfs_mknod` を呼ぶ。
+キャラクタデバイス、ブロックデバイスを扱う場合、[do_mknodat](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3939-L3988) は[fs/namei.c#L3970-L3972](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3970-L3972)で `vfs_mknod` を呼び出します。
 ```
 		case S_IFCHR: case S_IFBLK:
 			error = vfs_mknod(mnt_userns, path.dentry->d_inode,
 					  dentry, mode, new_decode_dev(dev));
 ```
 
-`vfs_mknod`の定義は[fs/namei.c#L3874-L3891](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3874-L3891)にある。
+`vfs_mknod`の定義は[fs/namei.c#L3874-L3891](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3874-L3891)にあります。
 ```
 /**
  * vfs_mknod - create device node or file
@@ -316,13 +310,13 @@ int vfs_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 	      struct dentry *dentry, umode_t mode, dev_t dev)
 ```
 
-`vfs_mknod`はdエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみる。
+`vfs_mknod`はdエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみます。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3915
 ```
 	error = dir->i_op->mknod(mnt_userns, dir, dentry, mode, dev);
 ```
 
-`ext4` の `mknod` はここで定義されている。
+`ext4` の `mknod` はここで定義されています。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L4191
 ```
 const struct inode_operations ext4_dir_inode_operations = {
@@ -332,7 +326,7 @@ const struct inode_operations ext4_dir_inode_operations = {
 };
 ```
 
-`ext4_mknod` の本体はここにある。`init_special_inode` というのがデバイスに関係していそうに見える。
+`ext4_mknod` の本体はここにあり、`init_special_inode` というのがデバイスに関係していそうに見えます。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L2830-L2862
 ```
 static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
@@ -344,7 +338,7 @@ static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 }
 ```
 
-キャラクタデバイスの場合は `def_chr_fops` が設定されている。
+キャラクタデバイスの場合は `def_chr_fops` が設定されています。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/inode.c#L2291-L2309
 ```
 void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
@@ -360,7 +354,7 @@ void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
 EXPORT_SYMBOL(init_special_inode);
 ```
 
-`def_chr_fops`はこんな定義になっていた。 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
+`def_chr_fops`はこんな定義になっていました。 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
 ```
 /*
  * Dummy default file-operations: the only thing this does
@@ -373,7 +367,7 @@ const struct file_operations def_chr_fops = {
 };
 ```
 
-`chrdev_open`が怪しいので定義を見ると `kobj_lookup` でドライバを探していそう。
+`chrdev_open`が怪しいので定義を見ると `kobj_lookup` でドライバを探していそうです。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L370-L424
 ```
 /*
@@ -387,7 +381,7 @@ static int chrdev_open(struct inode *inode, struct file *filp)
 }
 ```
 
-`MAJOR`とか出てくるのでおそらくここで間違いない。ここでファイルにデバイスドライバを紐付けている。
+`insmod`のときにみた[kobj_map](https://github.com/akawashiro/linux/blob/7c8da299ff040d55f3e2163e6725cb1eef7155a9/drivers/base/map.c#L32-L66)と同じファイルにたどりついたのでここで間違いなさそうです。ここでファイルにデバイスドライバを紐付けています。
 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133
 ```
 struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
@@ -432,7 +426,7 @@ retry:
 
 ```
 
-実際にカーネルにパッチを当てて確認する。
+最後に実際にカーネルにパッチを当てて確認してみましょう。
 [drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115)
 ```
 > git diff --patch "device-file-experiment~1"
@@ -450,8 +444,18 @@ index 83aeb09ca161..57037223932e 100644
                 data = p->data;
                 probe = p->get;
 ```
-![Open myDevice](./open-myDevice.png)
-![dmesg when open myDevice](./dmesg-when-open-myDevice.png)
+
+`cat /dev/read_write` したときの `dmesg -wH` の様子が以下です。`cat(2)`が`dev/read_write` を開いたときに対応するデバイスドライバが検索されて `read_write_driver` が呼ばれていることがわかります。
+```
+# dmesg -wH
+...
+[ +18.898110] drivers/base/map.c:115 MAJOR(dev)=136 MINOR(dev)=2
+[ +10.920752] drivers/base/map.c:115 MAJOR(dev)=136 MINOR(dev)=3
+[  +9.170364] loop0: detected capacity change from 0 to 8
+[  +1.212845] drivers/base/map.c:115 MAJOR(dev)=333 MINOR(dev)=1
+[  +0.000010] read_write_driver - open was called!
+[  +2.141643] read_write_driver - close was called!
+```
 
 # 参考
 - [詳解 Linuxカーネル 第3版](https://www.oreilly.co.jp/books/9784873113135/)
