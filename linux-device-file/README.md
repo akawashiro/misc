@@ -105,16 +105,30 @@ AAAAAA...
 
 ## `read_write.c` からわかること
 `read_write.c`からは次のことがわかります。
-- このデバイスドライバのmajor番号は`333`
-- デバイスドライバは単なる関数の集合
-- `open(2)`と`myDevice_open`、`release(2)`と`driver_close`、`read(2)`と`myDevice_read`、`write(2)`と`driver_write`が対応
+- このデバイスドライバのmajor番号は`333`である。
+- デバイスドライバは単なる関数の集合である。
+- `open(2)`と`myDevice_open`、`release(2)`と`driver_close`、`read(2)`と`myDevice_read`、`write(2)`と`driver_write`が対応している。
 
-`cat /dev/read_write` は このデバイスドライバの `driver_read` を呼び出すので `A` が無限に読み出されます。
+以上から`cat /dev/read_write` は このデバイスドライバの `driver_read` を呼び出すので `A` が無限に読み出されます。
 
 ## insmod
-`insmod(8)` はLinuxカーネルにカーネルモジュールを挿入するコマンドです。この章では `sudo insmod read_write.ko` がどのように動作するのかを確認します。
+`insmod(8)` はLinuxカーネルにカーネルモジュールを挿入するコマンドです。この章では `sudo insmod read_write.ko` がどのように`read_write.ko` をカーネルに登録するかを確認します。
 ### insmodのユーザ空間での処理
-TODO: strace
+`strace(1)`を使って`insmod(8)` が呼び出すシステムコールを確認すると`finit_module(2)`が呼ばれています。
+```
+# strace insmod read_write.ko
+...
+openat(AT_FDCWD, "/home/akira/misc/linux-device-file/driver_for_article/read_write.ko", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1", 6)               = 6
+lseek(3, 0, SEEK_SET)                   = 0
+newfstatat(3, "", {st_mode=S_IFREG|0664, st_size=6936, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 6936, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7fc8aae77000
+finit_module(3, "", 0)                  = 0
+munmap(0x7fc8aae77000, 6936)            = 0
+close(3)                                = 0
+exit_group(0)                           = ?
++++ exited with 0 +++
+```
 ### insmodのカーネル空間での処理
 `finit_module(2)` はLinuxカーネル内の [kernel/module/main.c#29l6](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/kernel/module/main.c#L2916) で定義されています。
 ```
@@ -203,7 +217,7 @@ struct inode {
 ```
 
 ## 普通のファイルのinode
-`stat 1`を使うとファイルのiノード情報を表示することができる。`struct inode` と対応していることがわかる。
+`stat 1`を使うとファイルのiノード情報を表示することができ、`struct inode` と対応した内容が表示されます。
 ```
 [@goshun](master)~/misc/linux-device-file
 > stat README.md 
