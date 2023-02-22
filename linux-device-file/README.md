@@ -30,53 +30,53 @@ Linuxにおけるデバイスファイルはデバイスをファイルという
 デバイスドライバを作って実際に動かしてみます。以下のような `read_write.c` と `Makefile` を用意します。この２つは[Johannes4Linux/Linux_Driver_Tutorial/03_read_write](https://github.com/Johannes4Linux/Linux_Driver_Tutorial/tree/main/03_read_write)を一部改変したものです。
 
 ```
-/ * read_write.c */
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/fs.h>
+/ *read_write.c * /
 #include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/module.h>
 #include <linux/uaccess.h>
 
-MODULE_LICENSE("GPL");
+    MODULE_LICENSE("GPL");
 
 #define DRIVER_MAJOR 333
 #define DRIVER_NAME "read_write_driver"
 
-static ssize_t driver_read(struct file *File, char *user_buffer, size_t count, loff_t *offs) {
-    user_buffer[0] = 'A';
-    return 1;
+static ssize_t driver_read(struct file *File, char *user_buffer, size_t count,
+                           loff_t *offs) {
+  user_buffer[0] = 'A';
+  return 1;
 }
 
-static ssize_t driver_write(struct file *File, const char *user_buffer, size_t count, loff_t *offs) {
-    return 1;
+static ssize_t driver_write(struct file *File, const char *user_buffer,
+                            size_t count, loff_t *offs) {
+  return 1;
 }
 
 static int driver_open(struct inode *device_file, struct file *instance) {
-	printk("read_write_driver - open was called!\n");
-	return 0;
+  printk("read_write_driver - open was called!\n");
+  return 0;
 }
 
 static int driver_close(struct inode *device_file, struct file *instance) {
-	printk("read_write_driver - close was called!\n");
-	return 0;
+  printk("read_write_driver - close was called!\n");
+  return 0;
 }
 
-static struct file_operations fops = {
-	.open = driver_open,
-	.release = driver_close,
-	.read = driver_read,
-	.write = driver_write
-};
+static struct file_operations fops = {.open = driver_open,
+                                      .release = driver_close,
+                                      .read = driver_read,
+                                      .write = driver_write};
 
 static int __init ModuleInit(void) {
-	printk("read_write_driver - ModuleInit was called!\n");
-    register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &fops);
-    return 0;
+  printk("read_write_driver - ModuleInit was called!\n");
+  register_chrdev(DRIVER_MAJOR, DRIVER_NAME, &fops);
+  return 0;
 }
 
 static void __exit ModuleExit(void) {
-	printk("read_write_driver - ModuleExit was called!\n");
-    unregister_chrdev(DRIVER_MAJOR, DRIVER_NAME);
+  printk("read_write_driver - ModuleExit was called!\n");
+  unregister_chrdev(DRIVER_MAJOR, DRIVER_NAME);
 }
 
 module_init(ModuleInit);
@@ -217,7 +217,7 @@ struct inode {
 ```
 
 ## 普通のファイルのinode
-`stat 1`を使うとファイルのiノード情報を表示することができ、`struct inode` と対応した内容が表示されます。
+`stat(1)`を使うとファイルのiノード情報を表示することができ、`struct inode` と対応した内容が表示されます。
 ```
 [@goshun](master)~/misc/linux-device-file
 > stat README.md 
@@ -232,7 +232,7 @@ Change: 2023-01-28 11:19:13.748734093 +0900
 ```
 
 ### デバイスファイルのinode
-デバイスファイルのiノード情報も表示してみます。`ls il`で表示したときに先頭に`c` がついているとキャラクタデバイス、`b` がついているとブロックデバイスです。
+デバイスファイルのiノード情報も表示してみます。`ls -il`で表示したときに先頭に`c` がついているとキャラクタデバイス、`b` がついているとブロックデバイスです。
 ```
 [@goshun]/dev
 > ls -il /dev/nvme0*                                                         
@@ -258,11 +258,10 @@ Change: 2023-01-28 10:03:26.960000726 +0900
 
 # デバイスドライバとファイルの接続
 ## mknod
-`mknod(1)` はブロックデバイスファイルもしくはキャラクタデバイスファイルを作るためのコマンドです。[デバイスドライバの実例](#デバイスドライバの実例) では `sudo mknod /dev/read_write c 333 1` を使ってデバイスファイル `/dev/read_write` を作成しました。このとき使ったのは [mknod(1)](https://man7.org/linux/man-pages/man1/mknod.1.html)、つまりユーザ向けのコマンドだった。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われます。
-> The system call mknod() creates a filesystem node (file, device special file, or named pipe) named pathname, with attributes specified by mode and dev.
+`mknod(1)` はブロックデバイスファイルもしくはキャラクタデバイスファイルを作るためのコマンドです。[デバイスドライバの実例](#デバイスドライバの実例) では `sudo mknod /dev/read_write c 333 1` を使ってデバイスファイル `/dev/read_write` を作成しました。[mknod(2)](https://man7.org/linux/man-pages/man2/mknod.2.html)はこれに対応するシステムコールであり、ファイルシステム上にノード(おそらくinodeのこと)を作るために使われます。
 
 ### mknodのユーザ空間での処理
-`strace(1)`を使って`mknod(2)`がどのように呼び出されているかを調べます。`0x14d`は10進で`333`なので `/dev/read_write` にメジャー番号と`63`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いです。
+`strace(1)`を使って`mknod(2)`がどのように呼び出されているかを調べます。`0x14d`は10進で`333`なので `/dev/read_write` にメジャー番号と`333`、マイナー番号を`1`を指定してinodeを作っていることがわかる。ちなみに、`mknod`と`mnknodat`はパス名が相対パスになるかどうかという違いです。
 ```
 # strace mknod /dev/read_write c 333 1
 ...
@@ -310,14 +309,13 @@ int vfs_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 	      struct dentry *dentry, umode_t mode, dev_t dev)
 ```
 
-`vfs_mknod`はdエントリの `mknod` を呼ぶ。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみます。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3915
+`vfs_mknod`はdエントリの `mknod` を呼びます。ファイルシステムごとに `mknod`の実装が異なるが今回は`ext4`のものを追ってみます。`vfs_mknod` は
+[fs/namei.c#L3915](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/namei.c#L3915) で `mknod` を呼んでいます。
 ```
 	error = dir->i_op->mknod(mnt_userns, dir, dentry, mode, dev);
 ```
 
-`ext4` の `mknod` はここで定義されています。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L4191
+`ext4` の `mknod` は[fs/ext4/namei.c#L4191](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L4191)で定義されています。
 ```
 const struct inode_operations ext4_dir_inode_operations = {
 	...
@@ -326,8 +324,7 @@ const struct inode_operations ext4_dir_inode_operations = {
 };
 ```
 
-`ext4_mknod` の本体はここにあり、`init_special_inode` というのがデバイスに関係していそうに見えます。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L2830-L2862
+`ext4_mknod` の本体はここにあり、[fs/ext4/namei.c#L2830-L2862](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/ext4/namei.c#L2830-L2862)の `init_special_inode` がデバイスに関係していそうに見えます。
 ```
 static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 		      struct dentry *dentry, umode_t mode, dev_t rdev)
@@ -338,8 +335,7 @@ static int ext4_mknod(struct user_namespace *mnt_userns, struct inode *dir,
 }
 ```
 
-キャラクタデバイスの場合は `def_chr_fops` が設定されています。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/inode.c#L2291-L2309
+キャラクタデバイスの場合は [fs/inode.c#L2291-L2309](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/inode.c#L2291-L2309) で`def_chr_fops` が設定されています。
 ```
 void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
 {
@@ -354,7 +350,7 @@ void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
 EXPORT_SYMBOL(init_special_inode);
 ```
 
-`def_chr_fops`はこんな定義になっていました。 https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455
+`def_chr_fops`は[fs/char_dev.c#L447-L455](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L447-L455)で定義されています。
 ```
 /*
  * Dummy default file-operations: the only thing this does
@@ -367,8 +363,7 @@ const struct file_operations def_chr_fops = {
 };
 ```
 
-`chrdev_open`が怪しいので定義を見ると `kobj_lookup` でドライバを探していそうです。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L370-L424
+`chrdev_open`が怪しいので定義を見ると [fs/char_dev.c#L370-L424](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/fs/char_dev.c#L370-L424) の`kobj_lookup` でドライバを探していそうです。
 ```
 /*
  * Called every time a character special file is opened
@@ -381,8 +376,7 @@ static int chrdev_open(struct inode *inode, struct file *filp)
 }
 ```
 
-`insmod`のときにみた[kobj_map](https://github.com/akawashiro/linux/blob/7c8da299ff040d55f3e2163e6725cb1eef7155a9/drivers/base/map.c#L32-L66)と同じファイルにたどりついたのでここで間違いなさそうです。ここでファイルにデバイスドライバを紐付けています。
-https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133
+`insmod`のときにみた[kobj_map](https://github.com/akawashiro/linux/blob/7c8da299ff040d55f3e2163e6725cb1eef7155a9/drivers/base/map.c#L32-L66)と同じファイルにたどりついたのでここで間違いなさそうです。[drivers/base/map.c#L95-L133](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133)でファイルにデバイスドライバを紐付けています。
 ```
 struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
 {
@@ -427,7 +421,7 @@ retry:
 ```
 
 最後に実際にカーネルにパッチを当てて確認してみましょう。
-[drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115)
+[drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115) にログ出力を足してカーネルをインストールして、デバイスファイルを [デバイスドライバの実例](#デバイスドライバの実例) と同様に作成します。
 ```
 > git diff --patch "device-file-experiment~1"
 diff --git a/drivers/base/map.c b/drivers/base/map.c
