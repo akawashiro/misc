@@ -376,7 +376,7 @@ static int chrdev_open(struct inode *inode, struct file *filp)
 }
 ```
 
-`insmod`のときにみた[kobj_map](https://github.com/akawashiro/linux/blob/7c8da299ff040d55f3e2163e6725cb1eef7155a9/drivers/base/map.c#L32-L66)と同じファイルにたどりついたのでここで間違いなさそうです。[drivers/base/map.c#L95-L133](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133)でファイルにデバイスドライバを紐付けています。
+`insmod`のときに見た [kobj_map](https://github.com/akawashiro/linux/blob/7c8da299ff040d55f3e2163e6725cb1eef7155a9/drivers/base/map.c#L32-L66)と同じファイルにたどりついたのでここで間違いなさそうです。[drivers/base/map.c#L95-L133](https://github.com/akawashiro/linux/blob/830b3c68c1fb1e9176028d02ef86f3cf76aa2476/drivers/base/map.c#L95-L133)でファイルにデバイスドライバを紐付けています。
 ```
 struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
 {
@@ -420,8 +420,7 @@ retry:
 
 ```
 
-最後に実際にカーネルにパッチを当てて確認してみましょう。
-[drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115) にログ出力を足してカーネルをインストールして、デバイスファイルを [デバイスドライバの実例](#デバイスドライバの実例) と同様に作成します。
+最後に実際にカーネルにパッチを当てて確認してみましょう。[drivers/base/map.c#L114-L115](https://github.com/akawashiro/linux/blob/4aeb800558b98b2a39ee5d007730878e28da96ca/drivers/base/map.c#L114-L115) にログ出力を足してカーネルをインストールして、デバイスファイルを [デバイスドライバの実例](#デバイスドライバの実例) と同様に作成します。
 ```
 > git diff --patch "device-file-experiment~1"
 diff --git a/drivers/base/map.c b/drivers/base/map.c
@@ -439,7 +438,7 @@ index 83aeb09ca161..57037223932e 100644
                 probe = p->get;
 ```
 
-`cat /dev/read_write` したときの `dmesg -wH` の様子が以下です。`cat(2)`が`dev/read_write` を開いたときに対応するデバイスドライバが検索されて `read_write_driver` が呼ばれていることがわかります。
+`cat /dev/read_write` したときの `dmesg -wH` の様子が以下です。`cat(2)`が`/dev/read_write` を開いたときに対応するデバイスドライバが検索されて `read_write_driver` が呼ばれていることがわかります。
 ```
 # dmesg -wH
 ...
