@@ -18,6 +18,10 @@ echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
 CORE_FILENAME=$(find . | grep "^./core.*" | sort -R | head -n 1)
 readelf -l ${CORE_FILENAME} | grep 555555557000 -A 5
 
+# Dump around Segmentation falut
 xxd -s 0x3000 -l 0x100000 ${CORE_FILENAME}
 
 readelf --note ${CORE_FILENAME}
+
+g++ -o ./parse_core ./parse_core.cc
+./parse_core ${CORE_FILENAME}
