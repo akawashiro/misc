@@ -1,0 +1,8 @@
+[k8s-masternode1]
+192.168.11.71
+[k8s-workernode1]
+192.168.11.71
+[k8s-workernode2]
+192.168.11.71
+[all:vars]
+ansible_ssh_user=vagrant
