@@ -1,0 +1,6 @@
+- hosts: k8s-masternode1
+  become: yes
+  tasks:
+    - name: コントロールプレーンノードの初期化
+      shell:
+        kubeadm init

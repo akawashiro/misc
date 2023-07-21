@@ -1,0 +1,72 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: container
+      shell:
+        cmd: |
+          cat <<EOF | tee /etc/modules-load.d/k8s.conf
+          overlay
+          br_netfilter
+          EOF
+          modprobe overlay
+          modprobe br_netfilter
+          # この構成に必要なカーネルパラメーター、再起動しても値は永続します
+          cat <<EOF | tee /etc/sysctl.d/k8s.conf
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+          EOF
+          # 再起動せずにカーネルパラメーターを適用
+          sysctl --system
+          apt-get update
+          # コンテナランタイムのcontainerdをインストールします
+          apt-get install -y containerd
+          mkdir -p /etc/containerd
+          containerd config default | tee /etc/containerd/config.toml
+          systemctl restart containerd
+    - name: swap off
+      shell:
+        swapoff -a
+    - name: apt update
+      apt:
+        update_cache: yes
+    - name: aptのパッケージ一覧を更新し、Kubernetesのaptリポジトリを利用するのに必要なパッケージをインストールします
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+    - name: Google Cloudの公開鍵をダウンロードします
+      shell:
+        rm -f /etc/apt/keyrings/kubernetes-archive-keyring.gpg && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+    - name: Kubernetesのaptリポジトリを追加します
+      shell:
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+    - name: apt update
+      apt:
+        update_cache: yes
+    - name: aptのパッケージ一覧を更新し、kubelet、kubeadm、kubectlをインストールします。そしてバージョンを固定します
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+    - name: Hold kubelet
+      ansible.builtin.dpkg_selections:
+        name: kubelet
+        selection: hold
+    - name: Hold kubeadm
+      ansible.builtin.dpkg_selections:
+        name: kubeadm
+        selection: hold
+    - name: Hold kubectl
+      ansible.builtin.dpkg_selections:
+        name: kubectl
+        selection: hold
+
+- hosts: k8s-masternode1
+  become: yes
+  tasks:
+    - name: コントロールプレーンノードの初期化
+      shell:
+        kubeadm init
