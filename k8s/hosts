@@ -1,8 +1,9 @@
 [k8s-masternode1]
 192.168.11.71
 [k8s-workernode1]
-192.168.11.71
+192.168.11.72
 [k8s-workernode2]
-192.168.11.71
+192.168.11.73
 [all:vars]
 ansible_ssh_user=vagrant
+ansible_sudo_pass=vagrant

@@ -1,6 +1,9 @@
-- hosts: k8s-masternode1
+- hosts: all
   become: yes
   tasks:
+    - name: swap off
+      shell:
+        swapoff -a
     - name: apt update
       apt:
         update_cache: yes
