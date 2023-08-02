@@ -69,18 +69,31 @@
   tasks:
     - name: コントロールプレーンノードの初期化
       shell:
-        kubeadm init
+        kubeadm init --apiserver-advertise-address=192.168.11.71
     - name:
       shell:
         cmd: |
           mkdir -p $HOME/.kube
-          cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+          cp -f /etc/kubernetes/admin.conf $HOME/.kube/config
           chown vagrant:vagrant $HOME/.kube/config
 
 - hosts: k8s-masternode1
   become: yes
   tasks:
-    - name: Get token
+    - name: Get join command
       shell:
-        cmd: |
-          kubeadm token create --print-join-command > /home/vagrant/token
+          kubeadm token create --print-join-command > /home/vagrant/join-command
+
+# - hosts: k8s-masternode1
+#   become: yes
+#   tasks:
+#     - name: Install the Tigera Calico operator and custom resource definitions
+#       shell:
+#         kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
+# 
+# - hosts: k8s-masternode1
+#   become: yes
+#   tasks:
+#     - name: Install Calico by creating the necessary custom resource
+#       shell:
+#         kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml
