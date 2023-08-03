@@ -1,8 +1,43 @@
 #include <Python.h>
+#include <frameobject.h>
+#include <glog/logging.h>
+#include <iomanip>
 #include <iostream>
+#include <opcode.h>
+
+#define LOG_KEY_VALUE(key, value) " " << key << "=" << value
+#define LOG_SHOW(key) LOG_KEY_VALUE(#key, key)
+#define LOG_64BITS(key) LOG_KEY_VALUE(#key, HexString(key, 16))
+#define LOG_32BITS(key) LOG_KEY_VALUE(#key, HexString(key, 8))
+#define LOG_16BITS(key) LOG_KEY_VALUE(#key, HexString(key, 4))
+#define LOG_8BITS(key) LOG_KEY_VALUE(#key, HexString(key, 2))
+#define LOG_BITS(key) LOG_KEY_VALUE(#key, HexString(key))
+#define LOG_DWEHPE(type) LOG_KEY_VALUE(#type, ShowDW_EH_PE(type))
+
+template <class T> std::string HexString(T num, int length = -1) {
+  if (length == -1) {
+    length = sizeof(T) / 2;
+  }
+  std::stringstream ss;
+  ss << "0x" << std::uppercase << std::setfill('0') << std::setw(length)
+     << std::hex << (+num & ((1 << (length * 4)) - 1));
+  return ss.str();
+}
 
 PyObject *PyJit_EvalFrame(PyThreadState *ts, PyFrameObject *f, int throwflag) {
-  std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+  LOG(INFO) << "PyJit_EvalFrame";
+  const auto co_code = f->f_code->co_code;
+  LOG(INFO) << LOG_SHOW(co_code->ob_type->tp_name)
+            << LOG_SHOW(co_code->ob_refcnt) << LOG_SHOW(PyCode_Check(co_code))
+            << LOG_SHOW(PyBytes_Check(co_code))
+            << LOG_SHOW(PyBytes_Size(co_code));
+  const auto co_code_size = PyBytes_Size(co_code);
+  const auto buf = PyBytes_AsString(co_code);
+  for (int i = 0; i < co_code_size; ++i) {
+    LOG(INFO) << LOG_8BITS(buf[i]) << LOG_8BITS(LOAD_FAST)
+              << LOG_8BITS(BINARY_ADD) << LOG_8BITS(RETURN_VALUE);
+  }
+
   return _PyEval_EvalFrameDefault(ts, f, throwflag);
 }
 
@@ -26,7 +61,7 @@ static PyObject *greet(PyObject *self, PyObject *args) {
 }
 
 PyObject *jit_enable(PyObject *self, PyObject *args) {
-  std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+  LOG(INFO) << "jit_enable";
   auto prev = _PyInterpreterState_GetEvalFrameFunc(inter());
   _PyInterpreterState_SetEvalFrameFunc(inter(), PyJit_EvalFrame);
   if (prev == PyJit_EvalFrame) {
