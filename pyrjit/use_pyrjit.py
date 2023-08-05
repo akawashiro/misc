@@ -1,7 +1,12 @@
 import pyrjit
+print(pyrjit.version())
+pyrjit.enable()
 
 def test():
     print("Hello World!")
 
-pyrjit.enable()
+def add(a, b):
+    return a + b
+
 test()
+add(1, 2)

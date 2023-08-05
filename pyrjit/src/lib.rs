@@ -1,20 +1,34 @@
 use log::info;
 use pyo3::ffi::{
-    PyFrameObject, PyInterpreterState_Get, PyThreadState, 
-    _PyInterpreterState_GetEvalFrameFunc, _PyInterpreterState_SetEvalFrameFunc, PyObject,
+    PyBytes_AsString, PyBytes_Check, PyBytes_Size, PyFrameObject, PyInterpreterState_Get, PyObject,
+    PyThreadState, _PyInterpreterState_GetEvalFrameFunc, _PyInterpreterState_SetEvalFrameFunc,
 };
 use pyo3::prelude::*;
 
-/// Formats the sum of two numbers as string.
 #[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
+fn version() -> PyResult<String> {
+    Ok(format!("{}.{}.{}", env!("CARGO_PKG_VERSION_MAJOR"), env!("CARGO_PKG_VERSION_MINOR"), env!("CARGO_PKG_VERSION_PATCH")))
 }
 
-static mut ORIGINAL_FRAME: Option<extern "C" fn(state: *mut PyThreadState, frame: *mut PyFrameObject, c: i32) -> *mut PyObject> = None;
+static mut ORIGINAL_FRAME: Option<
+    extern "C" fn(state: *mut PyThreadState, frame: *mut PyFrameObject, c: i32) -> *mut PyObject,
+> = None;
 
 extern "C" fn eval(state: *mut PyThreadState, frame: *mut PyFrameObject, c: i32) -> *mut PyObject {
     info!(target: "pyrjit", "eval()");
+
+    unsafe {
+        let f_code = frame.read().f_code.read().co_code;
+        let is_bytes = PyBytes_Check(f_code);
+        let n_bytes = PyBytes_Size(f_code);
+        info!(target: "pyrjit", "is_bytes:{:?} n_bytes:{:?}", is_bytes, n_bytes);
+
+        let code_buf = PyBytes_AsString(f_code);
+        for i in 0..n_bytes {
+            info!(target: "pyrjit", "code_buf[{}]:0x{:02x?}", i, *code_buf.offset(i as isize));
+        }
+    }
+
     unsafe {
         if let Some(original) = ORIGINAL_FRAME {
             original(state, frame, c)
@@ -37,7 +51,7 @@ fn enable() -> PyResult<()> {
 #[pymodule]
 fn pyrjit(_py: Python, m: &PyModule) -> PyResult<()> {
     env_logger::init();
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     m.add_function(wrap_pyfunction!(enable, m)?)?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())
 }
