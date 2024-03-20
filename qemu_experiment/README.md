@@ -1,3 +1,9 @@
+# QEMU の仕組み
+
+- [QEMUのなかみ(QEMU internals) part1](https://rkx1209.hatenablog.com/entry/2015/11/15/214404)
+- [QEMUのなかみ(QEMU internals) part2](https://rkx1209.hatenablog.com/entry/2015/11/20/203511)
+- [TCG Intermediate Representation](https://www.qemu.org/docs/master/devel/tcg-ops.html)
+
 # Function: `add_two_double`
 
 ## C言語
