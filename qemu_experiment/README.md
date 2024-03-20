@@ -203,6 +203,11 @@ OUT: [size=336]
 0x7ffa0c055f73:  4c 8b a5 d0 0c 00 00     movq     0xcd0(%rbp), %r12  ; ld_i64 loc6,env,$0xcd0
 0x7ffa0c055f7a:  4d 89 65 00              movq     %r12, (%r13)       ; qemu_st_a64_i64 loc6,loc5,noat+un+leq,0
 ```
+# `0x004006e8` 部分だけ
+## AArch64
+```
+0x004006e8:  1e602820  fadd     d0, d1, d0
+```
 
 ## QEMU IR
 ```
