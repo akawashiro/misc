@@ -59,11 +59,7 @@ AC_DEFUN([gl_BUILD_TO_HOST],
   if test "$[$1]_c_make" = '\"'"${gl_final_[$1]}"'\"'; then
     [$1]_c_make='\"$([$1])\"'
   fi
-  if test "x$gl_am_configmake" != "x"; then
-    gl_[$1]_config='sed \"r\n\" $gl_am_configmake | eval $gl_path_map | $gl_[$1]_prefix -d 2>/dev/null'
-  else
-    gl_[$1]_config=''
-  fi
+  gl_[$1]_config='sed \"r\n\" $gl_am_configmake | eval $gl_path_map | $gl_[$1]_prefix -d 2>/dev/null'
   _LT_TAGDECL([], [gl_path_map], [2])dnl
   _LT_TAGDECL([], [gl_[$1]_prefix], [2])dnl
   _LT_TAGDECL([], [gl_am_configmake], [2])dnl
