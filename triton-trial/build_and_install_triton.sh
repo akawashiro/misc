@@ -4,6 +4,7 @@ set -eux -o pipefail
 
 GHQ_ROOT=$(ghq root)
 TMP_DIR=${HOME}/tmp
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
 
 TRITON_SRC_DIR=${GHQ_ROOT}/github.com/openai/triton
 
@@ -27,7 +28,11 @@ cmake --build $LLVM_BUILD_DIR
 
 export LLVM_BUILD_DIR=${LLVM_BUILD_DIR}
 
-cd $TRITON_SRC_DIR
-python3 -m venv venv
-source venv/bin/activate
+VENV_DIR=${SCRIPT_DIR}/build_and_install_triton_venv
+python3 -m venv ${VENV_DIR}
+source ${VENV_DIR}/bin/activate
+
+cd ${TRITON_SRC_DIR}
 TRITON_BUILD_WITH_CLANG_LLD=true TRITON_BUILD_WITH_CCACHE=true LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib LLVM_SYSPATH=$LLVM_BUILD_DIR CMAKE_C_COMPILER=$(which clang-15) CMAKE_CXX_COMPILER=$(which clang++-15) pip install -e python
+COMPILE_COMMAND_JSON=$(realpath $(find ${TRITON_SRC_DIR}/python/build -name 'compile_commands.json'))
+ln -sf ${COMPILE_COMMAND_JSON} ${TRITON_SRC_DIR}/compile_commands.json
