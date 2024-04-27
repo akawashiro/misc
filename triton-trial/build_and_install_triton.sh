@@ -36,6 +36,6 @@ python3 -m venv ${VENV_DIR}
 source ${VENV_DIR}/bin/activate
 
 cd ${TRITON_SRC_DIR}
-TRITON_BUILD_WITH_CLANG_LLD=true TRITON_BUILD_WITH_CCACHE=true LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib LLVM_SYSPATH=$LLVM_BUILD_DIR CMAKE_C_COMPILER=$(which clang-15) CMAKE_CXX_COMPILER=$(which clang++-15) pip install -e python
+TRITON_BUILD_WITH_CLANG_LLD=true TRITON_BUILD_WITH_CCACHE=true LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib LLVM_SYSPATH=$LLVM_BUILD_DIR pip install -e './python[tutorials]'
 COMPILE_COMMAND_JSON=$(realpath $(find ${TRITON_SRC_DIR}/python/build -name 'compile_commands.json'))
 ln -sf ${COMPILE_COMMAND_JSON} ${TRITON_SRC_DIR}/compile_commands.json
