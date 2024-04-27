@@ -4,13 +4,16 @@ set -eux -o pipefail
 
 GHQ_ROOT=$(ghq root)
 TMP_DIR=${HOME}/tmp
-SCRIPT_DIR=$(cd $(dirname $0); pwd)
+SCRIPT_DIR=$(
+	cd $(dirname $0)
+	pwd
+)
 
 TRITON_SRC_DIR=${GHQ_ROOT}/github.com/openai/triton
 
 if [[ ! -d $TRITON_SRC_DIR ]]; then
-    echo "Cloning triton..."
-    ghq get openai/triton
+	echo "Cloning triton..."
+	ghq get openai/triton
 fi
 
 LLVM_GIT_HASH=$(cat ${TRITON_SRC_DIR}/cmake/llvm-hash.txt)
@@ -18,7 +21,7 @@ LLVM_SRC_DIR=${TMP_DIR}/triton-llvm
 LLVM_BUILD_DIR=${TMP_DIR}/triton-llvm-build
 
 if [ ! -d $LLVM_SRC_DIR ]; then
-  git clone https://github.com/llvm/llvm-project.git $LLVM_SRC_DIR
+	git clone https://github.com/llvm/llvm-project.git $LLVM_SRC_DIR
 fi
 cd $LLVM_SRC_DIR
 git checkout $LLVM_GIT_HASH
