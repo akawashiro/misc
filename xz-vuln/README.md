@@ -6,3 +6,7 @@
 ```bash
 find . -type f -print | xargs grep '/dev/null' | grep "linux-gnu"
 ```
+
+```
+time env -i LANG=C /usr/sbin/sshd -h
+```
