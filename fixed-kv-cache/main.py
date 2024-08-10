@@ -1,19 +1,32 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_name = "PY007/TinyLlama-1.1B-Chat-v0.1"
+model_name = "cyberagent/open-calm-7b"
 model = AutoModelForCausalLM.from_pretrained(model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-inputs = tokenizer("AIによって私達の暮らしは、", return_tensors="pt").to(model.device)  # 入力するプロンプト.
-with torch.no_grad():
-    tokens = model.generate(
-        **inputs,
-        max_new_tokens=64,  # 生成する長さ. 128 とかでも良い.
-        do_sample=True,
-        temperature=0.7,  # 生成のランダム性. 高いほど様々な単語が出てくるが関連性は下がる.
-        pad_token_id=tokenizer.pad_token_id,
-    )
+def one_step_forward(inputs):
+    onestep_out = model.forward(**inputs)
+    return onestep_out
+
+def main():
+    inputs = tokenizer("To be, or not to be, that is the question:", return_tensors="pt")
+    GENERATE_LENGTH = 32
     
-output = tokenizer.decode(tokens[0], skip_special_tokens=True)
-print(output)
+    for i in range(GENERATE_LENGTH):
+        print("Decoded input:", tokenizer.decode(inputs["input_ids"][0]))
+    
+        onestep_out = one_step_forward(inputs)
+        logits = onestep_out.logits
+        
+        print("Decoded outputs:", tokenizer.decode(logits[0].argmax(dim=1)))
+    
+        next_token = logits.argmax(dim=2)[:, -1:]
+        next_input_ids = torch.cat([inputs["input_ids"], next_token], dim=1)
+        next_attention_mask = torch.cat([inputs["attention_mask"], torch.ones((1, 1), dtype=torch.long)], dim=1)
+    
+        inputs["input_ids"] = next_input_ids
+        inputs["attention_mask"] = next_attention_mask
+
+if __name__ == "__main__":
+    main()
