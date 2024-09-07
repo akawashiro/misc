@@ -33,3 +33,6 @@ gcc-11 convert.c -o convert
 chmod u+x ./hello_youkoso_converted
 
 ./hello_youkoso_converted
+
+nasm -f elf64 ./hello_syscall.asm
+ld -o hello_syscall ./hello_syscall.o
