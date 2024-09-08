@@ -36,3 +36,5 @@ chmod u+x ./hello_youkoso_converted
 
 nasm -f elf64 ./hello_syscall.asm
 ld -o hello_syscall ./hello_syscall.o
+
+gcc -o lifegame lifegame.c && ./lifegame

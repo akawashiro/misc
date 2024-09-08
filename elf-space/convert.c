@@ -1,4 +1,3 @@
-/* convert.c */
 #include <elf.h>
 #include <fcntl.h>
 #include <memory.h>
