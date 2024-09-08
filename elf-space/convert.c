@@ -37,8 +37,7 @@ int main(void) {
                    MAP_PRIVATE, lifegame_fd, 0);
 
   const int parasite_src_offset = 0x1149;
-  // const int parasite_size = 0x16f3 - 0x1149;
-  const int parasite_size = 0x16f0 - 0x1149;
+  const int parasite_size = 0x16f7 - 0x1149;
 
   for (int i = 0; i < parasite_size; i++) {
     if (0x1158 <= parasite_src_offset + i && parasite_src_offset + i < 0x1161) {

@@ -1,5 +1,5 @@
 #define BOARD_SIZE 32
-#define RUNNING_TIME 3
+#define RUNNING_TIME 10
 #define ALIVE 'x'
 #define DEAD '.'
 
@@ -43,8 +43,7 @@ void lifegame() {
 
   for (int t = 0; t < RUNNING_TIME; t++) {
     // Sleep
-    // for (int i = 0; i < 1 * 2e9; i++) {
-    for (int i = 0; i < 1 ; i++) {
+    for (int i = 0; i < 1 * 2e9; i++) {
     }
 
     // Clear the screen
