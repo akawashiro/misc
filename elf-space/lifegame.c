@@ -93,6 +93,8 @@ void lifegame() {
       }
     }
   }
+
+  __asm__ volatile("jmp 0x401000" : : :);
 }
 
 int main() {
