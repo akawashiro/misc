@@ -1,5 +1,5 @@
 #define BOARD_SIZE 32
-#define RUNNING_TIME 100
+#define RUNNING_TIME 3
 #define ALIVE 'x'
 #define DEAD '.'
 
@@ -43,7 +43,8 @@ void lifegame() {
 
   for (int t = 0; t < RUNNING_TIME; t++) {
     // Sleep
-    for (int i = 0; i < 1 * 2e9; i++) {
+    // for (int i = 0; i < 1 * 2e9; i++) {
+    for (int i = 0; i < 1 ; i++) {
     }
 
     // Clear the screen
@@ -94,7 +95,8 @@ void lifegame() {
     }
   }
 
-  __asm__ volatile("jmp 0x401000" : : :);
+  __asm__ volatile("mov $0x401000, %rax");
+  __asm__ volatile("jmp *%rax");
 }
 
 int main() {
