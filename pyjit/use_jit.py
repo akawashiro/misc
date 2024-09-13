@@ -14,4 +14,4 @@ print("========== add ==========")
 dis.dis(add)
 
 hello.jit_enable()
-add(1, 2)
+add(111111111, 222222222)

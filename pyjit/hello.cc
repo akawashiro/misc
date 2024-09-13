@@ -35,7 +35,17 @@ PyObject *PyJit_EvalFrame(PyThreadState *ts, PyFrameObject *f, int throwflag) {
   const auto buf = PyBytes_AsString(co_code);
   for (int i = 0; i < co_code_size; ++i) {
     LOG(INFO) << LOG_8BITS(buf[i]) << LOG_8BITS(LOAD_FAST)
-              << LOG_8BITS(BINARY_ADD) << LOG_8BITS(RETURN_VALUE);
+              << LOG_8BITS(BINARY_ADD) << LOG_8BITS(RETURN_VALUE)
+              << LOG_SHOW(sizeof(PyObject));
+  }
+
+  const auto na = f->f_code->co_argcount;
+  LOG(INFO) << LOG_SHOW(na);
+
+  for (int i = 0; i < na; i++) {
+    LOG(INFO) << f->f_localsplus[i] << " "
+              << f->f_localsplus[i]->ob_type->tp_name << " "
+              << PyLong_AS_LONG(f->f_localsplus[i]);
   }
 
   return _PyEval_EvalFrameDefault(ts, f, throwflag);
