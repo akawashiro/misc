@@ -2,24 +2,25 @@
 #include <fcntl.h>
 #include <memory.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
 int main(void) {
-  int hello_syscall_fd = open("./hello_syscall", O_RDONLY);
-  size_t hello_syscall_size = lseek(hello_syscall_fd, 0, SEEK_END);
-  size_t hello_syscall_mapped_size = (hello_syscall_size + 0xfff) & ~0xfff;
-  char *hello_syscall_p =
-      (char *)mmap(NULL, hello_syscall_mapped_size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE, hello_syscall_fd, 0);
+  int hello_fd = open("./hello", O_RDONLY);
+  size_t hello_size = lseek(hello_fd, 0, SEEK_END);
+  size_t hello_mapped_size = (hello_size + 0xfff) & ~0xfff;
+  char *hello_p =
+      (char *)mmap(NULL, hello_mapped_size, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE, hello_fd, 0);
 
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)hello_syscall_p;
+  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)hello_p;
   const int parasite_addr = 0x401030;
   ehdr->e_entry = parasite_addr;
 
   for (size_t pi = 0; pi < ehdr->e_phnum; pi++) {
-    Elf64_Phdr *phdr = ((Elf64_Phdr *)(hello_syscall_p + ehdr->e_phoff)) + pi;
+    Elf64_Phdr *phdr = ((Elf64_Phdr *)(hello_p + ehdr->e_phoff)) + pi;
     if (phdr->p_type == PT_LOAD && phdr->p_flags == (PF_X | PF_R)) {
       phdr->p_filesz = 0x1000;
       phdr->p_memsz = 0x1000;
@@ -42,16 +43,17 @@ int main(void) {
   for (int i = 0; i < parasite_size; i++) {
     if (0x1158 <= parasite_src_offset + i && parasite_src_offset + i < 0x1161) {
       // This part accessing fs:0x28.
-      hello_syscall_p[parasite_dst_offset + i] = 0x90;
+      hello_p[parasite_dst_offset + i] = 0x90;
     } else {
-      hello_syscall_p[parasite_dst_offset + i] =
+      hello_p[parasite_dst_offset + i] =
           lifegame_p[parasite_src_offset + i];
     }
   }
 
-  FILE *hello_syscall_with_parasite_fp =
-      fopen("./hello_syscall_with_parasite", "wb");
-  fwrite(hello_syscall_p, hello_syscall_size, 1,
-         hello_syscall_with_parasite_fp);
+  FILE *hello_with_parasite_fp =
+      fopen("./hello_with_parasite", "wb");
+  fwrite(hello_p, hello_size, 1,
+         hello_with_parasite_fp);
+  chmod("./hello_with_parasite", 0755);
   return 0;
 }
