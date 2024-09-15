@@ -10,4 +10,5 @@ if [ $N_INSTALLED -ne 2 ]; then
 fi
 
 # sudo python3 ./hello.py
-sudo python3 ./execsnoop.py
+# sudo python3 ./execsnoop.py
+sudo python3 m.py
