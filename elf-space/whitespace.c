@@ -101,6 +101,10 @@ void ws_io_outn(char *parameter, int size);
 void ws_io_inc(char *parameter, int size);
 void ws_io_inn(char *parameter, int size);
 
+void dummy_free(void *ptr) {
+  return;
+}
+
 char *helloworld =
     "   	      	 \n   			 		   	"
     "	  	 \n    \n		    	  	   \n	\n     	"
@@ -170,7 +174,7 @@ long long stack_peak(int depth) {
 }
 
 void cleanup_stack(void) {
-  free(stack.contents);
+  dummy_free(stack.contents);
   return;
 }
 
@@ -180,7 +184,7 @@ int create_heap(void) {
       heap.elements = 0;
       return 1;
     }
-    free(heap.address);
+    dummy_free(heap.address);
   }
   return 0;
 }
@@ -217,8 +221,8 @@ long long heap_get(long long addr) {
 }
 
 void cleanup_heap(void) {
-  free(heap.address);
-  free(heap.value);
+  dummy_free(heap.address);
+  dummy_free(heap.value);
   return;
 }
 
@@ -227,16 +231,16 @@ int create_label_table(void) {
     if (label_table.label_location = (int *)calloc(MAX_LABELS, sizeof(int))) {
       return 1;
     }
-    free(label_table.label_id);
+    dummy_free(label_table.label_id);
   }
   return 0;
 }
 
 void cleanup_label_table(void) {
   for (int i = 0; i < MAX_LABELS && label_table.label_location[i]; i++)
-    free(label_table.label_id[i]);
-  free(label_table.label_id);
-  free(label_table.label_location);
+    dummy_free(label_table.label_id[i]);
+  dummy_free(label_table.label_id);
+  dummy_free(label_table.label_location);
   return;
 }
 
@@ -353,9 +357,9 @@ int create_instruction_set(void) {
 }
 
 void cleanup_instruction_set(void) {
-  free(instruction_set.instruction_function);
-  free(instruction_set.unique_id);
-  free(instruction_set.instruction_size);
+  dummy_free(instruction_set.instruction_function);
+  dummy_free(instruction_set.unique_id);
+  dummy_free(instruction_set.instruction_size);
   return;
 }
 
@@ -458,7 +462,7 @@ int retrieve_label_or_number(char *data, char **ret) {
       *loc = 0;
       return strlen(*ret);
     }
-    free(*ret);
+    dummy_free(*ret);
   }
 
   return 0;
@@ -471,7 +475,7 @@ void ws_stack_push(char *parameter, int size) {
   if (leap = retrieve_label_or_number(&(parameter[size]), &label_number)) {
     stack_push(convert_ws_to_number(label_number));
     current_instruction_index += size + leap + 1;
-    free(label_number);
+    dummy_free(label_number);
   }
   return;
 }
@@ -490,7 +494,7 @@ void ws_stack_copy(char *parameter, int size) {
   if (leap = retrieve_label_or_number(&(parameter[size]), &label_number)) {
     stack_push(stack_peak(convert_ws_to_number(label_number)));
     current_instruction_index += size + leap + 1;
-    free(label_number);
+    dummy_free(label_number);
   } else
     current_instruction_index += size;
   return;
@@ -524,7 +528,7 @@ void ws_stack_slide(char *parameter, int size) {
       stack_pop();
     stack_push(first);
     current_instruction_index += size + leap + 1;
-    free(label_number);
+    dummy_free(label_number);
   } else
     current_instruction_index += size;
   return;
@@ -610,7 +614,7 @@ void ws_flow_call(char *parameter, int size) {
     if (add_ret_addr(current_instruction_index + size + leap + 1)) {
       ws_flow_jump(parameter, size);
     }
-    free(label);
+    dummy_free(label);
   } else {
     // This is a very bad place
     add_ret_addr(current_instruction_index + size);
@@ -629,7 +633,7 @@ void ws_flow_jump(char *parameter, int size) {
         break;
       }
     }
-    free(label_number);
+    dummy_free(label_number);
   } else {
     // This would be very bad
     current_instruction_index += size;
@@ -646,7 +650,7 @@ void ws_flow_jz(char *parameter, int size) {
   } else {
     if (leap = retrieve_label_or_number(&(parameter[size]), &label)) {
       current_instruction_index += size + leap + 1;
-      free(label);
+      dummy_free(label);
     } else
       current_instruction_index += size;
   }
@@ -662,7 +666,7 @@ void ws_flow_jn(char *parameter, int size) {
   } else {
     if (leap = retrieve_label_or_number(&(parameter[size]), &label)) {
       current_instruction_index += size + leap + 1;
-      free(label);
+      dummy_free(label);
     } else
       current_instruction_index += size;
   }
