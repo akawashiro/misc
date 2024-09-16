@@ -1,7 +1,6 @@
 // Whitespace Interpreter v1.0 - by meth0dz
 // License - http://creativecommons.org/licenses/by-sa/3.0/us/
 // Source: http://www.rohitab.com/discuss/index.php?showtopic=35639
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,23 +55,23 @@ long long current_instruction_index;
 // All the background/foundation functions
 long read_source_file(char *path, char **buffer);
 void remove_comments(char *buffer);
-bool create_stack(void);
-bool stack_push(long long val);
+int create_stack(void);
+int stack_push(long long val);
 long long stack_pop(void);
 long long stack_peak(int depth);
 void cleanup_stack(void);
-bool create_heap(void);
+int create_heap(void);
 long long heap_get(long long addr);
-bool heap_put(long long val, long long addr);
+int heap_put(long long val, long long addr);
 void cleanup_heap(void);
-bool create_label_table(void);
+int create_label_table(void);
 void cleanup_label_table(void);
-bool create_instruction_set(void);
+int create_instruction_set(void);
 void cleanup_instruction_set(void);
-bool locate_jump_labels(char *source);
+int locate_jump_labels(char *source);
 long long convert_ws_to_number(char *ws);
 int retrieve_label_or_number(char *data, char **ret);
-bool add_ret_addr(long long addr);
+int add_ret_addr(long long addr);
 long long get_last_ret_addr(void);
 void step_through_program(char *source);
 
@@ -170,22 +169,22 @@ void remove_comments(char *buffer) {
   return;
 }
 
-bool create_stack(void) {
+int create_stack(void) {
   if (stack.contents = (long long *)calloc(STACK_MEMBERS, sizeof(long long))) {
     stack.size = STACK_MEMBERS;
     stack.current = STACK_MEMBERS;
-    return true;
+    return 1;
   }
-  return false;
+  return 0;
 }
 
-bool stack_push(long long val) {
+int stack_push(long long val) {
   if (stack.current >= 1) {
     stack.current--;
     stack.contents[stack.current] = val;
-    return true;
+    return 1;
   }
-  return false;
+  return 0;
 }
 
 long long stack_pop(void) {
@@ -208,23 +207,23 @@ void cleanup_stack(void) {
   return;
 }
 
-bool create_heap(void) {
+int create_heap(void) {
   if (heap.address = (long long *)calloc(HEAP_MEMBERS, sizeof(long long))) {
     if (heap.value = (long long *)calloc(HEAP_MEMBERS, sizeof(long long))) {
       heap.elements = 0;
-      return true;
+      return 1;
     }
     free(heap.address);
   }
-  return false;
+  return 0;
 }
 
-bool heap_put(long long val, long long addr) {
+int heap_put(long long val, long long addr) {
   // First see if the address is already in use
   for (int i = 0; i < heap.elements; i++) {
     if (heap.address[i] == addr) {
       heap.value[i] = val;
-      return true;
+      return 1;
     }
   }
 
@@ -234,10 +233,10 @@ bool heap_put(long long val, long long addr) {
     heap.address[i] = addr;
     heap.value[i] = val;
     heap.elements++;
-    return true;
+    return 1;
   }
 
-  return false;
+  return 0;
 }
 
 // Trying to get data from an address that doesn't exist results in 0 being
@@ -256,14 +255,14 @@ void cleanup_heap(void) {
   return;
 }
 
-bool create_label_table(void) {
+int create_label_table(void) {
   if (label_table.label_id = (char **)calloc(MAX_LABELS, sizeof(char *))) {
     if (label_table.label_location = (int *)calloc(MAX_LABELS, sizeof(int))) {
-      return true;
+      return 1;
     }
     free(label_table.label_id);
   }
-  return false;
+  return 0;
 }
 
 void cleanup_label_table(void) {
@@ -276,7 +275,7 @@ void cleanup_label_table(void) {
 
 // Memory Management gets a bit annoyingly comlicated here
 // But I would prefer to leave everything to be dynamically allocated
-bool create_instruction_set(void) {
+int create_instruction_set(void) {
   instruction_set.unique_id = calloc(MAX_INSTRUCTIONS, sizeof(char *));
   instruction_set.instruction_size = calloc(MAX_INSTRUCTIONS, sizeof(int));
   instruction_set.instruction_function =
@@ -383,7 +382,7 @@ bool create_instruction_set(void) {
   instruction_set.unique_id[23] = "\x09\x0A\x09\x09";
   instruction_set.instruction_function[23] = &ws_io_inn;
   instruction_set.instruction_size[23] = 4;
-  return true;
+  return 1;
 }
 
 void cleanup_instruction_set(void) {
@@ -399,7 +398,7 @@ void cleanup_instruction_set(void) {
         2) The character before the label can't be a [TAB]
         3) Make sure you haven't found the representation of a label in a label
 */
-bool locate_jump_labels(char *source) {
+int locate_jump_labels(char *source) {
   int label_index = 0, j, leap;
   char *label_marker = "\x0A\x20\x20", *temp;
   for (int i = 0; source[i]; i++) {
@@ -418,22 +417,22 @@ bool locate_jump_labels(char *source) {
         continue;
       }
       // If memory allocation breaks, then we need to report an error
-      return false;
+      return 0;
     }
   }
   label_table.total_labels = label_index;
-  return true;
+  return 1;
 }
 
-bool add_ret_addr(long long addr) {
+int add_ret_addr(long long addr) {
   int i;
   for (i = 0; i < MAX_NESTED_SUBROUTINES && instruction_index[i]; i++)
     ;
   if (i < MAX_NESTED_SUBROUTINES) {
     instruction_index[i] = addr;
-    return true;
+    return 1;
   } else
-    return false;
+    return 0;
 }
 
 long long get_last_ret_addr(void) {
