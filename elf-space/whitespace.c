@@ -129,9 +129,10 @@ int main(int argc, char **argv) {
         cleanup_stack();
       }
     }
-  } else
-    printf("Proper Usage: %s file.ws\n", argv[0]);
-  return 1;
+  } else {
+    // printf("Proper Usage: %s file.ws\n", argv[0]);
+    return 1;
+  }
 }
 
 // Note that if this function succeeds, it will allocate memory for buffer
@@ -498,6 +499,7 @@ int retrieve_label_or_number(char *data, char **ret) {
 }
 
 void ws_stack_push(char *parameter, int size) {
+  puts("ws_stack_push");
   char *label_number = NULL;
   int leap = 0;
   if (leap = retrieve_label_or_number(&(parameter[size]), &label_number)) {
@@ -509,12 +511,14 @@ void ws_stack_push(char *parameter, int size) {
 }
 
 void ws_stack_dup(char *parameter, int size) {
+  puts("ws_stack_dup");
   stack_push(stack_peak(0));
   current_instruction_index += size;
   return;
 }
 
 void ws_stack_copy(char *parameter, int size) {
+  puts("ws_stack_copy");
   char *label_number = NULL;
   int leap = 0;
   if (leap = retrieve_label_or_number(&(parameter[size]), &label_number)) {
@@ -527,6 +531,7 @@ void ws_stack_copy(char *parameter, int size) {
 }
 
 void ws_stack_swap(char *parameter, int size) {
+  puts("ws_stack_swap");
   long long first_off = stack_pop();
   long long second_off = stack_pop();
   stack_push(first_off);
@@ -536,12 +541,14 @@ void ws_stack_swap(char *parameter, int size) {
 }
 
 void ws_stack_discard(char *parameter, int size) {
+  puts("ws_stack_discard");
   stack_pop();
   current_instruction_index += size;
   return;
 }
 
 void ws_stack_slide(char *parameter, int size) {
+  puts("ws_stack_slide");
   long long first = stack_pop();
   int leap = 0;
   char *label_number = NULL;
@@ -558,6 +565,7 @@ void ws_stack_slide(char *parameter, int size) {
 }
 
 void ws_math_add(char *parameter, int size) {
+  puts("ws_math_add");
   long long right = stack_pop();
   long long left = stack_pop();
   stack_push(left + right);
@@ -566,6 +574,7 @@ void ws_math_add(char *parameter, int size) {
 }
 
 void ws_math_sub(char *parameter, int size) {
+  puts("ws_math_sub");
   long long right = stack_pop();
   long long left = stack_pop();
   stack_push(left - right);
@@ -574,6 +583,7 @@ void ws_math_sub(char *parameter, int size) {
 }
 
 void ws_math_mult(char *parameter, int size) {
+  puts("ws_math_mult");
   long long right = stack_pop();
   long long left = stack_pop();
   stack_push(left * right);
@@ -582,6 +592,7 @@ void ws_math_mult(char *parameter, int size) {
 }
 
 void ws_math_div(char *parameter, int size) {
+  puts("ws_math_div");
   long long right = stack_pop();
   long long left = stack_pop();
   stack_push(left / right);
@@ -590,6 +601,7 @@ void ws_math_div(char *parameter, int size) {
 }
 
 void ws_math_mod(char *parameter, int size) {
+  puts("ws_math_mod");
   long long right = stack_pop();
   long long left = stack_pop();
   stack_push(left % right);
@@ -598,6 +610,7 @@ void ws_math_mod(char *parameter, int size) {
 }
 
 void ws_heap_store(char *parameter, int size) {
+  puts("ws_heap_store");
   long long value = stack_pop();
   long long addr = stack_pop();
   heap_put(value, addr);
@@ -606,12 +619,14 @@ void ws_heap_store(char *parameter, int size) {
 }
 
 void ws_heap_retrieve(char *parameter, int size) {
+  puts("ws_heap_retrieve");
   stack_push(heap_get(stack_pop()));
   current_instruction_index += size;
   return;
 }
 
 void ws_flow_mark(char *parameter, int size) {
+  puts("ws_flow_mark");
   // For loop will stop once it gets to the second line feed
   // Therefore we need one more increment after the fact
   int i;
@@ -622,6 +637,7 @@ void ws_flow_mark(char *parameter, int size) {
 }
 
 void ws_flow_call(char *parameter, int size) {
+  puts("ws_flow_call");
   char *label;
   int leap = 0;
   if (leap = retrieve_label_or_number(&(parameter[size]), &label)) {
@@ -637,6 +653,7 @@ void ws_flow_call(char *parameter, int size) {
 }
 
 void ws_flow_jump(char *parameter, int size) {
+  puts("ws_flow_jump");
   char *label_number;
   int i;
   if (retrieve_label_or_number(&(parameter[size]), &label_number)) {
@@ -655,6 +672,7 @@ void ws_flow_jump(char *parameter, int size) {
 }
 
 void ws_flow_jz(char *parameter, int size) {
+  puts("ws_flow_jz");
   int leap;
   char *label;
   if (stack_pop() == 0LL) {
@@ -670,6 +688,7 @@ void ws_flow_jz(char *parameter, int size) {
 }
 
 void ws_flow_jn(char *parameter, int size) {
+  puts("ws_flow_jn");
   int leap;
   char *label;
   if (stack_pop() < 0LL) {
@@ -685,39 +704,45 @@ void ws_flow_jn(char *parameter, int size) {
 }
 
 void ws_flow_ret(char *parameter, int size) {
+  puts("ws_flow_ret");
   current_instruction_index = get_last_ret_addr();
   return;
 }
 
 void ws_flow_exit(char *parameter, int size) {
+  puts("ws_flow_exit");
   current_instruction_index = -1;
   return;
 }
 
 void ws_io_outc(char *parameter, int size) {
+  puts("ws_io_outc");
   putchar((int)stack_pop());
   current_instruction_index += size;
   return;
 }
 
 void ws_io_outn(char *parameter, int size) {
-  printf("%lld", stack_pop());
-  fflush(stdout);
+  puts("ws_io_outn");
+  // printf("%lld", stack_pop());
+  // fflush(stdout);
   current_instruction_index += size;
   return;
 }
 
 void ws_io_inc(char *parameter, int size) {
-  int c = getchar();
-  heap_put((long long)c, stack_pop());
+  puts("ws_io_inc");
+  // int c = getchar();
+  // heap_put((long long)c, stack_pop());
   current_instruction_index += size;
   return;
 }
 
 void ws_io_inn(char *parameter, int size) {
-  char s[19], *e;
-  scanf("%18s", s);
-  heap_put(strtoll(s, &e, 10), stack_pop());
+  puts("ws_io_inn");
+  // char s[19], *e;
+  // scanf("%18s", s);
+  // heap_put(strtoll(s, &e, 10), stack_pop());
   current_instruction_index += size;
   return;
 }

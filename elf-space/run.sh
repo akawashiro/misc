@@ -8,4 +8,4 @@ gcc-11 -o convert ./convert.c
 # ./hello_with_parasite
 
 gcc-11 -o whitespace ./whitespace.c
-./whitespace ./helloworld.ws
+./whitespace ./helloworld2.ws
