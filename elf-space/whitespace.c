@@ -101,73 +101,39 @@ void ws_io_outn(char *parameter, int size);
 void ws_io_inc(char *parameter, int size);
 void ws_io_inn(char *parameter, int size);
 
+char *helloworld =
+    "   	      	 \n   			 		   	"
+    "	  	 \n    \n		    	  	   \n	\n     	"
+    "	  	 	\n	\n     		 		  \n \n "
+    "	\n  	\n     		 				\n	\n     "
+    "	     \n	\n     	 	 			\n	\n     	"
+    "	 				\n	\n     			  "
+    "	 \n	\n     		 		  \n	\n     		  "
+    "	  \n	\n     	    	\n	\n     	 	 \n	\n   "
+    "\n\n\n\n\n\n";
+
 int main(int argc, char **argv) {
   char *p, *source;
-  if (argc == 2) {
-    if (read_source_file(argv[1], &source)) {
-      remove_comments(source);
-      if (create_stack()) {
-        if (create_heap()) {
-          if (create_label_table()) {
-            if (create_instruction_set()) {
-              if (locate_jump_labels(source)) {
-                step_through_program(source);
 
-                free(source);
-                cleanup_stack();
-                cleanup_heap();
-                cleanup_label_table();
-                cleanup_instruction_set();
-                return 0;
-              }
-              cleanup_instruction_set();
-            }
-            cleanup_label_table();
+  source = helloworld;
+  if (create_stack()) {
+    if (create_heap()) {
+      if (create_label_table()) {
+        if (create_instruction_set()) {
+          if (locate_jump_labels(source)) {
+            step_through_program(source);
+            return 0;
           }
-          cleanup_heap();
+          cleanup_instruction_set();
         }
-        cleanup_stack();
+        cleanup_label_table();
       }
+      cleanup_heap();
     }
-  } else {
-    // printf("Proper Usage: %s file.ws\n", argv[0]);
-    return 1;
+    cleanup_stack();
   }
-}
 
-// Note that if this function succeeds, it will allocate memory for buffer
-long read_source_file(char *path, char **buffer) {
-  FILE *file;
-  long size;
-  if (file = fopen(path, "r")) {
-    if (!fseek(file, 0, SEEK_END)) {
-      if ((size = ftell(file)) != -1L) {
-        rewind(file);
-        if (*buffer = calloc(size + 1, sizeof(char))) {
-          if (fread(*buffer, sizeof(char), size + 1, file)) {
-            fclose(file);
-            return size;
-          }
-          free(*buffer);
-        }
-      }
-    }
-    fclose(file);
-  }
-  return 0;
-}
-
-void remove_comments(char *buffer) {
-  int j = 0;
-  for (int i = 0; buffer[i]; i++) {
-    if (buffer[i] != '\x09' && buffer[i] != '\x0A' && buffer[i] != '\x20') {
-      memmove(&(buffer[i]), &(buffer[i + 1]), strlen(&(buffer[i + 1])));
-      i--;
-      j++;
-    }
-  }
-  buffer[strlen(buffer) - j] = 0;
-  return;
+  return 1;
 }
 
 int create_stack(void) {
