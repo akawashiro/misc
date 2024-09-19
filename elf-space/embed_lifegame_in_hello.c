@@ -51,9 +51,9 @@ int main(void) {
   }
 
   FILE *hello_with_parasite_fp =
-      fopen("./hello_with_parasite", "wb");
+      fopen("./hello_with_lifegame", "wb");
   fwrite(hello_p, hello_size, 1,
          hello_with_parasite_fp);
-  chmod("./hello_with_parasite", 0755);
+  chmod("./hello_with_lifegame", 0755);
   return 0;
 }
