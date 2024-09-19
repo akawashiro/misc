@@ -93,7 +93,7 @@ char whitespace_program[] = {
     0x20, 0x20, 0x20, 0x09, 0x20, 0x09, 0x20, 0x0a, 0x09, 0x0a, 0x20, 0x20,
     0x0a, 0x0a, 0x0a};
 
-void run_helloworld() {
+void run_whitespace() {
   // Buffer to print without libc
   char print_buf[16];
 
@@ -101,7 +101,8 @@ void run_helloworld() {
   int stack[1024];
   int stack_ptr = 0;
 
-  char *head = whitespace_program;
+  // char *head = whitespace_program;
+  char *head = 0x400100;
   while (*head) {
     if (*head == ' ') {
       head++;
@@ -170,4 +171,4 @@ void run_helloworld() {
   __asm__ volatile("jmp *%rax");
 }
 
-int main() { run_helloworld(); }
+int main() { run_whitespace(); }

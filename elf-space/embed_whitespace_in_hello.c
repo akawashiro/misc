@@ -2,18 +2,17 @@
 #include <fcntl.h>
 #include <memory.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int main(void) {
   int hello_fd = open("./hello", O_RDONLY);
   size_t hello_size = lseek(hello_fd, 0, SEEK_END);
   size_t hello_mapped_size = (hello_size + 0xfff) & ~0xfff;
-  char *hello_p =
-      (char *)mmap(NULL, hello_mapped_size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE, hello_fd, 0);
+  char *hello_p = (char *)mmap(NULL, hello_mapped_size, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE, hello_fd, 0);
 
   Elf64_Ehdr *ehdr = (Elf64_Ehdr *)hello_p;
   const int parasite_addr = 0x401030;
@@ -29,30 +28,38 @@ int main(void) {
 
   const int parasite_dst_offset = 0x1030;
 
-  int lifegame_fd = open("./lifegame", O_RDONLY);
-  size_t lifegame_size = lseek(lifegame_fd, 0, SEEK_END);
-  size_t lifegame_mapped_size = (lifegame_size + 0xfff) & ~0xfff;
-  char *lifegame_p =
-      (char *)mmap(NULL, lifegame_mapped_size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE, lifegame_fd, 0);
+  int whitespace_to_embed_fd = open("./whitespace_to_embed", O_RDONLY);
+  size_t whitespace_to_embed_size = lseek(whitespace_to_embed_fd, 0, SEEK_END);
+  size_t whitespace_to_embed_mapped_size =
+      (whitespace_to_embed_size + 0xfff) & ~0xfff;
+  char *whitespace_to_embed_p = (char *)mmap(
+      NULL, whitespace_to_embed_mapped_size, PROT_READ | PROT_WRITE,
+      MAP_PRIVATE, whitespace_to_embed_fd, 0);
 
-  const int parasite_src_offset = 0x1149;
-  const int parasite_size = 0x16f7 - 0x1149;
+  const int parasite_src_offset = 0x1129;
+  const int parasite_src_end = 0x1299;
+  const int parasite_size = parasite_src_end - parasite_src_offset;
 
   for (int i = 0; i < parasite_size; i++) {
-    if (0x1158 <= parasite_src_offset + i && parasite_src_offset + i < 0x1161) {
-      // This part accessing fs:0x28.
-      hello_p[parasite_dst_offset + i] = 0x90;
-    } else {
-      hello_p[parasite_dst_offset + i] =
-          lifegame_p[parasite_src_offset + i];
-    }
+    hello_p[parasite_dst_offset + i] =
+        whitespace_to_embed_p[parasite_src_offset + i];
   }
 
-  FILE *hello_with_parasite_fp =
-      fopen("./hello_with_whitespace", "wb");
-  fwrite(hello_p, hello_size, 1,
-         hello_with_parasite_fp);
+  int whitespace_program_fd =
+      open("./whitespace_program_to_embed.ws", O_RDONLY);
+  size_t whitespace_program_size = lseek(whitespace_program_fd, 0, SEEK_END);
+  size_t whitespace_program_mapped_size =
+      (whitespace_program_size + 0xfff) & ~0xfff;
+  char *whitespace_program_p =
+      (char *)mmap(NULL, whitespace_program_mapped_size, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE, whitespace_program_fd, 0);
+  const int whitespace_program_dst_offset = 0x100;
+  for (int i = 0; i < whitespace_program_size; i++) {
+    hello_p[whitespace_program_dst_offset + i] = whitespace_program_p[i];
+  }
+
+  FILE *hello_with_parasite_fp = fopen("./hello_with_whitespace", "wb");
+  fwrite(hello_p, hello_size, 1, hello_with_parasite_fp);
   chmod("./hello_with_whitespace", 0755);
   return 0;
 }
