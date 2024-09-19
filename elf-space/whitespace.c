@@ -116,7 +116,7 @@ char *helloworld =
     "	  \n	\n     	    	\n	\n     	 	 \n	\n   "
     "\n\n\n\n\n\n";
 
-int main(int argc, char **argv) {
+int main() {
   char *p, *source;
 
   source = helloworld;
@@ -450,6 +450,7 @@ long long convert_ws_to_number(char *ws) {
     if (ws[0] == '\x09')
       amt = -amt;
   }
+  printf("number: %lld\n", amt);
   return amt;
 }
 
