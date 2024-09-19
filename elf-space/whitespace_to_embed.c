@@ -1,16 +1,16 @@
-#include <stdio.h>
+// #include <stdio.h>
 //
-void put_whitespace(char c) {
-  if (c == ' ') {
-    printf("[SP]");
-  } else if (c == '\t') {
-    printf("[TAB]");
-  } else if (c == '\n') {
-    printf("[LF]");
-  } else {
-    printf("[Not whitespace: %d]", c);
-  }
-}
+// void put_whitespace(char c) {
+//   if (c == ' ') {
+//     printf("[SP]");
+//   } else if (c == '\t') {
+//     printf("[TAB]");
+//   } else if (c == '\n') {
+//     printf("[LF]");
+//   } else {
+//     printf("[Not whitespace: %d]", c);
+//   }
+// }
 //
 // void dump(char *head) {
 //   while (*head) {
