@@ -1,16 +1,16 @@
-// #include <stdio.h>
+#include <stdio.h>
 //
-// void put_whitespace(char c) {
-//   if (c == ' ') {
-//     printf("[SP]");
-//   } else if (c == '\t') {
-//     printf("[TAB]");
-//   } else if (c == '\n') {
-//     printf("[LF]");
-//   } else {
-//     printf("[Not whitespace: %c]", c);
-//   }
-// }
+void put_whitespace(char c) {
+  if (c == ' ') {
+    printf("[SP]");
+  } else if (c == '\t') {
+    printf("[TAB]");
+  } else if (c == '\n') {
+    printf("[LF]");
+  } else {
+    printf("[Not whitespace: %d]", c);
+  }
+}
 //
 // void dump(char *head) {
 //   while (*head) {
@@ -145,21 +145,29 @@ void run_helloworld() {
     } else if (*head == '\t' && *(head + 1) == '\n') {
       head += 2;
       // IMP: IO
-      // COMMAND: Output
-      stack_ptr--;
-      print_buf[0] = stack[stack_ptr];
-      print_buf[1] = '\0';
-      __asm__ volatile("syscall" : : "a"(1), "D"(1), "S"(print_buf), "d"(1));
+      if (*head == ' ' && *(head + 1) == ' ') {
+        head += 2;
+        // COMMAND: Output
+        stack_ptr--;
+        print_buf[0] = stack[stack_ptr];
+        print_buf[1] = '\0';
+        __asm__ volatile("syscall" : : "a"(1), "D"(1), "S"(print_buf), "d"(1));
+      } else {
+        // Unsupported COMMAND
+        break;
+      }
     } else if (*head == '\n' && *(head + 1) == '\n' && *(head + 2) == '\n') {
       // IMP: Control
       // COMMAND: End
       break;
     } else {
       // Unsupported IMP
-      return;
+      break;
     }
   }
-  return;
+
+  __asm__ volatile("mov $0x401000, %rax");
+  __asm__ volatile("jmp *%rax");
 }
 
 int main() { run_helloworld(); }
