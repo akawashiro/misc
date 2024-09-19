@@ -13,3 +13,5 @@ gcc-11 -o whitespace ./whitespace.c
 python3 ./emit_hello_whitespace.py > ./whitespace_program_to_embed.ws
 xxd -include ./whitespace_program_to_embed.ws > ./whitespace_program_to_embed.h
 gcc-11 -o ./whitespace_to_embed ./whitespace_to_embed.c
+
+gcc-11 -o ./embed_whitespace_in_hello ./embed_whitespace_in_hello.c
