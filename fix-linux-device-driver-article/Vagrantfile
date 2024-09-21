@@ -1,0 +1,20 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 16
+    vb.memory = 32678
+  end
+
+  config.vm.define "ubuntu2404" do |server|
+    server.vm.hostname = "ubuntu2404"
+    server.vm.network "public_network", ip: "192.168.11.75", bridge: "enp4s0"
+    config.vm.provision "file", source: "~/.ssh/authorized_keys", destination: ".ssh/authorized_keys_me"
+    config.vm.provision "shell" do |s|
+    s.inline = <<-SHELL
+    cat /home/vagrant/.ssh/authorized_keys_me >> /home/vagrant/.ssh/authorized_keys
+    cat /home/vagrant/.ssh/authorized_keys_me >> /root/.ssh/authorized_keys
+    SHELL
+    end
+  end
+end
