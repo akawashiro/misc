@@ -19,19 +19,27 @@ print(f'{inputs["input_ids"].shape=}, {inputs_length=}')
 
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
 
+def step(input_ids, target_ids):
+    outputs = model(input_ids, labels=target_ids, return_dict=True)
+    loss = outputs.loss
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    return {"loss": loss, "logits": outputs.logits}
+
 for epoch in range(N_EPOCHS):
     for i in range(0, inputs_length - SEQUENCE_LENGTH - 1):
         input_ids = inputs["input_ids"][:, i:i+SEQUENCE_LENGTH]
         target_ids = inputs["input_ids"][:, i+1:i+SEQUENCE_LENGTH+1]
-        outputs = model(input_ids, labels=target_ids, return_dict=True)
-        output_ids = outputs.logits
+
+        outputs = step(input_ids, target_ids)
+        output_ids = outputs["logits"].argmax(-1)
+        loss = outputs["loss"]
+
         input_text = tokenizer.decode(input_ids[0], skip_special_tokens=True)
         target_text = tokenizer.decode(target_ids[0], skip_special_tokens=True)
-        output_text = tokenizer.decode(output_ids[0].argmax(-1), skip_special_tokens=True)
-        loss = outputs.loss
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+        output_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
         print(f'{epoch=} {i=} {loss=}')
         print(f'{input_text=}')
