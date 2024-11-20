@@ -1,0 +1,13 @@
+imm h"2.0" $lt
+hvmulr $lm0v $aluf $ln0v
+hvmulr $lm8v $lt $ln8v
+hvmulr $lm16v $lt $ln16v
+hvmulr $lm24v $lt $ln24v
+hvmulr $lm32v $lt $ln32v
+hvmulr $lm40v $lt $ln40v
+hvmulr $lm48v $lt $ln48v
+hvmulr $lm56v $lt $ln56v
+hvmulr $lm64v $lt $ln64v
+hvmulr $lm72v $lt $ln72v
+hvmulr $lm80v $lt $ln80v
+hvmulr $lm88v $lt $ln88v

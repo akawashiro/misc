@@ -1,0 +1,9 @@
+imm s"3" $r55/1000
+llsl $lm0v $aluf $lr0v
+llsl $lm8v $lr54 $lr8v
+llsl $lm16v $lr54 $lr16v
+llsl $lm24v $lr54 $lr24v
+lsub $lr0v $lm0v $ln0v
+lsub $lr8v $lm8v $ln8v
+lsub $lr16v $lm16v $ln16v
+lsub $lr24v $lm24v $ln24v

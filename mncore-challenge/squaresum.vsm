@@ -1,0 +1,320 @@
+dvmulu $lm0v $lm0v $nowrite
+dvfmad $lm0v $lm0v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm8v $lm8v $nowrite
+dvfmad $lm8v $lm8v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm16v $lm16v $nowrite
+dvfmad $lm16v $lm16v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm24v $lm24v $nowrite
+dvfmad $lm24v $lm24v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm32v $lm32v $nowrite
+dvfmad $lm32v $lm32v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm40v $lm40v $nowrite
+dvfmad $lm40v $lm40v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm48v $lm48v $nowrite
+dvfmad $lm48v $lm48v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm56v $lm56v $nowrite
+dvfmad $lm56v $lm56v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm64v $lm64v $nowrite
+dvfmad $lm64v $lm64v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm72v $lm72v $nowrite
+dvfmad $lm72v $lm72v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm80v $lm80v $nowrite
+dvfmad $lm80v $lm80v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm88v $lm88v $nowrite
+dvfmad $lm88v $lm88v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm96v $lm96v $nowrite
+dvfmad $lm96v $lm96v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm104v $lm104v $nowrite
+dvfmad $lm104v $lm104v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm112v $lm112v $nowrite
+dvfmad $lm112v $lm112v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm120v $lm120v $nowrite
+dvfmad $lm120v $lm120v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm128v $lm128v $nowrite
+dvfmad $lm128v $lm128v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm136v $lm136v $nowrite
+dvfmad $lm136v $lm136v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm144v $lm144v $nowrite
+dvfmad $lm144v $lm144v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm152v $lm152v $nowrite
+dvfmad $lm152v $lm152v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm160v $lm160v $nowrite
+dvfmad $lm160v $lm160v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm168v $lm168v $nowrite
+dvfmad $lm168v $lm168v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm176v $lm176v $nowrite
+dvfmad $lm176v $lm176v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm184v $lm184v $nowrite
+dvfmad $lm184v $lm184v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm192v $lm192v $nowrite
+dvfmad $lm192v $lm192v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm200v $lm200v $nowrite
+dvfmad $lm200v $lm200v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm208v $lm208v $nowrite
+dvfmad $lm208v $lm208v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm216v $lm216v $nowrite
+dvfmad $lm216v $lm216v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm224v $lm224v $nowrite
+dvfmad $lm224v $lm224v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm232v $lm232v $nowrite
+dvfmad $lm232v $lm232v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm240v $lm240v $nowrite
+dvfmad $lm240v $lm240v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0
+dvmulu $lm248v $lm248v $nowrite
+dvfmad $lm248v $lm248v $mauf $lr0v
+nop
+dvadd $lr0 $ln0 $ln0
+nop/2
+dvadd $lr2 $ln0 $ln0
+nop/2
+dvadd $lr4 $ln0 $ln0
+nop/2
+dvadd $lr6 $ln0 $ln0

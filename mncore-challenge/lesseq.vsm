@@ -1,0 +1,8 @@
+imm f"inf" $lr0
+imm f"-1.0" $lt
+fvadd $lm0v $aluf $omr1
+lpassa $lr0 $ln0v/$imr1; fvadd $lm8v $lt $omr1
+lpassa $lr0 $ln8v/$imr1; fvadd $lm16v $lt $omr1
+lpassa $lr0 $ln16v/$imr1; fvadd $lm24v $lt $omr1
+lpassa $lr0 $ln24v/$imr1; fvadd $lm32v $lt $omr1
+lpassa $lr0 $ln32v/$imr1

@@ -1,0 +1,23 @@
+lpassa $lm0v2 $ln0v16
+lpassa $lm8v2 $ln64v16
+
+lpassa $lm16v2 $ln2v16
+lpassa $lm24v2 $ln66v16
+
+lpassa $lm32v2 $ln4v16
+lpassa $lm40v2 $ln68v16
+
+lpassa $lm48v2 $ln6v16
+lpassa $lm56v2 $ln70v16
+
+lpassa $lm64v2 $ln8v16
+lpassa $lm72v2 $ln72v16
+
+lpassa $lm80v2 $ln10v16
+lpassa $lm88v2 $ln74v16
+
+lpassa $lm96v2 $ln12v16
+lpassa $lm104v2 $ln76v16
+
+lpassa $lm112v2 $ln14v16
+lpassa $lm120v2 $ln78v16

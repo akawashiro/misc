@@ -1,0 +1,35 @@
+imm f"8.0" $lt
+imm f"64.0" $lr0
+
+fvadd $lm0v $lt $nowrite
+fvmul $mauf $lt $ln0v
+
+fvfma $lm8v $lt $lr0 $ln8v
+
+fvfma $lm16v $lt $lr0 $ln16v
+
+fvfma $lm24v $lt $lr0 $ln24v
+
+fvfma $lm32v $lt $lr0 $ln32v
+
+fvfma $lm40v $lt $lr0 $ln40v
+
+fvfma $lm48v $lt $lr0 $ln48v
+
+fvfma $lm56v $lt $lr0 $ln56v
+
+fvfma $lm64v $lt $lr0 $ln64v
+
+fvfma $lm72v $lt $lr0 $ln72v
+
+fvfma $lm80v $lt $lr0 $ln80v
+
+fvfma $lm88v $lt $lr0 $ln88v
+
+fvfma $lm96v $lt $lr0 $ln96v
+
+fvfma $lm104v $lt $lr0 $ln104v
+
+fvfma $lm112v $lt $lr0 $ln112v
+
+fvfma $lm120v $lt $lr0 $ln120v

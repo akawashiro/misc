@@ -1,0 +1,109 @@
+imm i"0" $r0
+isub $aluf $m0v $n0v
+nop/2
+isub $r0 $m4v $n4v
+nop/2
+isub $r0 $m8v $n8v
+nop/2
+isub $r0 $m12v $n12v
+nop/2
+isub $r0 $m16v $n16v
+nop/2
+isub $r0 $m20v $n20v
+nop/2
+isub $r0 $m24v $n24v
+nop/2
+isub $r0 $m28v $n28v
+nop/2
+isub $r0 $m32v $n32v
+nop/2
+isub $r0 $m36v $n36v
+nop/2
+isub $r0 $m40v $n40v
+nop/2
+isub $r0 $m44v $n44v
+nop/2
+isub $r0 $m48v $n48v
+nop/2
+isub $r0 $m52v $n52v
+nop/2
+isub $r0 $m56v $n56v
+nop/2
+isub $r0 $m60v $n60v
+nop/2
+isub $r0 $m64v $n64v
+nop/2
+isub $r0 $m68v $n68v
+nop/2
+isub $r0 $m72v $n72v
+nop/2
+isub $r0 $m76v $n76v
+nop/2
+isub $r0 $m80v $n80v
+nop/2
+isub $r0 $m84v $n84v
+nop/2
+
+isub $m0v $r0 $omr1
+ipassa $m0v $n0v/$imr1
+isub $m4v $r0 $omr1
+ipassa $m4v $n4v/$imr1
+isub $m8v $r0 $omr1
+ipassa $m8v $n8v/$imr1
+isub $m12v $r0 $omr1
+ipassa $m12v $n12v/$imr1
+isub $m16v $r0 $omr1
+ipassa $m16v $n16v/$imr1
+isub $m20v $r0 $omr1
+ipassa $m20v $n20v/$imr1
+isub $m24v $r0 $omr1
+ipassa $m24v $n24v/$imr1
+isub $m28v $r0 $omr1
+ipassa $m28v $n28v/$imr1
+isub $m32v $r0 $omr1
+ipassa $m32v $n32v/$imr1
+
+isub $m36v $r0 $omr1
+ipassa $m36v $n36v/$imr1
+
+isub $m40v $r0 $omr1
+ipassa $m40v $n40v/$imr1
+
+isub $m36v $r0 $omr1
+ipassa $m36v $n36v/$imr1
+
+isub $m40v $r0 $omr1
+ipassa $m40v $n40v/$imr1
+
+isub $m44v $r0 $omr1
+ipassa $m44v $n44v/$imr1
+
+isub $m48v $r0 $omr1
+ipassa $m48v $n48v/$imr1
+
+isub $m52v $r0 $omr1
+ipassa $m52v $n52v/$imr1
+
+isub $m56v $r0 $omr1
+ipassa $m56v $n56v/$imr1
+
+isub $m60v $r0 $omr1
+ipassa $m60v $n60v/$imr1
+
+isub $m64v $r0 $omr1
+ipassa $m64v $n64v/$imr1
+
+isub $m68v $r0 $omr1
+ipassa $m68v $n68v/$imr1
+
+isub $m72v $r0 $omr1
+ipassa $m72v $n72v/$imr1
+
+isub $m76v $r0 $omr1
+ipassa $m76v $n76v/$imr1
+
+isub $m80v $r0 $omr1
+ipassa $m80v $n80v/$imr1
+
+isub $m84v $r0 $omr1
+ipassa $m84v $n84v/$imr1
