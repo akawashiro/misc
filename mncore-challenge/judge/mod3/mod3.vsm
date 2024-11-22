@@ -1,0 +1,59 @@
+imm f"8388608" $lr0/1000
+imm f"0.33333333" $lr2
+imm f"3" $lr4
+
+d getf $lm0n0c0b0m0p0 1
+
+# Convert integers to float on $lm0v and write to $ln0v
+ior $lm0v $lr0 $nowrite
+fvadd $aluf -$lr0 $ln0v
+# Multiply 0.33333333
+fvmul $mauf $lr2 $nowrite
+ffloor $mauf $nowrite
+# Multiply 3.0
+fvmul $aluf $lr4 $nowrite
+# Calculate mod 3 in float
+fvadd $ln0v -$mauf $nowrite
+# Convert float to int
+fftoi $mauf $ln0v
+
+d getf $ln0n0c0b0m0p0 1
+
+# Convert integers to float on $lm0v and write to $ln0v
+ior $lm8v $lr0 $nowrite
+fvadd $aluf -$lr0 $ln8v
+# Multiply 0.33333333
+fvmul $mauf $lr2 $nowrite
+ffloor $mauf $nowrite
+# Multiply 3.0
+fvmul $aluf $lr4 $nowrite
+# Calculate mod 3 in float
+fvadd $ln8v -$mauf $nowrite
+# Convert float to int
+fftoi $mauf $ln8v
+
+# Convert integers to float on $lm0v and write to $ln0v
+ior $lm16v $lr0 $nowrite
+fvadd $aluf -$lr0 $ln16v
+# Multiply 0.33333333
+fvmul $mauf $lr2 $nowrite
+ffloor $mauf $nowrite
+# Multiply 3.0
+fvmul $aluf $lr4 $nowrite
+# Calculate mod 3 in float
+fvadd $ln16v -$mauf $nowrite
+# Convert float to int
+fftoi $mauf $ln16v
+
+# Convert integers to float on $lm0v and write to $ln0v
+ior $lm24v $lr0 $nowrite
+fvadd $aluf -$lr0 $ln24v
+# Multiply 0.33333333
+fvmul $mauf $lr2 $nowrite
+ffloor $mauf $nowrite
+# Multiply 3.0
+fvmul $aluf $lr4 $nowrite
+# Calculate mod 3 in float
+fvadd $ln24v -$mauf $nowrite
+# Convert float to int
+fftoi $mauf $ln24v
