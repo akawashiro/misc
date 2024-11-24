@@ -4,8 +4,9 @@ d getd $lm0n0c0b0m0 4
 dmwrite $lm0v $lx0
 dmread $lx0 $nowrite
 
-# Write transposed into matrix register
+# Block float the contents of matrix register
 dbfn $mreadf $nowrite
+# Write transposed into matrix register
 dmwrite $aluf $lx0
 
 # Block float the input
