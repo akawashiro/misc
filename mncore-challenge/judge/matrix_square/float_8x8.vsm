@@ -1,5 +1,3 @@
-# d getf $lm0n0c0b0m0 8
-
 # Transpose lm0-lm15 to lr0-15
 fmwrite $lm0v $lx0
 fmwrite $lm8v $lx4
@@ -18,13 +16,12 @@ gmwrite $lr24v $lx4
 gbfn $lm0v $lr32v
 gbfn $lm8v $lr40v
 
-# Matrix multiply
-gmmul $lx $lr32v $lr48v
-gmmul $lx $lr40v $lr56v
-nop/2
+# Matrix multiply and write to Y matrix register
+gmmul $lx $lr32v $nowrite
+fmwrite $mauf $ly0
+gmmul $lx $lr40v $nowrite
+fmwrite $mauf $ly4
 
-# Transpose the input
-fmwrite $lr48v $lx0
-fmwrite $lr56v $lx4
-fmread $lx0 $ln0v
-fmread $lx4 $ln8v
+# Transpose and write the result
+fmread $ly0 $ln0v
+fmread $ly4 $ln8v
