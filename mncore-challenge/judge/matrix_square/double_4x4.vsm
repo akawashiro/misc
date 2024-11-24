@@ -1,1 +1,22 @@
-nop
+d getd $lm0n0c0b0m0 4
+
+# Transpose lm0-7 to ls0-7
+dmwrite $lm0v $lx0
+dmread $lx0 $nowrite
+
+# Write transposed into matrix register
+dbfn $mreadf $nowrite
+dmwrite $aluf $lx0
+
+# Block float the input
+dbfn $lm0v $lr8v
+
+# Matrix multiply
+dmmulu $lx $aluf $nowrite
+dmfmad $lx $lr8v $mauf $nowrite
+
+# Transpose the result
+dmwrite $mauf $lx0
+dmread $lx0 $ln0v
+
+d getd $ln0n0c0b0m0 4
