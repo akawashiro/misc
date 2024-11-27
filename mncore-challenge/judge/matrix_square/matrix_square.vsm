@@ -37,4 +37,4 @@ fmwrite $mauf $ly4
 fmread $ly0 $ln0v
 fmread $ly4 $ln8v
 
-d getf $ln0n0c0b0m0 4
+d getf $ln0n0c0b0m0 8
