@@ -1,115 +1,81 @@
-d getd $lm0n0c0b0m0p0 16
-
 l1bmm@0 $lm0v $lb0
 l1bmm@0 $lm8v $lb16
 l1bmm@0 $lm16v $lb32
 l1bmm@0 $lm24v $lb48
+l1bmm@1 $lm0v $lb64
+l1bmm@1 $lm8v $lb80
+l1bmm@1 $lm16v $lb96
+l1bmm@1 $lm24v $lb112
+l1bmm@2 $lm0v $lb128
+l1bmm@2 $lm8v $lb144
+l1bmm@2 $lm16v $lb160
+l1bmm@2 $lm24v $lb176
+l1bmm@3 $lm0v $lb192
+l1bmm@3 $lm8v $lb208
+l1bmm@3 $lm16v $lb224
+l1bmm@3 $lm24v $lb240
+l1bmm@4 $lm0v $lb256
+l1bmm@4 $lm8v $lb272
+l1bmm@4 $lm16v $lb288
+l1bmm@4 $lm24v $lb304
+l1bmm@5 $lm0v $lb320
+l1bmm@5 $lm8v $lb336
+l1bmm@5 $lm16v $lb352
+l1bmm@5 $lm24v $lb368
+l1bmm@6 $lm0v $lb384
+l1bmm@6 $lm8v $lb400
+l1bmm@6 $lm16v $lb416
+l1bmm@6 $lm24v $lb432
+l1bmm@7 $lm0v $lb448
+l1bmm@7 $lm8v $lb464
+l1bmm@7 $lm16v $lb480
+l1bmm@7 $lm24v $lb496
+l1bmm@8 $lm0v $lb512
+l1bmm@8 $lm8v $lb528
+l1bmm@8 $lm16v $lb544
+l1bmm@8 $lm24v $lb560
+l1bmm@9 $lm0v $lb576
+l1bmm@9 $lm8v $lb592
+l1bmm@9 $lm16v $lb608
+l1bmm@9 $lm24v $lb624
+l1bmm@10 $lm0v $lb640
+l1bmm@10 $lm8v $lb656
+l1bmm@10 $lm16v $lb672
+l1bmm@10 $lm24v $lb688
+l1bmm@11 $lm0v $lb704
+l1bmm@11 $lm8v $lb720
+l1bmm@11 $lm16v $lb736
+l1bmm@11 $lm24v $lb752
+l1bmm@12 $lm0v $lb768
+l1bmm@12 $lm8v $lb784
+l1bmm@12 $lm16v $lb800
+l1bmm@12 $lm24v $lb816
+l1bmm@13 $lm0v $lb832
+l1bmm@13 $lm8v $lb848
+l1bmm@13 $lm16v $lb864
+l1bmm@13 $lm24v $lb880
+l1bmm@14 $lm0v $lb896
+l1bmm@14 $lm8v $lb912
+l1bmm@14 $lm16v $lb928
+l1bmm@14 $lm24v $lb944
+l1bmm@15 $lm0v $lb960
+l1bmm@15 $lm8v $lb976
+l1bmm@15 $lm16v $lb992
+l1bmm@15 $lm24v $lb1008
 nop/2
 l1bmd $lb0 $ln0v
-
-l1bmm@1 $lm0v $lb0
-l1bmm@1 $lm8v $lb16
-l1bmm@1 $lm16v $lb32
-l1bmm@1 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln2v
-
-l1bmm@2 $lm0v $lb0
-l1bmm@2 $lm8v $lb16
-l1bmm@2 $lm16v $lb32
-l1bmm@2 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln4v
-
-l1bmm@3 $lm0v $lb0
-l1bmm@3 $lm8v $lb16
-l1bmm@3 $lm16v $lb32
-l1bmm@3 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln6v
-
-l1bmm@4 $lm0v $lb0
-l1bmm@4 $lm8v $lb16
-l1bmm@4 $lm16v $lb32
-l1bmm@4 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln8v
-
-l1bmm@5 $lm0v $lb0
-l1bmm@5 $lm8v $lb16
-l1bmm@5 $lm16v $lb32
-l1bmm@5 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln10v
-
-l1bmm@6 $lm0v $lb0
-l1bmm@6 $lm8v $lb16
-l1bmm@6 $lm16v $lb32
-l1bmm@6 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln12v
-
-l1bmm@7 $lm0v $lb0
-l1bmm@7 $lm8v $lb16
-l1bmm@7 $lm16v $lb32
-l1bmm@7 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln14v
-
-l1bmm@8 $lm0v $lb0
-l1bmm@8 $lm8v $lb16
-l1bmm@8 $lm16v $lb32
-l1bmm@8 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln16v
-
-l1bmm@9 $lm0v $lb0
-l1bmm@9 $lm8v $lb16
-l1bmm@9 $lm16v $lb32
-l1bmm@9 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln18v
-
-l1bmm@10 $lm0v $lb0
-l1bmm@10 $lm8v $lb16
-l1bmm@10 $lm16v $lb32
-l1bmm@10 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln20v
-
-l1bmm@11 $lm0v $lb0
-l1bmm@11 $lm8v $lb16
-l1bmm@11 $lm16v $lb32
-l1bmm@11 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln22v
-
-l1bmm@12 $lm0v $lb0
-l1bmm@12 $lm8v $lb16
-l1bmm@12 $lm16v $lb32
-l1bmm@12 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln24v
-
-l1bmm@13 $lm0v $lb0
-l1bmm@13 $lm8v $lb16
-l1bmm@13 $lm16v $lb32
-l1bmm@13 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln26v
-
-l1bmm@14 $lm0v $lb0
-l1bmm@14 $lm8v $lb16
-l1bmm@14 $lm16v $lb32
-l1bmm@14 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln28v
-
-l1bmm@15 $lm0v $lb0
-l1bmm@15 $lm8v $lb16
-l1bmm@15 $lm16v $lb32
-l1bmm@15 $lm24v $lb48
-nop/2
-l1bmd $lb0 $ln30v
-
-d getd $ln0n0c0b0p0 1
+l1bmd $lb64 $ln2v
+l1bmd $lb128 $ln4v
+l1bmd $lb192 $ln6v
+l1bmd $lb256 $ln8v
+l1bmd $lb320 $ln10v
+l1bmd $lb384 $ln12v
+l1bmd $lb448 $ln14v
+l1bmd $lb512 $ln16v
+l1bmd $lb576 $ln18v
+l1bmd $lb640 $ln20v
+l1bmd $lb704 $ln22v
+l1bmd $lb768 $ln24v
+l1bmd $lb832 $ln26v
+l1bmd $lb896 $ln28v
+l1bmd $lb960 $ln30v
