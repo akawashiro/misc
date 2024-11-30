@@ -129,6 +129,8 @@ imm i"1" $r31/$imr3
 imm i"1" $r31/$imr4
 
 # d getd $lr0n0c0b0m0p0 16
+d getd $lr14n0c0b0 1
+
 
 # Reduce the $lr0-$lr31 to $lb0-$lb63
 # Note: L1BM is long word addressing different from PE memory
@@ -141,17 +143,19 @@ l1bmrlbor $lr8v2 $lb16
 l1bmrlbor $lr16v2 $lb32
 l1bmrlbor $lr24v2 $lb48
 
+d getd $lb28n0c0b0 4
+
 # Broadcast the $lb0-$lb63 to $lr128-$lr255
 # Broadcast the $lb0-$lb63 to $ls128-$ls255
 nop/2
-l1bmp $lb0 $lr128v $ls128v
-l1bmp $lb4 $lr136v $ls136v
-l1bmp $lb8 $lr144v $ls144v
+l1bmp $lb0  $lr128v $ls128v
+l1bmp $lb4  $lr136v $ls136v
+l1bmp $lb8  $lr144v $ls144v
 l1bmp $lb12 $lr152v $ls152v
 l1bmp $lb16 $lr160v $ls160v
 l1bmp $lb20 $lr168v $ls168v
 l1bmp $lb24 $lr176v $ls176v
-l1bmp $lb28 $lr184v $ls184v
+l1bmp $lb32 $lr184v $ls184v
 l1bmp $lb32 $lr192v $ls192v
 l1bmp $lb36 $lr200v $ls200v
 l1bmp $lb40 $lr208v $ls208v
@@ -159,9 +163,12 @@ l1bmp $lb44 $lr216v $ls216v
 l1bmp $lb48 $lr224v $ls224v
 l1bmp $lb52 $lr232v $ls232v
 l1bmp $lb56 $lr240v $ls240v
-l1bmp $lb60 $lr248v $ls248v
 
-# d getd $lr0n0c0b0m0p0 64
+# l1bmp $lb28 $lr184v $ls184v
+
+# (128 + 28 * 2 = 128 + 56) = 184
+d getd $lr184n0c0b0m0p0 4
+
 # Reduce for PE axis
 lor $lr128 $ls130 $nowrite
 lor $aluf $lr132 $nowrite
