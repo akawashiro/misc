@@ -144,71 +144,71 @@ l1bmrlbor $lr24v2 $lb48
 # Broadcast the $lb0-$lb63 to $lr0-$lr127
 # Broadcast the $lb0-$lb63 to $ls0-$ls127
 nop/2
-l1bmp $llb0 $llr0
-l1bmp $llb8 $llr16
-l1bmp $llb16 $llr32
-l1bmp $llb24 $llr48
-l1bmp $llb32 $llr64
-l1bmp $llb40 $llr80
-l1bmp $llb48 $llr96
-l1bmp $llb56 $llr112
-l1bmp $llb0 $lls0
-l1bmp $llb8 $lls16
-l1bmp $llb16 $lls32
-l1bmp $llb24 $lls48
-l1bmp $llb32 $lls64
-l1bmp $llb40 $lls80
-l1bmp $llb48 $lls96
-l1bmp $llb56 $lls112
+l1bmp $llb0 $llr0v
+l1bmp $llb8 $llr16v
+l1bmp $llb16 $llr32v
+l1bmp $llb24 $llr48v
+l1bmp $llb32 $llr64v
+l1bmp $llb40 $llr80v
+l1bmp $llb48 $llr96v
+l1bmp $llb56 $llr112v
+l1bmp $llb0 $lls0v
+l1bmp $llb8 $lls16v
+l1bmp $llb16 $lls32v
+l1bmp $llb24 $lls48v
+l1bmp $llb32 $lls64v
+l1bmp $llb40 $lls80v
+l1bmp $llb48 $lls96v
+l1bmp $llb56 $lls112v
 
 d getd $lr0n0c0b0m0p0 64
 # Reduce for PE axis
 lor $lr0 $ls2 $nowrite
 lor $aluf $lr4 $nowrite
 lor $aluf $lr6 $ln32
+lor $lr8 $ls10 $nowrite
+lor $aluf $lr12 $nowrite
+lor $aluf $lr14 $ln34
 lor $lr16 $ls18 $nowrite
 lor $aluf $lr20 $nowrite
-lor $aluf $lr22 $ln34
+lor $aluf $lr22 $ln36
+lor $lr24 $ls26 $nowrite
+lor $aluf $lr28 $nowrite
+lor $aluf $lr30 $ln38
 lor $lr32 $ls34 $nowrite
 lor $aluf $lr36 $nowrite
-lor $aluf $lr38 $ln36
+lor $aluf $lr38 $ln40
+lor $lr40 $ls42 $nowrite
+lor $aluf $lr44 $nowrite
+lor $aluf $lr46 $ln42
 lor $lr48 $ls50 $nowrite
 lor $aluf $lr52 $nowrite
-lor $aluf $lr54 $ln38
+lor $aluf $lr54 $ln44
+lor $lr56 $ls58 $nowrite
+lor $aluf $lr60 $nowrite
+lor $aluf $lr62 $ln46
 lor $lr64 $ls66 $nowrite
 lor $aluf $lr68 $nowrite
-lor $aluf $lr70 $ln40
+lor $aluf $lr70 $ln48
+lor $lr72 $ls74 $nowrite
+lor $aluf $lr76 $nowrite
+lor $aluf $lr78 $ln50
 lor $lr80 $ls82 $nowrite
 lor $aluf $lr84 $nowrite
-lor $aluf $lr86 $ln42
+lor $aluf $lr86 $ln52
+lor $lr88 $ls90 $nowrite
+lor $aluf $lr92 $nowrite
+lor $aluf $lr94 $ln54
 lor $lr96 $ls98 $nowrite
 lor $aluf $lr100 $nowrite
-lor $aluf $lr102 $ln44
+lor $aluf $lr102 $ln56
+lor $lr104 $ls106 $nowrite
+lor $aluf $lr108 $nowrite
+lor $aluf $lr110 $ln58
 lor $lr112 $ls114 $nowrite
 lor $aluf $lr116 $nowrite
-lor $aluf $lr118 $ln46
-lor $lr128 $ls130 $nowrite
-lor $aluf $lr132 $nowrite
-lor $aluf $lr134 $ln48
-lor $lr144 $ls146 $nowrite
-lor $aluf $lr148 $nowrite
-lor $aluf $lr150 $ln50
-lor $lr160 $ls162 $nowrite
-lor $aluf $lr164 $nowrite
-lor $aluf $lr166 $ln52
-lor $lr176 $ls178 $nowrite
-lor $aluf $lr180 $nowrite
-lor $aluf $lr182 $ln54
-lor $lr192 $ls194 $nowrite
-lor $aluf $lr196 $nowrite
-lor $aluf $lr198 $ln56
-lor $lr208 $ls210 $nowrite
-lor $aluf $lr212 $nowrite
-lor $aluf $lr214 $ln58
-lor $lr224 $ls226 $nowrite
-lor $aluf $lr228 $nowrite
-lor $aluf $lr230 $ln60
-lor $lr240 $ls242 $nowrite
-lor $aluf $lr244 $nowrite
-lor $aluf $lr246 $ln62
+lor $aluf $lr118 $ln60
+lor $lr120 $ls122 $nowrite
+lor $aluf $lr124 $nowrite
+lor $aluf $lr126 $ln62
 d getd $ln32n0c0b0m0p0 16

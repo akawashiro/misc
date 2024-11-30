@@ -26,16 +26,14 @@ print("# Broadcast the $lb0-$lb63 to $lr0-$lr127")
 print("# Broadcast the $lb0-$lb63 to $ls0-$ls127")
 print("nop/2")
 for l1bm_addr in range(0, 64, 8):
-    print(f"l1bmp $llb{l1bm_addr} $llr{l1bm_addr * 2}")
-for l1bm_addr in range(0, 64, 8):
-    print(f"l1bmp $llb{l1bm_addr} $lls{l1bm_addr * 2}")
+    print(f"l1bmp $llb{l1bm_addr} $llr{l1bm_addr * 2}v $lls{l1bm_addr * 2}v")
 print()
 print("d getd $lr0n0c0b0m0p0 64")
 
 print("# Reduce for PE axis")
 for ans_addr in range(0, 32, 2):
-    print(f"lor $lr{ans_addr * 8} $ls{ans_addr * 8 + 2} $nowrite")
-    print(f"lor $aluf $lr{ans_addr * 8 + 4} $nowrite")
-    print(f"lor $aluf $lr{ans_addr * 8 + 6} $ln{ans_addr + 32}")
+    print(f"lor $lr{ans_addr * 4} $ls{ans_addr * 4 + 2} $nowrite")
+    print(f"lor $aluf $lr{ans_addr * 4 + 4} $nowrite")
+    print(f"lor $aluf $lr{ans_addr * 4 + 6} $ln{ans_addr + 32}")
 
 print("d getd $ln32n0c0b0m0p0 16")
