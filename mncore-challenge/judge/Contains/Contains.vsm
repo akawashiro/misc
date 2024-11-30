@@ -1,3 +1,4 @@
+# Write $lr0-$lr31 in the same layout of A if A[i] is in B
 lxor $lm0 $ln0v $omr1
 lxor $lm0 $ln8v $omr2
 lxor $lm0 $ln16v $omr3
@@ -129,10 +130,19 @@ imm i"1" $r31/$imr4
 
 d getd $lr0n0c0b0m0p0 16
 
+# Reduce the $lr0-$lr31 to $lb0-$lb63
+# Note: L1BM is long word addressing different from PE memory
+# lb0-lb3 is corresponding to addr 0 of the final answer
+# lb0: PE0, lb1: PE1, lb2: PE2, lb3: PE3
+# lb4-lb7 is corresponding to addr 1 of the final answer
+# lb4: PE0, lb5: PE1, lb6: PE2, lb7: PE3
 l1bmrlbor $lr0v2 $lb0
 l1bmrlbor $lr8v2 $lb16
 l1bmrlbor $lr16v2 $lb32
 l1bmrlbor $lr24v2 $lb48
+
+# Broadcast the $lb0-$lb63 to $lr0-$lr127
+# Broadcast the $lb0-$lb63 to $ls0-$ls127
 nop/2
 l1bmp $llb0 $llr0
 l1bmp $llb8 $llr16
@@ -150,7 +160,9 @@ l1bmp $llb32 $lls64
 l1bmp $llb40 $lls80
 l1bmp $llb48 $lls96
 l1bmp $llb56 $lls112
+
 d getd $lr0n0c0b0m0p0 64
+# Reduce for PE axis
 lor $lr0 $ls2 $nowrite
 lor $aluf $lr4 $nowrite
 lor $aluf $lr6 $ln32
