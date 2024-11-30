@@ -32,10 +32,10 @@ print()
 print("# d getd $lr0n0c0b0m0p0 64")
 
 print("# Reduce for PE axis")
-for ans_addr in range(0, 32, 2):
+for ans_addr in range(0, 32, 8):
     reg_addr = 128 + ans_addr * 4
-    print(f"lor $lr{reg_addr} $ls{reg_addr + 2} $nowrite")
-    print(f"lor $aluf $lr{reg_addr + 4} $nowrite")
-    print(f"lor $aluf $lr{reg_addr + 6} $ln{ans_addr + 32}")
+    print(f"lor $lr{reg_addr}v8 $ls{reg_addr + 2}v8 $nowrite")
+    print(f"lor $aluf $lr{reg_addr + 4}v8 $nowrite")
+    print(f"lor $aluf $lr{reg_addr + 6}v8 $ln{ans_addr + 32}v2")
 
 print("# d getd $ln32n0c0b0m0p0 16")
