@@ -1,91 +1,202 @@
-# Show b
-# d getd $ln0n0c0b0m0p0 16
+lxor $lm0 $ln0v $omr1
+lxor $lm0 $ln8v $omr2
+lxor $lm0 $ln16v $omr3
+lxor $lm0 $ln24v $omr4
+imm i"1" $r1/$imr1
+imm i"1" $r1/$imr2
+imm i"1" $r1/$imr3
+imm i"1" $r1/$imr4
+lxor $lm2 $ln0v $omr1
+lxor $lm2 $ln8v $omr2
+lxor $lm2 $ln16v $omr3
+lxor $lm2 $ln24v $omr4
+imm i"1" $r3/$imr1
+imm i"1" $r3/$imr2
+imm i"1" $r3/$imr3
+imm i"1" $r3/$imr4
+lxor $lm4 $ln0v $omr1
+lxor $lm4 $ln8v $omr2
+lxor $lm4 $ln16v $omr3
+lxor $lm4 $ln24v $omr4
+imm i"1" $r5/$imr1
+imm i"1" $r5/$imr2
+imm i"1" $r5/$imr3
+imm i"1" $r5/$imr4
+lxor $lm6 $ln0v $omr1
+lxor $lm6 $ln8v $omr2
+lxor $lm6 $ln16v $omr3
+lxor $lm6 $ln24v $omr4
+imm i"1" $r7/$imr1
+imm i"1" $r7/$imr2
+imm i"1" $r7/$imr3
+imm i"1" $r7/$imr4
+lxor $lm8 $ln0v $omr1
+lxor $lm8 $ln8v $omr2
+lxor $lm8 $ln16v $omr3
+lxor $lm8 $ln24v $omr4
+imm i"1" $r9/$imr1
+imm i"1" $r9/$imr2
+imm i"1" $r9/$imr3
+imm i"1" $r9/$imr4
+lxor $lm10 $ln0v $omr1
+lxor $lm10 $ln8v $omr2
+lxor $lm10 $ln16v $omr3
+lxor $lm10 $ln24v $omr4
+imm i"1" $r11/$imr1
+imm i"1" $r11/$imr2
+imm i"1" $r11/$imr3
+imm i"1" $r11/$imr4
+lxor $lm12 $ln0v $omr1
+lxor $lm12 $ln8v $omr2
+lxor $lm12 $ln16v $omr3
+lxor $lm12 $ln24v $omr4
+imm i"1" $r13/$imr1
+imm i"1" $r13/$imr2
+imm i"1" $r13/$imr3
+imm i"1" $r13/$imr4
+lxor $lm14 $ln0v $omr1
+lxor $lm14 $ln8v $omr2
+lxor $lm14 $ln16v $omr3
+lxor $lm14 $ln24v $omr4
+imm i"1" $r15/$imr1
+imm i"1" $r15/$imr2
+imm i"1" $r15/$imr3
+imm i"1" $r15/$imr4
+lxor $lm16 $ln0v $omr1
+lxor $lm16 $ln8v $omr2
+lxor $lm16 $ln16v $omr3
+lxor $lm16 $ln24v $omr4
+imm i"1" $r17/$imr1
+imm i"1" $r17/$imr2
+imm i"1" $r17/$imr3
+imm i"1" $r17/$imr4
+lxor $lm18 $ln0v $omr1
+lxor $lm18 $ln8v $omr2
+lxor $lm18 $ln16v $omr3
+lxor $lm18 $ln24v $omr4
+imm i"1" $r19/$imr1
+imm i"1" $r19/$imr2
+imm i"1" $r19/$imr3
+imm i"1" $r19/$imr4
+lxor $lm20 $ln0v $omr1
+lxor $lm20 $ln8v $omr2
+lxor $lm20 $ln16v $omr3
+lxor $lm20 $ln24v $omr4
+imm i"1" $r21/$imr1
+imm i"1" $r21/$imr2
+imm i"1" $r21/$imr3
+imm i"1" $r21/$imr4
+lxor $lm22 $ln0v $omr1
+lxor $lm22 $ln8v $omr2
+lxor $lm22 $ln16v $omr3
+lxor $lm22 $ln24v $omr4
+imm i"1" $r23/$imr1
+imm i"1" $r23/$imr2
+imm i"1" $r23/$imr3
+imm i"1" $r23/$imr4
+lxor $lm24 $ln0v $omr1
+lxor $lm24 $ln8v $omr2
+lxor $lm24 $ln16v $omr3
+lxor $lm24 $ln24v $omr4
+imm i"1" $r25/$imr1
+imm i"1" $r25/$imr2
+imm i"1" $r25/$imr3
+imm i"1" $r25/$imr4
+lxor $lm26 $ln0v $omr1
+lxor $lm26 $ln8v $omr2
+lxor $lm26 $ln16v $omr3
+lxor $lm26 $ln24v $omr4
+imm i"1" $r27/$imr1
+imm i"1" $r27/$imr2
+imm i"1" $r27/$imr3
+imm i"1" $r27/$imr4
+lxor $lm28 $ln0v $omr1
+lxor $lm28 $ln8v $omr2
+lxor $lm28 $ln16v $omr3
+lxor $lm28 $ln24v $omr4
+imm i"1" $r29/$imr1
+imm i"1" $r29/$imr2
+imm i"1" $r29/$imr3
+imm i"1" $r29/$imr4
+lxor $lm30 $ln0v $omr1
+lxor $lm30 $ln8v $omr2
+lxor $lm30 $ln16v $omr3
+lxor $lm30 $ln24v $omr4
+imm i"1" $r31/$imr1
+imm i"1" $r31/$imr2
+imm i"1" $r31/$imr3
+imm i"1" $r31/$imr4
 
-# Generate 64 in $lr0
-imm i"64" $r1
-d getd $lr1n0c0b0m0p0 1
+d getd $lr0n0c0b0m0p0 16
 
-# Generate 1 in $lr2
-imm i"1" $r3
-d getd $lr3n0c0b0m0p0 1
-
-# Generate 0 in $lr4
-# Do nothing
-
-# Generate bit mask in $lr4-$lr36
-# $lr4: 1024 - 960
-# $lr6: 960 - 896
-# ...
-# $lr36: 64 - 0
-
+l1bmrlbor $lr0v2 $lb0
+l1bmrlbor $lr8v2 $lb16
+l1bmrlbor $lr16v2 $lb32
+l1bmrlbor $lr24v2 $lb48
 nop/2
-
-llsl $lr0 $ln0v $nowrite
-lor $aluf $lr4 $lr36
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr34
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr32
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr30
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr28
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr26
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr24
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr22
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr20
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr18
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr16
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr14
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr12
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr10
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr8
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr6
-
-lsub $ln0v $lr0 $ln0v
-llsl $lr0 $aluf $nowrite
-lor $aluf $lr4 $lr4
-
-d getd $lr4n0c0b0m0p0 16
-d getd $lr4n0c0b0m0p0 16
+l1bmp $llb0 $llr0
+l1bmp $llb8 $llr16
+l1bmp $llb16 $llr32
+l1bmp $llb24 $llr48
+l1bmp $llb32 $llr64
+l1bmp $llb40 $llr80
+l1bmp $llb48 $llr96
+l1bmp $llb56 $llr112
+l1bmp $llb0 $lls0
+l1bmp $llb8 $lls16
+l1bmp $llb16 $lls32
+l1bmp $llb24 $lls48
+l1bmp $llb32 $lls64
+l1bmp $llb40 $lls80
+l1bmp $llb48 $lls96
+l1bmp $llb56 $lls112
+d getd $lr0n0c0b0m0p0 64
+lor $lr0 $ls2 $nowrite
+lor $aluf $lr4 $nowrite
+lor $aluf $lr6 $ln32
+lor $lr16 $ls18 $nowrite
+lor $aluf $lr20 $nowrite
+lor $aluf $lr22 $ln34
+lor $lr32 $ls34 $nowrite
+lor $aluf $lr36 $nowrite
+lor $aluf $lr38 $ln36
+lor $lr48 $ls50 $nowrite
+lor $aluf $lr52 $nowrite
+lor $aluf $lr54 $ln38
+lor $lr64 $ls66 $nowrite
+lor $aluf $lr68 $nowrite
+lor $aluf $lr70 $ln40
+lor $lr80 $ls82 $nowrite
+lor $aluf $lr84 $nowrite
+lor $aluf $lr86 $ln42
+lor $lr96 $ls98 $nowrite
+lor $aluf $lr100 $nowrite
+lor $aluf $lr102 $ln44
+lor $lr112 $ls114 $nowrite
+lor $aluf $lr116 $nowrite
+lor $aluf $lr118 $ln46
+lor $lr128 $ls130 $nowrite
+lor $aluf $lr132 $nowrite
+lor $aluf $lr134 $ln48
+lor $lr144 $ls146 $nowrite
+lor $aluf $lr148 $nowrite
+lor $aluf $lr150 $ln50
+lor $lr160 $ls162 $nowrite
+lor $aluf $lr164 $nowrite
+lor $aluf $lr166 $ln52
+lor $lr176 $ls178 $nowrite
+lor $aluf $lr180 $nowrite
+lor $aluf $lr182 $ln54
+lor $lr192 $ls194 $nowrite
+lor $aluf $lr196 $nowrite
+lor $aluf $lr198 $ln56
+lor $lr208 $ls210 $nowrite
+lor $aluf $lr212 $nowrite
+lor $aluf $lr214 $ln58
+lor $lr224 $ls226 $nowrite
+lor $aluf $lr228 $nowrite
+lor $aluf $lr230 $ln60
+lor $lr240 $ls242 $nowrite
+lor $aluf $lr244 $nowrite
+lor $aluf $lr246 $ln62
+d getd $ln32n0c0b0m0p0 16
