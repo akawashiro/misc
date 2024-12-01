@@ -1,3 +1,14 @@
+# Generate literal 0 to 15 into $lr0-$lr31
+imm i"4" $s1
+imm i"0" $r1
+imm i"1" $r3
+imm i"2" $r5
+imm i"3" $r7
+nop/2
+ladd $ls0 $lr0v $lr8v
+ladd $ls0 $aluf $lr16v
+ladd $ls0 $aluf $lr24v
+
 # Save MAB ID into $ls256
 lpassa $mabid $ls256
 
@@ -6,49 +17,28 @@ ladd $mabid $aluf $lt
 nop/2
 ldec $lmt $lr128
 
-# Save "1" into $lr100
-imm i"1" $r101
-
-d getd $ltn0c0b0p0 1
-d getd $lm0n0c0b0m0p0 16
-d getd $lr128n0c0b0p0 1
-
-imm i"4" $s1
-imm i"0" $r1
-imm i"1" $r3
-imm i"2" $r5
-imm i"3" $r7
-nop/2
-ladd $ls0 $lr0v $lr8v
-nop/2
-ladd $ls0 $lr8v $lr16v
-nop/2
-ladd $ls0 $lr16v $lr24v
-
-d getd $lr0n0c0b0m0p0 16
-
-nop/2
-
+# Generate cycle masks for each MAB
+# MAB0:  1111111111111111
+# MAB1:  0111111111111111
+# ...
+# MAB15: 0000000000000000
 lsub $lr0v $ls256 $omr1
 lsub $lr8v $ls256 $omr2
 lsub $lr16v $ls256 $omr3
 lsub $lr24v $ls256 $omr4
+# d getd $omr1n0c0b0m2p0 4
 
-d getd $omr1n0c0b0m2p0 4
-
+# Calculate inversion flags without masks
 lsub $lr128 $lm0v $omr5
 lsub $lr128 $lm8v $omr6
 lsub $lr128 $lm16v $omr7
 lsub $lr128 $lm24v $omr8
 
-nop/2
-
-lpassa $lr100 $ls100v/$imr5
-lpassa $lr100 $ls108v/$imr6
-lpassa $lr100 $ls116v/$imr7
-lpassa $lr100 $ls124v/$imr8
-
-d getd $ls100n0c0b0m2p0 16
+lpassa $lr2 $ls100v/$imr5
+lpassa $lr2 $ls108v/$imr6
+lpassa $lr2 $ls116v/$imr7
+lpassa $lr2 $ls124v/$imr8
+# d getd $ls100n0c0b0m2p0 16
 
 # ls200-ls232 B@MAB, lr200-lr232 B@MAB
 lpassa $ls100v $ls200v/$imr1 $lr200v/$imr1
@@ -65,13 +55,8 @@ ladd $lr238 $aluf $nowrite
 ladd $lr240 $aluf $nowrite
 ladd $lr242 $aluf $nowrite
 ladd $lr244 $aluf $nowrite
-ladd $lr246 $aluf $ln0
+ladd $lr246 $aluf $nowrite
 
-# d getd $ls200n0c0b0m2p0 16
-d getd $ln0n0c0b0p0 1
-
-nop/2
-
-l1bmrliadd $ln0 $lb0
+l1bmrliadd $aluf $lb0
 nop/2
 l1bmp $lb0 $ln0
