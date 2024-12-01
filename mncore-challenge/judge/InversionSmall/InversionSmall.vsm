@@ -28,7 +28,7 @@ lsub $lr16v $ls256 $omr3
 lsub $lr24v $ls256 $omr4
 # d getd $omr1n0c0b0m2p0 4
 
-# Calculate inversion flags without masks
+# Calculate inversion flags
 lsub $lr128 $lm0v $omr5/$imr1
 lsub $lr128 $lm8v $omr6/$imr2
 lsub $lr128 $lm16v $omr7/$imr3
@@ -38,24 +38,6 @@ lpassa $lr2 $ls200v/$imr5 $lr200v/$imr5
 lpassa $lr2 $ls208v/$imr6 $lr208v/$imr6
 lpassa $lr2 $ls216v/$imr7 $lr216v/$imr7
 lpassa $lr2 $ls224v/$imr8 $lr224v/$imr8
-
-# # Calculate inversion flags without masks
-# lsub $lr128 $lm0v $omr5
-# lsub $lr128 $lm8v $omr6
-# lsub $lr128 $lm16v $omr7
-# lsub $lr128 $lm24v $omr8
-# 
-# lpassa $lr2 $ls100v/$imr5
-# lpassa $lr2 $ls108v/$imr6
-# lpassa $lr2 $ls116v/$imr7
-# lpassa $lr2 $ls124v/$imr8
-# # d getd $ls100n0c0b0m2p0 16
-# 
-# # ls200-ls232 B@MAB, lr200-lr232 B@MAB
-# lpassa $ls100v $ls200v/$imr1 $lr200v/$imr1
-# lpassa $ls108v $ls208v/$imr2 $lr208v/$imr2
-# lpassa $ls116v $ls216v/$imr3 $lr216v/$imr3
-# lpassa $ls124v $ls224v/$imr4 $lr224v/$imr4
 
 ladd $ls200v $lr208v $ls232v $lr232v
 ladd $ls216v $lr224v $ls240v $lr240v
