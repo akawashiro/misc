@@ -10,11 +10,18 @@ for contents in range(0, 32768, 32 * 8):
 L2B_DATA_SIZE_LW = 16384 // 8
 for l2bm_addr in range(0, L2B_DATA_SIZE_LW, 64 * 4):
     print(f"l2bmd $lc{l2bm_addr} $lb{l2bm_addr // 8}")
+print("nop/2")
 
+L1B_DATA_SIZE_LW = L2B_DATA_SIZE_LW // 8
+print("l1bmd $lb0 $lr0v")
+print("nop/2")
+
+
+print(f"l1bmd $lr0v $lb{L1B_DATA_SIZE_LW}")
 print("nop/2")
 
 for l2bm_addr in range(0, L2B_DATA_SIZE_LW, 64 * 4):
-    print(f"l2bmd $lb{l2bm_addr // 8} $lc{l2bm_addr + L2B_DATA_SIZE_LW}")
+    print(f"l2bmd $lb{l2bm_addr // 8 + L1B_DATA_SIZE_LW} $lc{l2bm_addr + L2B_DATA_SIZE_LW}")
 print("nop/2")
 
 print(f"mvd/n{16384 // 8} $lc{16384 // 8} $p0@0")

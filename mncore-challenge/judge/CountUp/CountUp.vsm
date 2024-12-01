@@ -16391,14 +16391,18 @@ l2bmd $lc1280 $lb160
 l2bmd $lc1536 $lb192
 l2bmd $lc1792 $lb224
 nop/2
-l2bmd $lb0 $lc2048
-l2bmd $lb32 $lc2304
-l2bmd $lb64 $lc2560
-l2bmd $lb96 $lc2816
-l2bmd $lb128 $lc3072
-l2bmd $lb160 $lc3328
-l2bmd $lb192 $lc3584
-l2bmd $lb224 $lc3840
+l1bmd $lb0 $lr0v
+nop/2
+l1bmd $lr0v $lb256
+nop/2
+l2bmd $lb256 $lc2048
+l2bmd $lb288 $lc2304
+l2bmd $lb320 $lc2560
+l2bmd $lb352 $lc2816
+l2bmd $lb384 $lc3072
+l2bmd $lb416 $lc3328
+l2bmd $lb448 $lc3584
+l2bmd $lb480 $lc3840
 nop/2
 mvd/n2048 $lc2048 $p0@0
 mvp/n16384 $p0@0 $d0@0
