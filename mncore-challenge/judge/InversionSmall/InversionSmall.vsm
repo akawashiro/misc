@@ -39,6 +39,7 @@ lpassa $lr2 $ls208v/$imr6 $lr208v/$imr6
 lpassa $lr2 $ls216v/$imr7 $lr216v/$imr7
 lpassa $lr2 $ls224v/$imr8 $lr224v/$imr8
 
+# Reduce in addr axis
 ladd $ls200v $lr208v $ls232v $lr232v
 ladd $ls216v $lr224v $ls240v $lr240v
 ladd $lr232 $ln0 $nowrite # ln0 is zero
@@ -50,6 +51,6 @@ ladd $lr242 $aluf $nowrite
 ladd $lr244 $aluf $nowrite
 ladd $lr246 $aluf $nowrite
 
+# Reduce in MAB axis
 l1bmrliadd $aluf $lb0
-nop/2
-l1bmp $lb0 $ln0
+l1bmm $lbi $ln0
