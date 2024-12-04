@@ -16,6 +16,7 @@ L1B_DATA_SIZE_LW = L2B_DATA_SIZE_LW // 8
 print("l1bmd $lb0 $lr0v")
 print("nop/2")
 
+print("d get $lr0 4")
 
 print(f"l1bmd $lr0v $lb{L1B_DATA_SIZE_LW}")
 print("nop/2")
