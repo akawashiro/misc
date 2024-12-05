@@ -16399,9 +16399,14 @@ nop/2
 
 l1bmd $lb0 $lr0v
 nop/2
-d get $lr0 4
+d get $lr0n0c0b0m0p0 4
 
 # Write your program here
+
+imm i"1" $r8v2
+imm i"2" $r9v2
+
+d get $lr8n0c0b0m0p0 4
 
 l1bmd $lr0v $lb256
 nop/2
