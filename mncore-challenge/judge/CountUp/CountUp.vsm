@@ -16403,8 +16403,12 @@ d get $lr0n0c0b0m0p0 4
 
 # Write your program here
 
+imm i"2" $s0
+
 imm i"1" $r8v2
 imm i"2" $r9v2
+
+lsl $peid $s0 
 
 d get $lr8n0c0b0m0p0 4
 
