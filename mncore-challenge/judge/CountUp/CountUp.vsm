@@ -16399,18 +16399,36 @@ nop/2
 
 l1bmd $lb0 $lr0v
 nop/2
-d get $lr0n0c0b0m0p0 4
 
 # Write your program here
 
-imm i"2" $s0
-
+# 2_W:1
 imm i"1" $r8v2
 imm i"2" $r9v2
 
-lsl $peid $s0 
+# 4_PE:1
+imm i"1" $nowrite
+ilsl $subpeid $aluf $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
 
-d get $lr8n0c0b0m0p0 4
+# 2_MAB:1
+imm i"3" $t
+iand $mabid $aluf $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 2_L1B:1
+imm i"4" $t
+imm i"3" $nowrite
+iand $l1bid $aluf $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+d get $lr0n0c0b1m1p0 4
+d get $lr8n0c0b1m1p0 4
 
 l1bmd $lr0v $lb256
 nop/2
