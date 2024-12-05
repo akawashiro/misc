@@ -16421,9 +16421,15 @@ iadd $t $r9v2 $r9v2
 
 # 2_L1B:1
 imm i"4" $t
-imm i"3" $nowrite
+imm i"1" $nowrite
 iand $l1bid $aluf $nowrite
 ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 8_L2B:1
+imm i"4" $t
+ilsl $l2bid $t $t
 iadd $aluf $r8v2 $r8v2
 iadd $t $r9v2 $r9v2
 
