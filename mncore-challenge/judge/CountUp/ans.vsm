@@ -1,0 +1,69 @@
+# 2_W:1
+imm i"1" $r8v2
+imm i"2" $r9v2
+
+# 4_PE:1
+imm i"1" $nowrite
+ilsl $subpeid $aluf $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 2_MAB:1
+imm i"3" $t
+imm i"1" $s0
+iand $mabid $aluf $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 2_L1B:1
+imm i"4" $t
+iand $l1bid $s0 $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 8_L2B:1
+imm i"5" $nowrite
+ilsl $l2bid $aluf $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 4_L1B:2
+imm i"7" $t
+imm i"6" $nowrite
+iand $l1bid $aluf $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+# 8_MAB:2
+imm i"9" $t
+imm i"14" $nowrite
+iand $mabid $aluf $nowrite
+ilsl $aluf $t $t
+iadd $aluf $r8v2 $r8v2
+iadd $t $r9v2 $r9v2
+
+imm i"0" $s0
+imm i"8192" $t $s1
+iadd $aluf $aluf $s2
+iadd $aluf $t $s3
+nop/2
+iadd $s0v $r8v2 $r8v2
+iadd $s0v $r9v2 $r9v2
+
+nop/2
+l1bmd $lr8v $lb256
+nop/2
+l2bmd $lb256 $lc2048
+l2bmd $lb288 $lc2304
+l2bmd $lb320 $lc2560
+l2bmd $lb352 $lc2816
+l2bmd $lb384 $lc3072
+l2bmd $lb416 $lc3328
+l2bmd $lb448 $lc3584
+l2bmd $lb480 $lc3840
+nop/2
+mvd/n2048 $lc2048 $p0@0
+mvp/n16384 $p0@0 $d0@0
