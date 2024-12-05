@@ -16382,6 +16382,9 @@ d set $lc2044n3c1 1 s7ff9_7ffa
 d set $lc2045n3c1 1 s7ffb_7ffc
 d set $lc2046n3c1 1 s7ffd_7ffe
 d set $lc2047n3c1 1 s7fff_8000
+
+# d get $lc0n0c0 2049
+
 l2bmd $lc0 $lb0
 l2bmd $lc256 $lb32
 l2bmd $lc512 $lb64
@@ -16391,6 +16394,9 @@ l2bmd $lc1280 $lb160
 l2bmd $lc1536 $lb192
 l2bmd $lc1792 $lb224
 nop/2
+
+# d get $lb0n0c0b0 257
+
 l1bmd $lb0 $lr0v
 nop/2
 d get $lr0 4
