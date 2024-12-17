@@ -107,3 +107,20 @@ isub $ls2 $lm120v $omr1
 imm i"1" $ln248v/$imr1
 
 d getf $ln128n0c0b0m0p0 64
+
+l1bmd $ln128v $lb0
+l1bmd $ln136v $lb4
+l1bmd $ln144v $lb8
+l1bmd $ln152v $lb12
+l1bmd $ln160v $lb16
+l1bmd $ln168v $lb20
+l1bmd $ln176v $lb24
+l1bmd $ln184v $lb28
+l1bmd $ln192v $lb32
+l1bmd $ln200v $lb36
+l1bmd $ln208v $lb40
+l1bmd $ln216v $lb44
+l1bmd $ln224v $lb48
+l1bmd $ln232v $lb52
+l1bmd $ln240v $lb56
+l1bmd $ln248v $lb60
