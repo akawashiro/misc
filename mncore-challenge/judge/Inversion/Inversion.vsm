@@ -71,7 +71,7 @@ ipassa $t $lm112v/$imr1
 isub $ls0 $lr120v $omr1
 ipassa $t $lm120v/$imr1
 
-# Write "1" when inversed
+# Write "1" when inversed $ln[128,256]
 nop/2
 isub $ls2 $lm0v $omr1
 imm i"1" $ln128v/$imr1
@@ -108,21 +108,50 @@ imm i"1" $ln248v/$imr1
 
 d getf $ln128n0c0b0m0p0 64
 
-l1bmd $ln128v $lb0
-l1bmd $ln136v $lb256
-l1bmd $ln144v $lb512
-l1bmd $ln152v $lb768
-l1bmd $ln160v $lb1024
-l1bmd $ln168v $lb1280
-l1bmd $ln176v $lb1536
-l1bmd $ln184v $lb1792
-l1bmd $ln192v $lb2048
-l1bmd $ln200v $lb2304
-l1bmd $ln208v $lb2560
-l1bmd $ln216v $lb2816
-l1bmd $ln224v $lb3072
-l1bmd $ln232v $lb3328
-l1bmd $ln240v $lb3584
-l1bmd $ln248v $lb3840
+# Sum to $ln264
+nop/2
+ipassa $ln128v $nowrite
+iadd $aluf $ln136v $nowrite
+iadd $aluf $ln144v $nowrite
+iadd $aluf $ln152v $nowrite
+iadd $aluf $ln160v $nowrite
+iadd $aluf $ln168v $nowrite
+iadd $aluf $ln176v $nowrite
+iadd $aluf $ln184v $nowrite
+iadd $aluf $ln192v $nowrite
+iadd $aluf $ln200v $nowrite
+iadd $aluf $ln208v $nowrite
+iadd $aluf $ln216v $nowrite
+iadd $aluf $ln224v $nowrite
+iadd $aluf $ln232v $nowrite
+iadd $aluf $ln240v $nowrite
+iadd $aluf $ln248v $nowrite
+ipassa $aluf $ln256v
+nop/2
+ipassa $ln256 $nowrite
+iadd $aluf $ln258 $nowrite
+iadd $aluf $ln260 $nowrite
+iadd $aluf $ln262 $nowrite
+ipassa $aluf $ln264
 
-l2bmriiadd $lb0 $lc0
+d getf $ln264n0c0b0m0p0 1
+
+# nop/2
+# l1bmd $ln128v $lb0
+# l1bmd $ln136v $lb256
+# l1bmd $ln144v $lb512
+# l1bmd $ln152v $lb768
+# l1bmd $ln160v $lb1024
+# l1bmd $ln168v $lb1280
+# l1bmd $ln176v $lb1536
+# l1bmd $ln184v $lb1792
+# l1bmd $ln192v $lb2048
+# l1bmd $ln200v $lb2304
+# l1bmd $ln208v $lb2560
+# l1bmd $ln216v $lb2816
+# l1bmd $ln224v $lb3072
+# l1bmd $ln232v $lb3328
+# l1bmd $ln240v $lb3584
+# l1bmd $ln248v $lb3840
+# 
+# l2bmriiadd $lb0 $lc0
