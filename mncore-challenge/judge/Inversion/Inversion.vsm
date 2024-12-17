@@ -1,0 +1,73 @@
+# ========== 2_W:0 ==========
+# Generate pivot index on ls0
+imm i"3" $nowrite
+ilsl $l2bid $aluf $nowrite
+iadd $l1bid $aluf $ls0
+
+# Copy pivot to $ls2
+nop/2
+lpassa $ls0 $t
+nop
+ipassa $lmt $s3
+
+# d getf $ls0n2c1b2m0p0 2
+# d getf $lm0n2c1b2m0p0 64
+
+# Generate i"0" ... i"63" on lr[0:128]
+imm i"4" $t
+imm i"0" $lr0
+imm i"1" $lr2
+imm i"2" $lr4
+imm i"3" $lr6
+nop/2
+iadd $lr0v $lt $lr8v
+iadd $aluf $lt $lr16v
+iadd $aluf $lt $lr24v
+iadd $aluf $lt $lr32v
+iadd $aluf $lt $lr40v
+iadd $aluf $lt $lr48v
+iadd $aluf $lt $lr56v
+iadd $aluf $lt $lr64v
+iadd $aluf $lt $lr72v
+iadd $aluf $lt $lr80v
+iadd $aluf $lt $lr88v
+iadd $aluf $lt $lr96v
+iadd $aluf $lt $lr104v
+iadd $aluf $lt $lr112v
+iadd $aluf $lt $lr120v
+
+imm i"255" $t
+isub $ls0 $lr0v $omr1
+ipassa $t $lm0v/$imr1
+isub $ls0 $lr8v $omr1
+ipassa $t $lm8v/$imr1
+isub $ls0 $lr16v $omr1
+ipassa $t $lm16v/$imr1
+isub $ls0 $lr24v $omr1
+ipassa $t $lm24v/$imr1
+isub $ls0 $lr32v $omr1
+ipassa $t $lm32v/$imr1
+isub $ls0 $lr40v $omr1
+ipassa $t $lm40v/$imr1
+isub $ls0 $lr48v $omr1
+ipassa $t $lm48v/$imr1
+isub $ls0 $lr56v $omr1
+ipassa $t $lm56v/$imr1
+isub $ls0 $lr64v $omr1
+ipassa $t $lm64v/$imr1
+isub $ls0 $lr72v $omr1
+ipassa $t $lm72v/$imr1
+isub $ls0 $lr80v $omr1
+ipassa $t $lm80v/$imr1
+isub $ls0 $lr88v $omr1
+ipassa $t $lm88v/$imr1
+isub $ls0 $lr96v $omr1
+ipassa $t $lm96v/$imr1
+isub $ls0 $lr104v $omr1
+ipassa $t $lm104v/$imr1
+isub $ls0 $lr112v $omr1
+ipassa $t $lm112v/$imr1
+isub $ls0 $lr120v $omr1
+ipassa $t $lm120v/$imr1
+
+d getf $lm0n3c1b2m0p0 64
