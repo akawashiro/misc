@@ -10,8 +10,8 @@ lpassa $ls0 $t
 nop
 idec $lmt $ls2
 
-d getf $ls0n3c1b2m0p0 2
-d getf $lm0n3c1b2m0p0 64
+d getf $ls0n0c0b0m0p0 2
+d getf $lm0n0c0b0m0p0 64
 
 # Generate i"0" ... i"63" on lr[0:128]
 imm i"4" $t
@@ -73,37 +73,37 @@ ipassa $t $lm120v/$imr1
 
 # Write "1" when inversed
 nop/2
-isub $ls2 $lm0 $omr1
+isub $ls2 $lm0v $omr1
 imm i"1" $ln128v/$imr1
-isub $ls2 $lm8 $omr1
+isub $ls2 $lm8v $omr1
 imm i"1" $ln136v/$imr1
-isub $ls2 $lm16 $omr1
+isub $ls2 $lm16v $omr1
 imm i"1" $ln144v/$imr1
-isub $ls2 $lm24 $omr1
+isub $ls2 $lm24v $omr1
 imm i"1" $ln152v/$imr1
-isub $ls2 $lm32 $omr1
+isub $ls2 $lm32v $omr1
 imm i"1" $ln160v/$imr1
-isub $ls2 $lm40 $omr1
+isub $ls2 $lm40v $omr1
 imm i"1" $ln168v/$imr1
-isub $ls2 $lm48 $omr1
+isub $ls2 $lm48v $omr1
 imm i"1" $ln176v/$imr1
-isub $ls2 $lm56 $omr1
+isub $ls2 $lm56v $omr1
 imm i"1" $ln184v/$imr1
-isub $ls2 $lm64 $omr1
+isub $ls2 $lm64v $omr1
 imm i"1" $ln192v/$imr1
-isub $ls2 $lm72 $omr1
+isub $ls2 $lm72v $omr1
 imm i"1" $ln200v/$imr1
-isub $ls2 $lm80 $omr1
+isub $ls2 $lm80v $omr1
 imm i"1" $ln208v/$imr1
-isub $ls2 $lm88 $omr1
+isub $ls2 $lm88v $omr1
 imm i"1" $ln216v/$imr1
-isub $ls2 $lm96 $omr1
+isub $ls2 $lm96v $omr1
 imm i"1" $ln224v/$imr1
-isub $ls2 $lm104 $omr1
+isub $ls2 $lm104v $omr1
 imm i"1" $ln232v/$imr1
-isub $ls2 $lm112 $omr1
+isub $ls2 $lm112v $omr1
 imm i"1" $ln240v/$imr1
-isub $ls2 $lm120 $omr1
+isub $ls2 $lm120v $omr1
 imm i"1" $ln248v/$imr1
 
-d getf $ln128n3c1b2m0p0 64
+d getf $ln128n0c0b0m0p0 64
