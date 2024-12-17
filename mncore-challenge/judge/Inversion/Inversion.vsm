@@ -4,14 +4,14 @@ imm i"3" $nowrite
 ilsl $l2bid $aluf $nowrite
 iadd $l1bid $aluf $ls0
 
-# Copy pivot to $ls2
+# Copy pivot - 1 to $ls2
 nop/2
 lpassa $ls0 $t
 nop
-ipassa $lmt $s3
+idec $lmt $ls2
 
-# d getf $ls0n2c1b2m0p0 2
-# d getf $lm0n2c1b2m0p0 64
+d getf $ls0n3c1b2m0p0 2
+d getf $lm0n3c1b2m0p0 64
 
 # Generate i"0" ... i"63" on lr[0:128]
 imm i"4" $t
@@ -36,6 +36,7 @@ iadd $aluf $lt $lr104v
 iadd $aluf $lt $lr112v
 iadd $aluf $lt $lr120v
 
+# Fill with big value if we don't need it.
 imm i"255" $t
 isub $ls0 $lr0v $omr1
 ipassa $t $lm0v/$imr1
@@ -70,4 +71,39 @@ ipassa $t $lm112v/$imr1
 isub $ls0 $lr120v $omr1
 ipassa $t $lm120v/$imr1
 
-d getf $lm0n3c1b2m0p0 64
+# Write "1" when inversed
+nop/2
+isub $ls2 $lm0 $omr1
+imm i"1" $ln128v/$imr1
+isub $ls2 $lm8 $omr1
+imm i"1" $ln136v/$imr1
+isub $ls2 $lm16 $omr1
+imm i"1" $ln144v/$imr1
+isub $ls2 $lm24 $omr1
+imm i"1" $ln152v/$imr1
+isub $ls2 $lm32 $omr1
+imm i"1" $ln160v/$imr1
+isub $ls2 $lm40 $omr1
+imm i"1" $ln168v/$imr1
+isub $ls2 $lm48 $omr1
+imm i"1" $ln176v/$imr1
+isub $ls2 $lm56 $omr1
+imm i"1" $ln184v/$imr1
+isub $ls2 $lm64 $omr1
+imm i"1" $ln192v/$imr1
+isub $ls2 $lm72 $omr1
+imm i"1" $ln200v/$imr1
+isub $ls2 $lm80 $omr1
+imm i"1" $ln208v/$imr1
+isub $ls2 $lm88 $omr1
+imm i"1" $ln216v/$imr1
+isub $ls2 $lm96 $omr1
+imm i"1" $ln224v/$imr1
+isub $ls2 $lm104 $omr1
+imm i"1" $ln232v/$imr1
+isub $ls2 $lm112 $omr1
+imm i"1" $ln240v/$imr1
+isub $ls2 $lm120 $omr1
+imm i"1" $ln248v/$imr1
+
+d getf $ln128n3c1b2m0p0 64
