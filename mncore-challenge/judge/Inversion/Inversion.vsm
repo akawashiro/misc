@@ -134,24 +134,32 @@ iadd $aluf $ln260 $nowrite
 iadd $aluf $ln262 $nowrite
 ipassa $aluf $ln264
 
-d getf $ln264n0c0b0m0p0 1
+d getf $ln264n0c0m0p0 1
 
-# nop/2
-# l1bmd $ln128v $lb0
-# l1bmd $ln136v $lb256
-# l1bmd $ln144v $lb512
-# l1bmd $ln152v $lb768
-# l1bmd $ln160v $lb1024
-# l1bmd $ln168v $lb1280
-# l1bmd $ln176v $lb1536
-# l1bmd $ln184v $lb1792
-# l1bmd $ln192v $lb2048
-# l1bmd $ln200v $lb2304
-# l1bmd $ln208v $lb2560
-# l1bmd $ln216v $lb2816
-# l1bmd $ln224v $lb3072
-# l1bmd $ln232v $lb3328
-# l1bmd $ln240v $lb3584
-# l1bmd $ln248v $lb3840
-# 
-# l2bmriiadd $lb0 $lc0
+nop/2
+l1bmd $ln264 $lb0
+
+d getf $lb0n0c0b0 1
+
+nop/2
+l2bmriiadd $lb0 $lc0
+nop/2
+
+d getf $lc0n0c0 1
+
+mvriiadd/n64 $lc0 $p0@0
+nop/2
+
+d getf $p0n0c0 1
+
+mvb/n64 $p0@0 $lc0
+nop/2
+
+d getf $lc0n0c0 1
+
+l2bmb $lc0 $lb0
+nop/2
+
+d getf $lb0n0c0b0 1
+
+l1bmd $lb0 $ln0v
