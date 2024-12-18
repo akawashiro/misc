@@ -1,16 +1,20 @@
-# ========== 2_W:0 ==========
-# Generate pivot index on ls0
+# Generate pivot index on $ls0
 imm i"3" $nowrite
 ilsl $l2bid $aluf $nowrite
 iadd $l1bid $aluf $ls0
 
-# Copy pivot - 1 to $ls2
-nop/2
-lpassa $ls0 $t
+# Show pivot index
+d getf $ls0n0c0m0p0 1
+
+# Copy (pivot - 1) to $ls2
+iadd $aluf $aluf $lt
 nop
 idec $lmt $ls2
 
-d getf $ls0n0c0b0m0p0 2
+# Show (pivot - 1)
+d getf $ls2n0c0m0p0 1
+
+# Show input
 d getf $lm0n0c0b0m0p0 64
 
 # Generate i"0" ... i"63" on lr[0:128]
@@ -134,7 +138,7 @@ iadd $aluf $ln260 $nowrite
 iadd $aluf $ln262 $nowrite
 ipassa $aluf $ln264
 
-d getf $ln264n0c0m0p0 1
+d getf $ln264m0p0 1
 
 nop/2
 l1bmd $ln264 $lb0
