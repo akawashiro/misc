@@ -112,7 +112,7 @@ imm i"1" $ln248v/$imr1
 
 d getf $ln128n0c0b0m0p0 64
 
-# Sum to $ln264
+# Sum to $aluf
 nop/2
 ipassa $ln128v $nowrite
 iadd $aluf $ln136v $nowrite
@@ -136,34 +136,31 @@ ipassa $ln256 $nowrite
 iadd $aluf $ln258 $nowrite
 iadd $aluf $ln260 $nowrite
 iadd $aluf $ln262 $nowrite
-ipassa $aluf $ln264
 
-d getf $ln264m0p0 1
-
-nop/2
-l1bmd $ln264 $lb0
-
+# Concat to L1BM
+l1bmd $aluf $lb0
 d getf $lb0n0c0b0 1
 
+# Reduce to L2BM
 nop/2
 l2bmriiadd $lb0 $lc0
-nop/2
-
 d getf $lc0n0c0 1
 
-mvriiadd/n64 $lc0 $p0@0
+# Reduce to PDM
 nop/2
-
+mvriiadd/n64 $lc0 $p0@0
 d getf $p0n0c0 1
 
-mvb/n64 $p0@0 $lc0
+# Broadcast from PDM to L2BM
 nop/2
-
+mvb/n64 $p0@0 $lc0
 d getf $lc0n0c0 1
 
-l2bmb $lc0 $lb0
+# Broadcast from L2BM to L1BM
 nop/2
-
+l2bmb $lc0 $lb0
 d getf $lb0n0c0b0 1
 
+# Distribute to LM1
+nop/2
 l1bmd $lb0 $ln0v
