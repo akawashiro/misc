@@ -1,0 +1,27 @@
+# Transpose lm0-lm15 to lr0-15
+fmwrite $lm0v $lx0
+fmwrite $lm8v $lx4
+fmread $lx0 $lr0v
+fmread $lx4 $lr8v
+
+# Block float lr0-lr15 to lr16-lr31
+gbfn $lr0v $lr16v
+gbfn $lr8v $lr24v
+
+# Write block-floated matrix to matrix register
+gmwrite $lr16v $lx0
+gmwrite $lr24v $lx4
+
+# Block float the original input
+gbfn $lm0v $lr32v
+gbfn $lm8v $lr40v
+
+# Matrix multiply and write to Y matrix register
+gmmul $lx $lr32v $nowrite
+fmwrite $mauf $ly0
+gmmul $lx $lr40v $nowrite
+fmwrite $mauf $ly4
+
+# Transpose and write the result
+fmread $ly0 $ln0v
+fmread $ly4 $ln8v

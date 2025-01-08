@@ -1,0 +1,15 @@
+ladd $lm2048v2 $lm2048v2 $t
+nop
+lpassa $lmt0 $ln0v2
+
+ladd $lm2056v2 $lm2056v2 $t
+nop
+lpassa $lmt0 $ln8v2
+
+ladd $lm2064v2 $lm2064v2 $t
+nop
+lpassa $lmt0 $ln16v2
+
+ladd $lm2072v2 $lm2072v2 $t
+nop
+lpassa $lmt0 $ln24v2
