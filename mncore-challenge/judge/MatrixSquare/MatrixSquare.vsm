@@ -34,9 +34,17 @@ hbfn/9 $llm16vr $lr72v
 hbfn/9 $llm32vr $lr80v
 hbfn/9 $llm48vr $lr88v
 
+hmwrite $llr64v $llx0
+hmwrite $llr80v $llx8
+
 # d getbh $lr64n0c0b0m0p0 16
 
-hmmul $lx $lr64v $lln0v
-hmmul $lx $lr72v $lln16v
-hmmul $lx $lr80v $lln32v
-hmmul $lx $lr88v $lln48v
+# hmmul $lx $lr64v $lln0v
+# hmmul $lx $lr72v $lln16v
+# hmmul $lx $lr80v $lln32v
+# hmmul $lx $lr88v $lln48v
+
+hmmul $lx $lr32v $lln0v
+hmmul $lx $lr40v $lln16v
+hmmul $lx $lr48v $lln32v
+hmmul $lx $lr56v $lln48v
