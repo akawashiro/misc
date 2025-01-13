@@ -1,0 +1,24 @@
+d getf $lm0n0c0b0m0p0 32
+
+hmwrite $llm0vr $lx0
+hmwrite $llm16vr $lx4
+hmwrite $llm32vr $lx8
+hmwrite $llm48vr $lx12
+
+fmread $lx0 $lr0v
+fmread $lx4 $lr8v
+fmread $lx8 $lr16v
+fmread $lx12 $lr24v
+
+d geth $lr0n0c0b0m0p0 32
+
+hbfn/9 $llr0v $llr32v
+hbfn/9 $llr16v $llr48v
+
+hmwrite $llr32v $llx0
+hmwrite $llr48v $llx8
+
+hmmul $lx $lr32v $lln0v
+hmmul $lx $lr40v $lln16v
+hmmul $lx $lr48v $lln32v
+hmmul $lx $lr56v $lln48v
