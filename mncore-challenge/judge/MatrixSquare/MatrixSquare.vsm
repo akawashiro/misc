@@ -1,32 +1,19 @@
 # Show the original input
-d getf $lm0n0c0b0m0 32
+# d getf $lm0n0c0b0m0 32
 
 # Transpose $lm[0-64] in float precision to $lr[0-32] in half precision
 hmwrite $llm0vr $lx0
 hmwrite $llm16vr $lx4
 hmwrite $llm32vr $lx8
 hmwrite $llm48vr $lx12
-
-d geth $lx0n0c0b0m0 16
-
+# d geth $lx0n0c0b0m0 16
 hmread $llx0 $llr0v
 hmread $llx8 $llr16v
-
-d geth $lr0n0c0b0m0 16
-
-nop/2
+# d geth $lr0n0c0b0m0 16
 
 # Block float $lr[0-32] to $lr[32-64]
 hbfn/9 $llr0v $llr32v
 hbfn/9 $llr16v $llr48v
-
-# d getbh $lr32n0c0b0m0 16
-
-# Write block-floated matrix to matrix register
-hmwrite $llr32v $llx0
-hmwrite $llr48v $llx8
-
-# d getbh $lx0n0c0b0m0p0 16
 
 # Block float the original input $lm[0-64] in float precision to $lr[64-96]
 hbfn/9 $llm0vr $lr64v
@@ -34,15 +21,9 @@ hbfn/9 $llm16vr $lr72v
 hbfn/9 $llm32vr $lr80v
 hbfn/9 $llm48vr $lr88v
 
+# Write block-floated matrix to matrix register
 hmwrite $llr64v $llx0
 hmwrite $llr80v $llx8
-
-# d getbh $lr64n0c0b0m0p0 16
-
-# hmmul $lx $lr64v $lln0v
-# hmmul $lx $lr72v $lln16v
-# hmmul $lx $lr80v $lln32v
-# hmmul $lx $lr88v $lln48v
 
 hmmul $lx $lr32v $lln0v
 hmmul $lx $lr40v $lln16v
