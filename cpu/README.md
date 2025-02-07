@@ -2,3 +2,4 @@
 - https://github.com/ejrh/cpu
 - https://exp.mtl.t.u-tokyo.ac.jp/2022/b3exp/-/wikis/home
 - https://making-cpu.github.io/archive/
+- https://yamin.cis.k.hosei.ac.jp/lectures/cod/
