@@ -10,7 +10,6 @@ module pc (
 endmodule
 
 module pc_plus_4 (
-    input logic clk,
     input logic [31:0] pc_in,
     output logic [31:0] pc_out
 );
