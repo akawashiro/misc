@@ -13,5 +13,5 @@ module pc_plus_4 (
     input logic [31:0] pc_in,
     output logic [31:0] pc_out
 );
-    pc_out <= pc_in + 4;
+    assign pc_out = pc_in + 4;
 endmodule
