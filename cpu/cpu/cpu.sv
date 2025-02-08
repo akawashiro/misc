@@ -72,9 +72,8 @@ module register_file (
     always_ff @(posedge clk)
         if (reset) begin
             for (int i = 0; i < 32; i = i + 1) begin
-                // TODO: Initialize the registers to 0. Now 3 is used for
-                // testing.
-                registers[i] <= 3;
+                // TODO: Initialize the registers to 0.
+                registers[i] <= i;
             end
         end
         else begin
@@ -118,7 +117,8 @@ module control_unit (
     input logic [6:0] opcode,
     input logic [2:0] funct3,
     input logic [6:0] funct7,
-    output logic [2:0] alu_op
+    output logic [2:0] alu_op,
+    output logic [0:0] reg_write
 );
     always_comb begin
         alu_op = ADD;
@@ -130,12 +130,18 @@ module cpu (
     input logic reset,
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check,
-    output logic [2:0] alu_op_check
+    output logic [2:0] alu_op_check,
+    output logic [31:0] register_data_out1_check,
+    output logic [31:0] register_data_out2_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
     logic [31:0] instruction;
     logic [2:0] alu_op;
+    logic [31:0] register_data_out1;
+    logic [31:0] register_data_out2;
+    logic [31:0] register_data_in;
+    logic [0:0] reg_write;
 
     pc pc_0 (
         .clk(clk),
@@ -160,7 +166,22 @@ module cpu (
         .opcode(instruction[6:0]),
         .funct3(instruction[14:12]),
         .funct7(instruction[31:25]),
-        .alu_op(alu_op)
+        .alu_op(alu_op),
+        .reg_write(reg_write)
     );
     assign alu_op_check = alu_op;
+
+    register_file register_file_0 (
+        .rs1(instruction[19:15]),
+        .rs2(instruction[24:20]),
+        .rd(instruction[11:7]),
+        .data_in(register_data_in),
+        .clk(clk),
+        .reset(reset),
+        .write_enable(reg_write),
+        .data_out1(register_data_out1),
+        .data_out2(register_data_out2)
+    );
+    assign register_data_out1_check = register_data_out1;
+    assign register_data_out2_check = register_data_out2;
 endmodule
