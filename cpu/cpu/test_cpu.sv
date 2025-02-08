@@ -127,3 +127,20 @@ module test_alu;
         #10 $display("a < b = %d", result);
     end
 endmodule
+
+module test_sign_extend;
+    logic [11:0] imm;
+    logic [31:0] imm_ext;
+
+    sign_extend sign_extend_inst (
+        .imm(imm),
+        .imm_ext(imm_ext)
+    );
+
+    initial begin
+        imm = 12'b101010101010;
+        #10 $display("imm = %b, imm_ext = %b", imm, imm_ext);
+        imm = 12'b010101010101;
+        #10 $display("imm = %b, imm_ext = %b", imm, imm_ext);
+    end
+endmodule

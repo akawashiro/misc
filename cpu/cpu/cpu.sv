@@ -93,3 +93,10 @@ module alu (
         endcase
     end
 endmodule
+
+module sign_extend (
+    input logic [11:0] imm,
+    output logic [31:0] imm_ext
+);
+    assign imm_ext = {{20{imm[11]}}, imm};
+endmodule
