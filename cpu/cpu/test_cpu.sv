@@ -53,9 +53,11 @@ module test_instruction_memory;
 
     initial begin
         pc = 0;
-        #10 assert(instruction == 32'h005303b3) else $error("instruction = %h", instruction);
+        #10
+        assert(instruction == 32'b0000000_00101_00110_000_00111_0110011) else $error("instruction = %h", instruction);
         pc = 4;
-        #10 assert(instruction == 32'h00000000) else $error("instruction = %h", instruction);
+        #10
+        assert(instruction == 32'b0100000_01000_01001_000_01010_0110011) else $error("instruction = %h", instruction);
     end
 endmodule
 
@@ -189,5 +191,6 @@ module test_cpu;
         #10
         assert(pc_out_check == 4) else $error("pc_out_check = %d", pc_out_check);
         assert(instruction_check == 32'h40848533) else $error("instruction_check = %h", instruction_check);
+        assert(alu_op_check == SUB) else $error("alu_op_check = %d", alu_op_check);
     end
 endmodule

@@ -48,7 +48,7 @@ module instruction_memory (
     // rd:  01010 (10)
     // rs1: 01001 (9)
     // rs2: 01000 (8)
-    assign rom[5'h01] = 32'b0100000_01000_01001_000_01010_0110011;
+    assign rom[1] = 32'b0100000_01000_01001_000_01010_0110011;
 
     // Fill the rest of the ROM with 0s
     genvar i;
@@ -131,7 +131,26 @@ module control_unit (
     output logic [0:0] reg_write
 );
     always_comb begin
-        alu_op = ADD;
+        case (opcode)
+            7'b0110011: begin
+                case (funct3)
+                    3'b000:
+                        case (funct7)
+                            7'b0000000: alu_op = ADD;
+                            7'b0100000: alu_op = SUB;
+                        endcase
+                    3'b001: alu_op = SLL;
+                    3'b010: alu_op = SLT;
+                    3'b011: alu_op = SLT;
+                    3'b100: alu_op = XOR;
+                    3'b101: alu_op = SRL;
+                    3'b110: alu_op = OR;
+                    3'b111: alu_op = AND;
+                    default: alu_op = ADD;
+                endcase
+                reg_write = 1;
+            end
+        endcase
     end
 endmodule
 
