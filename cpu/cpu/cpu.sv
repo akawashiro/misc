@@ -57,6 +57,7 @@ module register_file (
     input logic [4:0] rd,
     input logic [31:0] data_in,
     input logic clk,
+    input logic reset,
     input logic write_enable,
     output logic [31:0] data_out1,
     output logic [31:0] data_out2
@@ -69,7 +70,14 @@ module register_file (
     end
    
     always_ff @(posedge clk)
-    begin
+        if (reset) begin
+            for (int i = 0; i < 32; i = i + 1) begin
+                // TODO: Initialize the registers to 0. Now 3 is used for
+                // testing.
+                registers[i] <= 3;
+            end
+        end
+        else begin
         if (write_enable) begin
             registers[rd[4:0]] <= data_in;
         end
