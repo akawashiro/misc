@@ -155,6 +155,7 @@ module test_cpu;
     logic [2:0] alu_op_check;
     logic [31:0] register_data_out1_check;
     logic [31:0] register_data_out2_check;
+    logic [31:0] b_input_check;
     logic [31:0] register_data_in_check;
     logic [31:0] alu_result_check;
     logic [0:0] reg_write_enable_check;
@@ -169,6 +170,7 @@ module test_cpu;
         .alu_op_check(alu_op_check),
         .register_data_out1_check(register_data_out1_check),
         .register_data_out2_check(register_data_out2_check),
+        .b_input_check(b_input_check),
         .register_data_in_check(register_data_in_check),
         .alu_result_check(alu_result_check),
         .reg_write_check(reg_write_enable_check),
@@ -213,5 +215,8 @@ module test_cpu;
         assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
         assert(imm_ext_check == 12'b000000000001) else $error("imm_ext_check = %b", imm_ext_check);
         assert(use_imm_check == 1) else $error("use_imm_check = %d", use_imm_check);
+        assert(register_data_out1_check == 3012) else $error("register_data_out1_check = %d", register_data_out1_check);
+        assert(b_input_check == 1) else $error("b_input_check = %d", b_input_check);
+        assert(alu_result_check == 3013) else $error("alu_result_check = %d", alu_result_check);
     end
 endmodule

@@ -203,6 +203,7 @@ module cpu (
     output logic [2:0] alu_op_check,
     output logic [31:0] register_data_out1_check,
     output logic [31:0] register_data_out2_check,
+    output logic [31:0] b_input_check,
     output logic [31:0] register_data_in_check,
     output logic [31:0] alu_result_check,
     output logic [0:0] reg_write_check,
@@ -272,9 +273,18 @@ module cpu (
     assign register_data_out2_check = register_data_out2;
     assign register_data_in_check = register_data_in;
 
+    logic [31:0] b_input;
+    b_input_mux b_input_mux_0 (
+        .register_data_out2(register_data_out2),
+        .imm_ext(imm_ext),
+        .use_imm(use_imm),
+        .b_input(b_input)
+    );
+    assign b_input_check = b_input;
+
     alu alu_0 (
         .a(register_data_out1),
-        .b(register_data_out2),
+        .b(b_input),
         .alu_op(alu_op),
         .result(alu_result)
     );
