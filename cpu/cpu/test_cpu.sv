@@ -192,8 +192,8 @@ module test_cpu;
         assert(pc_out_check == 4) else $error("pc_out_check = %d", pc_out_check);
         assert(instruction_check == 32'h40848533) else $error("instruction_check = %h", instruction_check);
         assert(alu_op_check == SUB) else $error("alu_op_check = %d", alu_op_check);
-        assert(register_data_out1_check == 3006) else $error("register_data_out1_check = %d", register_data_out1_check);
-        assert(register_data_out2_check == 3007) else $error("register_data_out2_check = %d", register_data_out2_check);
-        assert(alu_result_check == 2999) else $error("alu_result_check = %d", alu_result_check);
+        assert(register_data_out1_check == 3009) else $error("register_data_out1_check = %d", register_data_out1_check);
+        assert(register_data_out2_check == 3008) else $error("register_data_out2_check = %d", register_data_out2_check);
+        assert(alu_result_check == 1) else $error("alu_result_check = %d", alu_result_check);
     end
 endmodule
