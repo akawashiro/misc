@@ -45,3 +45,28 @@ module instruction_memory (
    
     assign instruction = rom[pc[6:2]];
 endmodule
+
+module register_file (
+    input logic [4:0] rs1,
+    input logic [4:0] rs2,
+    input logic [4:0] rd,
+    input logic [31:0] data_in,
+    input logic clk,
+    input logic write_enable,
+    output logic [31:0] data_out1,
+    output logic [31:0] data_out2
+);
+    logic [31:0] registers [0:31];
+   
+    always_comb begin
+        data_out1 = registers[rs1];
+        data_out2 = registers[rs2];
+    end
+   
+    always_ff @(posedge clk)
+    begin
+        if (write_enable) begin
+            registers[rd[4:0]] <= data_in;
+        end
+    end
+endmodule

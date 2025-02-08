@@ -56,3 +56,38 @@ module test_instruction_memory;
         #10 $display("instruction = %h", instruction);
     end
 endmodule
+
+module test_register_file;
+    logic [4:0] rs1;
+    logic [4:0] rs2;
+    logic [4:0] rd;
+    logic [31:0] data_in;
+    logic clk;
+    logic write_enable;
+    logic [31:0] data_out1;
+    logic [31:0] data_out2;
+
+    register_file register_file_inst (
+        .rs1(rs1),
+        .rs2(rs2),
+        .rd(rd),
+        .data_in(data_in),
+        .clk(clk),
+        .write_enable(write_enable),
+        .data_out1(data_out1),
+        .data_out2(data_out2)
+    );
+
+    initial begin
+        rs1 = 1;
+        rs2 = 3;
+        rd = 3;
+        data_in = 32'hdeadbeef;
+        clk = 0;
+        write_enable = 0;
+        #10 $display("data_out1 = %h, data_out2 = %h", data_out1, data_out2);
+        clk = 1;
+        write_enable = 1;
+        #20 $display("data_out1 = %h, data_out2 = %h", data_out1, data_out2);
+    end
+endmodule
