@@ -185,5 +185,7 @@ module test_cpu;
         #10
         clk = 1;
         reset = 1;
+        assert(pc_out_check == 4) else $error("pc_out_check = %d", pc_out_check);
+        assert(instruction_check == 32'h00000000) else $error("instruction_check = %h", instruction_check);
     end
 endmodule
