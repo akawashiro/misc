@@ -151,6 +151,7 @@ module test_cpu;
     logic [2:0] alu_op_check;
     logic [31:0] register_data_out1_check;
     logic [31:0] register_data_out2_check;
+    logic [31:0] register_data_in_check;
 
     cpu cpu_inst (
         .clk(clk),
@@ -159,7 +160,8 @@ module test_cpu;
         .instruction_check(instruction_check),
         .alu_op_check(alu_op_check),
         .register_data_out1_check(register_data_out1_check),
-        .register_data_out2_check(register_data_out2_check)
+        .register_data_out2_check(register_data_out2_check),
+        .register_data_in_check(register_data_in_check)
     );
 
     initial begin

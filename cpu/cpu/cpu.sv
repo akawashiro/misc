@@ -73,7 +73,7 @@ module register_file (
         if (reset) begin
             for (int i = 0; i < 32; i = i + 1) begin
                 // TODO: Initialize the registers to 0.
-                registers[i] <= i;
+                registers[i] <= i + 3000;
             end
         end
         else begin
@@ -184,4 +184,5 @@ module cpu (
     );
     assign register_data_out1_check = register_data_out1;
     assign register_data_out2_check = register_data_out2;
+    assign register_data_in_check = register_data_in;
 endmodule
