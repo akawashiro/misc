@@ -15,11 +15,11 @@ module test_pc;
         clk = 0;
         pc_in = 4;
         clk = 1;
-        #10 $display("pc_out = %d", pc_out);
+        #10 assert(pc_out == 4) else $error("pc_out = %d", pc_out);
         clk = 0;
         pc_in = 8;
         clk = 1;
-        #10 $display("pc_out = %d", pc_out);
+        #20 assert(pc_out == 8) else $error("pc_out = %d", pc_out);
     end
 endmodule
 
@@ -34,9 +34,9 @@ module test_pc_plus_4;
 
     initial begin
         pc_in = 4;
-        #10 $display("pc_out = %d", pc_out);
+        assert(pc_out == 8) else $error("pc_out = %d", pc_out);
         pc_in = 8;
-        #10 $display("pc_out = %d", pc_out);
+        assert(pc_out == 12) else $error("pc_out = %d", pc_out);
     end
 endmodule
 
@@ -51,9 +51,9 @@ module test_instruction_memory;
 
     initial begin
         pc = 0;
-        #10 $display("instruction = %h", instruction);
+        #10 assert(instruction == 32'h005303b3) else $error("instruction = %h", instruction);
         pc = 4;
-        #10 $display("instruction = %h", instruction);
+        #10 assert(instruction == 32'h00000000) else $error("instruction = %h", instruction);
     end
 endmodule
 
@@ -85,10 +85,9 @@ module test_register_file;
         data_in = 32'hdeadbeef;
         clk = 0;
         write_enable = 0;
-        #10 $display("data_out1 = %h, data_out2 = %h", data_out1, data_out2);
         clk = 1;
         write_enable = 1;
-        #20 $display("data_out1 = %h, data_out2 = %h", data_out1, data_out2);
+        #20 assert(data_out2 == 32'hdeadbeef) else $error("data_out2 = %h", data_out2);
     end
 endmodule
 
@@ -108,23 +107,22 @@ module test_alu;
     initial begin
         a = 4;
         b = 2;
-        #10 $display("a = %d, b = %d", a, b);
         alu_op = ADD;
-        #10 $display("a + b = %d", result);
+        #10 assert(result == 6) else $error("result = %d", result);
         alu_op = SUB;
-        #10 $display("a - b = %d", result);
+        #10 assert(result == 2) else $error("result = %d", result);
         alu_op = AND;
-        #10 $display("a & b = %d", result);
+        #10 assert(result == 0) else $error("result = %d", result);
         alu_op = OR;
-        #10 $display("a | b = %d", result);
+        #10 assert(result == 6) else $error("result = %d", result);
         alu_op = XOR;
-        #10 $display("a ^ b = %d", result);
+        #10 assert(result == 6) else $error("result = %d", result);
         alu_op = SLL;
-        #10 $display("a << b = %d", result);
+        #10 assert(result == 16) else $error("result = %d", result);
         alu_op = SRL;
-        #10 $display("a >> b = %d", result);
+        #10 assert(result == 1) else $error("result = %d", result);
         alu_op = SLT;
-        #10 $display("a < b = %d", result);
+        #10 assert(result == 0) else $error("result = %d", result);
     end
 endmodule
 
@@ -139,8 +137,8 @@ module test_sign_extend;
 
     initial begin
         imm = 12'b101010101010;
-        #10 $display("imm = %b, imm_ext = %b", imm, imm_ext);
+        #10 assert(imm_ext == 32'b11111111111111111111101010101010) else $error("imm_ext = %h", imm_ext);
         imm = 12'b010101010101;
-        #10 $display("imm = %b, imm_ext = %b", imm, imm_ext);
+        #10 assert(imm_ext == 32'b00000000000000000000010101010101) else $error("imm_ext = %h", imm_ext);
     end
 endmodule

@@ -100,3 +100,21 @@ module sign_extend (
 );
     assign imm_ext = {{20{imm[11]}}, imm};
 endmodule
+
+module cpu (
+    input logic clk
+);
+    logic [31:0] pc_in;
+    logic [31:0] pc_out;
+
+    pc pc_0 (
+        .clk(clk),
+        .pc_in(pc_in),
+        .pc_out(pc_out)
+    );
+
+    pc_plus_4 pc_plus_4_0 (
+        .pc_in(pc_out),
+        .pc_out(pc_in)
+    );
+endmodule
