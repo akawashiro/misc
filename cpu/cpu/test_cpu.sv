@@ -145,18 +145,26 @@ endmodule
 
 module test_cpu;
     logic clk;
+    logic reset;
     logic [31:0] pc_out_check;
     logic [31:0] instruction_check;
 
     cpu cpu_inst (
         .clk(clk),
+        .reset(reset),
         .pc_out_check(pc_out_check),
         .instruction_check(instruction_check)
     );
 
     initial begin
+        #0 
         clk = 0;
-        #10 assert(pc_out_check == 0) else $error("pc_out_check = %d", pc_out_check);
-        #10 assert(instruction_check == 32'h005303b3) else $error("instruction_check = %h", instruction_check);
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        assert(pc_out_check == 0) else $error("pc_out_check = %d", pc_out_check);
+        assert(instruction_check == 32'h005303b3) else $error("instruction_check = %h", instruction_check);
     end
 endmodule

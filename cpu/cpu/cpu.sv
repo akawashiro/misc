@@ -1,11 +1,16 @@
 module pc (
     input logic clk,
+    input logic reset,
     input logic [31:0] pc_in,
     output logic [31:0] pc_out
 );
     always_ff @(posedge clk)
     begin
-        pc_out <= pc_in;
+        if (reset) begin
+            pc_out <= 0;
+        end else begin
+            pc_out <= pc_in;
+        end
     end
 endmodule
 
@@ -103,6 +108,7 @@ endmodule
 
 module cpu (
     input logic clk,
+    input logic reset,
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check
 );
@@ -112,6 +118,7 @@ module cpu (
 
     pc pc_0 (
         .clk(clk),
+        .reset(reset),
         .pc_in(pc_in),
         .pc_out(pc_out)
     );
@@ -123,7 +130,7 @@ module cpu (
     );
 
     instruction_memory instruction_memory_0 (
-        .pc(pc_in),
+        .pc(pc_out),
         .instruction(instruction)
     );
     assign instruction_check = instruction;
