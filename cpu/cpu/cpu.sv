@@ -48,11 +48,12 @@ module instruction_memory (
     // rd:  01010 (10)
     // rs1: 01001 (9)
     // rs2: 01000 (8)
+    assign rom[5'h01] = 32'b0100000_01000_01001_000_01010_0110011;
 
     // Fill the rest of the ROM with 0s
     genvar i;
     generate
-        for (i = 1; i < 32; i = i + 1) begin: fill_rom
+        for (i = 2; i < 32; i = i + 1) begin: fill_rom
             assign rom[i] = 32'b0;
         end
     endgenerate

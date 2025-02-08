@@ -15,11 +15,13 @@ module test_pc;
         clk = 0;
         pc_in = 4;
         clk = 1;
-        #10 assert(pc_out == 4) else $error("pc_out = %d", pc_out);
+        #10
+        assert(pc_out == 4) else $error("pc_out = %d", pc_out);
         clk = 0;
         pc_in = 8;
         clk = 1;
-        #20 assert(pc_out == 8) else $error("pc_out = %d", pc_out);
+        #10
+        assert(pc_out == 8) else $error("pc_out = %d", pc_out);
     end
 endmodule
 
@@ -173,6 +175,7 @@ module test_cpu;
         clk = 1;
         reset = 1;
         #10
+        reset = 0;
         assert(pc_out_check == 0) else $error("pc_out_check = %d", pc_out_check);
         assert(instruction_check == 32'h005303b3) else $error("instruction_check = %h", instruction_check);
         assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
@@ -181,11 +184,10 @@ module test_cpu;
         assert(alu_result_check == 6011) else $error("alu_result_check = %d", alu_result_check);
         #10
         clk = 0;
-        reset = 0;
         #10
         clk = 1;
-        reset = 1;
+        #10
         assert(pc_out_check == 4) else $error("pc_out_check = %d", pc_out_check);
-        assert(instruction_check == 32'h00000000) else $error("instruction_check = %h", instruction_check);
+        assert(instruction_check == 32'h40848533) else $error("instruction_check = %h", instruction_check);
     end
 endmodule
