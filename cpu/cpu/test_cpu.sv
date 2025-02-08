@@ -157,6 +157,9 @@ module test_cpu;
     logic [31:0] register_data_out2_check;
     logic [31:0] register_data_in_check;
     logic [31:0] alu_result_check;
+    logic [0:0] reg_write_enable_check;
+    logic [31:0] imm_ext_check;
+    logic use_imm_check;
 
     cpu cpu_inst (
         .clk(clk),
@@ -167,7 +170,10 @@ module test_cpu;
         .register_data_out1_check(register_data_out1_check),
         .register_data_out2_check(register_data_out2_check),
         .register_data_in_check(register_data_in_check),
-        .alu_result_check(alu_result_check)
+        .alu_result_check(alu_result_check),
+        .reg_write_check(reg_write_enable_check),
+        .imm_ext_check(imm_ext_check),
+        .use_imm_check(use_imm_check)
     );
 
     initial begin
@@ -184,6 +190,7 @@ module test_cpu;
         assert(register_data_out1_check == 3006) else $error("register_data_out1_check = %d", register_data_out1_check);
         assert(register_data_out2_check == 3005) else $error("register_data_out2_check = %d", register_data_out2_check);
         assert(alu_result_check == 6011) else $error("alu_result_check = %d", alu_result_check);
+        assert(use_imm_check == 0) else $error("use_imm_check = %d", use_imm_check);
         #10
         clk = 0;
         #10
@@ -195,5 +202,16 @@ module test_cpu;
         assert(register_data_out1_check == 3009) else $error("register_data_out1_check = %d", register_data_out1_check);
         assert(register_data_out2_check == 3008) else $error("register_data_out2_check = %d", register_data_out2_check);
         assert(alu_result_check == 1) else $error("alu_result_check = %d", alu_result_check);
+        assert(use_imm_check == 0) else $error("use_imm_check = %d", use_imm_check);
+        #10
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(pc_out_check == 8) else $error("pc_out_check = %d", pc_out_check);
+        assert(instruction_check == 32'b000000000001_01100_000_01101_0010011) else $error("instruction_check = %h", instruction_check);
+        assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
+        assert(imm_ext_check == 12'b000000000001) else $error("imm_ext_check = %b", imm_ext_check);
+        assert(use_imm_check == 1) else $error("use_imm_check = %d", use_imm_check);
     end
 endmodule
