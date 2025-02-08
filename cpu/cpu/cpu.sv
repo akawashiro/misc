@@ -133,7 +133,8 @@ module cpu (
     output logic [2:0] alu_op_check,
     output logic [31:0] register_data_out1_check,
     output logic [31:0] register_data_out2_check,
-    output logic [31:0] register_data_in_check
+    output logic [31:0] register_data_in_check,
+    output logic [31:0] alu_result_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
@@ -143,6 +144,7 @@ module cpu (
     logic [31:0] register_data_out2;
     logic [31:0] register_data_in;
     logic [0:0] reg_write;
+    logic [31:0] alu_result;
 
     pc pc_0 (
         .clk(clk),
@@ -186,4 +188,12 @@ module cpu (
     assign register_data_out1_check = register_data_out1;
     assign register_data_out2_check = register_data_out2;
     assign register_data_in_check = register_data_in;
+
+    alu alu_0 (
+        .a(register_data_out1),
+        .b(register_data_out2),
+        .alu_op(alu_op),
+        .result(alu_result)
+    );
+    assign alu_result_check = alu_result;
 endmodule
