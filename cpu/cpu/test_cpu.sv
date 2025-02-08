@@ -167,7 +167,6 @@ module test_cpu;
     );
 
     initial begin
-        #0 
         clk = 0;
         reset = 0;
         #10
@@ -180,5 +179,11 @@ module test_cpu;
         assert(register_data_out1_check == 3006) else $error("register_data_out1_check = %d", register_data_out1_check);
         assert(register_data_out2_check == 3005) else $error("register_data_out2_check = %d", register_data_out2_check);
         assert(alu_result_check == 6011) else $error("alu_result_check = %d", alu_result_check);
+        #10
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
     end
 endmodule
