@@ -142,3 +142,21 @@ module test_sign_extend;
         #10 assert(imm_ext == 32'b00000000000000000000010101010101) else $error("imm_ext = %h", imm_ext);
     end
 endmodule
+
+module test_cpu;
+    logic clk;
+    logic [31:0] pc_out_check;
+    logic [31:0] instruction_check;
+
+    cpu cpu_inst (
+        .clk(clk),
+        .pc_out_check(pc_out_check),
+        .instruction_check(instruction_check)
+    );
+
+    initial begin
+        clk = 0;
+        #10 assert(pc_out_check == 0) else $error("pc_out_check = %d", pc_out_check);
+        #10 assert(instruction_check == 32'h005303b3) else $error("instruction_check = %h", instruction_check);
+    end
+endmodule
