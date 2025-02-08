@@ -28,6 +28,7 @@ module instruction_memory (
     logic [31:0] rom [0:31];
    
     // Fill the ROM with RV32I instructions
+    // See https://riscvasm.lucasteske.dev/
     //
     // add x7, x6, x5 # x7 <- x6 + x5
     // 0x005303b3 in hex
@@ -49,6 +50,15 @@ module instruction_memory (
     // rs1: 01001 (9)
     // rs2: 01000 (8)
     assign rom[1] = 32'b0100000_01000_01001_000_01010_0110011;
+    // addi x13, x12, 0x1 # x13 <- x12 + 1
+    // 0x00160693
+    // 000000000001_01100_000_01101_0010011
+    // opcode: 0010011
+    // funct3: 000
+    // rd:  01101 (13)
+    // rs1: 01100 (12)
+    // imm: 000000000001
+    assign rom[2] = 32'b000000000001_01100_000_01101_0010011;
 
     // Fill the rest of the ROM with 0s
     genvar i;
