@@ -102,19 +102,29 @@ module sign_extend (
 endmodule
 
 module cpu (
-    input logic clk
+    input logic clk,
+    output logic [31:0] pc_out_check,
+    output logic [31:0] instruction_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
+    logic [31:0] instruction;
 
     pc pc_0 (
         .clk(clk),
         .pc_in(pc_in),
         .pc_out(pc_out)
     );
+    assign pc_out_check = pc_out;
 
     pc_plus_4 pc_plus_4_0 (
         .pc_in(pc_out),
         .pc_out(pc_in)
     );
+
+    instruction_memory instruction_memory_0 (
+        .pc(pc_in),
+        .instruction(instruction)
+    );
+    assign instruction_check = instruction;
 endmodule
