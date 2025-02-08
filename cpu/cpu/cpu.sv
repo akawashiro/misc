@@ -70,3 +70,26 @@ module register_file (
         end
     end
 endmodule
+
+typedef enum logic [2:0] {ADD, SUB, AND, OR, XOR, SLL, SRL, SLT} alu_op_t;
+
+module alu (
+    input logic [31:0] a,
+    input logic [31:0] b,
+    input logic [2:0] alu_op,
+    output logic [31:0] result
+);
+    always_comb begin
+        case (alu_op)
+            ADD: result = a + b;
+            SUB: result = a - b;
+            AND: result = a & b;
+            OR: result = a | b;
+            XOR: result = a ^ b;
+            SLL: result = a << b;
+            SRL: result = a >> b;
+            SLT: result = (a < b) ? 1 : 0;
+            default: result = 0;
+        endcase
+    end
+endmodule

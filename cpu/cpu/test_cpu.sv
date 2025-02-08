@@ -91,3 +91,39 @@ module test_register_file;
         #20 $display("data_out1 = %h, data_out2 = %h", data_out1, data_out2);
     end
 endmodule
+
+module test_alu;
+    logic [31:0] a;
+    logic [31:0] b;
+    logic [2:0] alu_op;
+    logic [31:0] result;
+
+    alu alu_inst (
+        .a(a),
+        .b(b),
+        .alu_op(alu_op),
+        .result(result)
+    );
+
+    initial begin
+        a = 4;
+        b = 2;
+        #10 $display("a = %d, b = %d", a, b);
+        alu_op = ADD;
+        #10 $display("a + b = %d", result);
+        alu_op = SUB;
+        #10 $display("a - b = %d", result);
+        alu_op = AND;
+        #10 $display("a & b = %d", result);
+        alu_op = OR;
+        #10 $display("a | b = %d", result);
+        alu_op = XOR;
+        #10 $display("a ^ b = %d", result);
+        alu_op = SLL;
+        #10 $display("a << b = %d", result);
+        alu_op = SRL;
+        #10 $display("a >> b = %d", result);
+        alu_op = SLT;
+        #10 $display("a < b = %d", result);
+    end
+endmodule
