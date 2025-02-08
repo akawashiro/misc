@@ -39,3 +39,20 @@ module test_pc_plus_4;
         #10 $display("pc_out = %d", pc_out);
     end
 endmodule
+
+module test_instruction_memory;
+    logic [31:0] pc;
+    logic [31:0] instruction;
+
+    instruction_memory instruction_memory_inst (
+        .pc(pc),
+        .instruction(instruction)
+    );
+
+    initial begin
+        pc = 0;
+        #10 $display("instruction = %h", instruction);
+        pc = 4;
+        #10 $display("instruction = %h", instruction);
+    end
+endmodule
