@@ -35,9 +35,9 @@ module instruction_memory (
     // opcode: 0110011
     // funct3: 000
     // funct7: 0000000
-    // rd: 111
-    // rs1: 110
-    // rs2: 101
+    // rd:  111 (7)
+    // rs1: 110 (6)
+    // rs2: 101 (5)
     assign rom[0] = 32'b000000_00101_00110_000_00111_0110011;
 
     // Fill the rest of the ROM with 0s
@@ -132,7 +132,8 @@ module cpu (
     output logic [31:0] instruction_check,
     output logic [2:0] alu_op_check,
     output logic [31:0] register_data_out1_check,
-    output logic [31:0] register_data_out2_check
+    output logic [31:0] register_data_out2_check,
+    output logic [31:0] register_data_in_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;

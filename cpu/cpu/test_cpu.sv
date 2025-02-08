@@ -175,7 +175,7 @@ module test_cpu;
         assert(pc_out_check == 0) else $error("pc_out_check = %d", pc_out_check);
         assert(instruction_check == 32'h005303b3) else $error("instruction_check = %h", instruction_check);
         assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
-        assert(register_data_out1_check == 0) else $error("register_data_out1_check = %d", register_data_out1_check);
-        assert(register_data_out2_check == 0) else $error("register_data_out2_check = %d", register_data_out2_check);
+        assert(register_data_out1_check == 3006) else $error("register_data_out1_check = %d", register_data_out1_check);
+        assert(register_data_out2_check == 3005) else $error("register_data_out2_check = %d", register_data_out2_check);
     end
 endmodule
