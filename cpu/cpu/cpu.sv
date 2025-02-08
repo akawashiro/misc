@@ -129,11 +129,13 @@ module cpu (
     input logic clk,
     input logic reset,
     output logic [31:0] pc_out_check,
-    output logic [31:0] instruction_check
+    output logic [31:0] instruction_check,
+    output logic [2:0] alu_op_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
     logic [31:0] instruction;
+    logic [2:0] alu_op;
 
     pc pc_0 (
         .clk(clk),
@@ -153,4 +155,12 @@ module cpu (
         .instruction(instruction)
     );
     assign instruction_check = instruction;
+
+    control_unit control_unit_0 (
+        .opcode(instruction[6:0]),
+        .funct3(instruction[14:12]),
+        .funct7(instruction[31:25]),
+        .alu_op(alu_op)
+    );
+    assign alu_op_check = alu_op;
 endmodule
