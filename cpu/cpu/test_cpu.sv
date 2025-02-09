@@ -235,8 +235,8 @@ module test_cpu_add;
         .clk(clk),
         .reset(reset),
         .initial_instructions(initial_instructions),
-        .initial_register_values(initial_register_values)
-        .register_check(register_check),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
     );
 
     initial begin
@@ -252,6 +252,41 @@ module test_cpu_add;
         clk = 1;
         #10
         assert(register_check[7] == 11) else $error("register_check[7] = %d", register_check[7]);
+    end
+endmodule
+
+module test_cpu_sub;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = sub_x10_x9_x8;
+    assign initial_register_values[8] = 8;
+    assign initial_register_values[9] = 9;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[10] == 1) else $error("register_check[10] = %d", register_check[10]);
     end
 endmodule
 
