@@ -220,6 +220,63 @@ logic [31:0] sub_x10_x9_x8 = 32'b0100000_01000_01001_000_01010_0110011;
 // imm: 000000000001
 logic [31:0] addi_x13_x12_1 = 32'b000000000001_01100_000_01101_0010011;
 
+module test_cpu_add;
+    logic clk;
+    logic reset;
+    logic [31:0] pc_out_check;
+    logic [31:0] instruction_check;
+    logic [2:0] alu_op_check;
+    logic [31:0] register_data_out1_check;
+    logic [31:0] register_data_out2_check;
+    logic [31:0] b_input_check;
+    logic [31:0] register_data_in_check;
+    logic [31:0] alu_result_check;
+    logic [0:0] reg_write_enable_check;
+    logic [31:0] imm_ext_check;
+    logic use_imm_check;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = add_x7_x6_x5;
+    assign initial_register_values[5] = 5;
+    assign initial_register_values[6] = 6;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .pc_out_check(pc_out_check),
+        .instruction_check(instruction_check),
+        .alu_op_check(alu_op_check),
+        .register_data_out1_check(register_data_out1_check),
+        .register_data_out2_check(register_data_out2_check),
+        .b_input_check(b_input_check),
+        .register_data_in_check(register_data_in_check),
+        .alu_result_check(alu_result_check),
+        .reg_write_check(reg_write_enable_check),
+        .imm_ext_check(imm_ext_check),
+        .use_imm_check(use_imm_check),
+        .initial_instructions(initial_instructions),
+        .register_check(register_check),
+        .initial_register_values(initial_register_values)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[7] == 11) else $error("register_check[7] = %d", register_check[7]);
+    end
+endmodule
+
 module test_cpu;
     logic clk;
     logic reset;
