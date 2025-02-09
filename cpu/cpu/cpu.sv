@@ -48,6 +48,7 @@ module register_file (
     input logic write_enable,
     output logic [31:0] data_out1,
     output logic [31:0] data_out2,
+    input logic [31:0] initial_values [0:31],
     output logic [31:0] register_check [0:31]
 );
     logic [31:0] registers [0:31];
@@ -63,8 +64,7 @@ module register_file (
     always_ff @(posedge clk)
         if (reset) begin
             for (int i = 0; i < 32; i = i + 1) begin
-                // TODO: Initialize the registers to 0.
-                registers[i] <= i + 3000;
+                registers[i] <= initial_values[i];
             end
         end
         else begin
@@ -170,6 +170,7 @@ module cpu (
     input logic clk,
     input logic reset,
     input logic [31:0] initial_instructions [0:31],
+    input logic [31:0] initial_register_values [0:31],
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check,
     output logic [2:0] alu_op_check,
@@ -243,7 +244,8 @@ module cpu (
         .write_enable(reg_write),
         .data_out1(register_data_out1),
         .data_out2(register_data_out2),
-        .register_check(register_check)
+        .register_check(register_check),
+        .initial_values(initial_register_values)
     );
     assign register_data_out1_check = register_data_out1;
     assign register_data_out2_check = register_data_out2;

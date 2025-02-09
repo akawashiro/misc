@@ -85,9 +85,17 @@ module test_register_file;
     logic write_enable;
     logic [31:0] data_out1;
     logic [31:0] data_out2;
+    logic [31:0] initial_values [31:0];
     // You must use wire instead of logic for the register_check because of
     // https://github.com/steveicarus/iverilog/issues/1001.
     wire [31:0] register_check[0:31];
+
+    generate
+        genvar i;
+        for (i = 0; i < 32; i = i + 1) begin: fill_initial_values
+            assign initial_values[i] = 3000 + i;
+        end
+    endgenerate
 
     register_file register_file_0 (
         .rs1(rs1),
@@ -99,6 +107,7 @@ module test_register_file;
         .write_enable(write_enable),
         .data_out1(data_out1),
         .data_out2(data_out2),
+        .initial_values(initial_values),
         .register_check(register_check)
     );
 
@@ -226,6 +235,7 @@ module test_cpu;
     logic [31:0] imm_ext_check;
     logic use_imm_check;
     logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
     wire [31:0] register_check [0:31];
 
     // Fill the ROM with RV32I instructions
@@ -238,6 +248,13 @@ module test_cpu;
     generate
         for (i = 3; i < 32; i = i + 1) begin: fill_rom
             assign initial_instructions[i] = 32'b0;
+        end
+    endgenerate
+
+    // Fill the register file with initial values
+    generate
+        for (i = 0; i < 32; i = i + 1) begin: fill_initial_values
+            assign initial_register_values[i] = 3000 + i;
         end
     endgenerate
 
@@ -256,7 +273,8 @@ module test_cpu;
         .imm_ext_check(imm_ext_check),
         .use_imm_check(use_imm_check),
         .initial_instructions(initial_instructions),
-        .register_check(register_check)
+        .register_check(register_check),
+        .initial_register_values(initial_register_values)
     );
 
     initial begin
