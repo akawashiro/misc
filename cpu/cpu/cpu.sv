@@ -47,13 +47,17 @@ module register_file (
     input logic reset,
     input logic write_enable,
     output logic [31:0] data_out1,
-    output logic [31:0] data_out2
+    output logic [31:0] data_out2,
+    output logic [31:0] register_check [0:31]
 );
     logic [31:0] registers [0:31];
-   
+
     always_comb begin
         data_out1 = registers[rs1];
         data_out2 = registers[rs2];
+        for (int j = 0; j < 32; j = j + 1) begin
+            register_check[j] = registers[j];
+        end
     end
    
     always_ff @(posedge clk)
@@ -176,7 +180,8 @@ module cpu (
     output logic [31:0] alu_result_check,
     output logic [0:0] reg_write_check,
     output logic [31:0] imm_ext_check,
-    output logic [0:0] use_imm_check
+    output logic [0:0] use_imm_check,
+    output logic [31:0] register_check [0:31]
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
@@ -236,7 +241,8 @@ module cpu (
         .reset(reset),
         .write_enable(reg_write),
         .data_out1(register_data_out1),
-        .data_out2(register_data_out2)
+        .data_out2(register_data_out2),
+        .register_check(register_check)
     );
     assign register_data_out1_check = register_data_out1;
     assign register_data_out2_check = register_data_out2;
