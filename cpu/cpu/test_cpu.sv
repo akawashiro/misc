@@ -210,8 +210,6 @@ logic [31:0] add_x7_x6_x5 = 32'b0000000_00101_00110_000_00111_0110011;
 // rs1: 01001 (9)
 // rs2: 01000 (8)
 logic [31:0] sub_x10_x9_x8 = 32'b0100000_01000_01001_000_01010_0110011;
-logic [31:0] slt_x8_x7_x6 = 32'h0063a433;
-logic [31:0] slt_x8_x6_x7 = 32'h00732433;
 
 // addi x13, x12, 0x1 # x13 <- x12 + 1
 // 0x00160693
@@ -392,5 +390,80 @@ module test_cpu;
         assert(register_data_out1_check == 3012) else $error("register_data_out1_check = %d", register_data_out1_check);
         assert(b_input_check == 1) else $error("b_input_check = %d", b_input_check);
         assert(alu_result_check == 3013) else $error("alu_result_check = %d", alu_result_check);
+    end
+endmodule
+
+// slt x8, x7, x6 # x8 <- x7 < x6
+logic [31:0] slt_x8_x7_x6 = 32'h0063a433;
+// slt x8, x6, x7 # x8 <- x6 < x7
+logic [31:0] slt_x8_x6_x7 = 32'h00732433;
+
+module test_cpu_slt_0;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = slt_x8_x7_x6;
+    assign initial_register_values[6] = 6;
+    assign initial_register_values[7] = 7;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[8] == 0) else $error("register_check[8] = %d", register_check[8]);
+    end
+endmodule
+
+module test_cpu_slt_1;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = slt_x8_x6_x7;
+    assign initial_register_values[6] = 6;
+    assign initial_register_values[7] = 7;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[8] == 1) else $error("register_check[8] = %d", register_check[8]);
     end
 endmodule
