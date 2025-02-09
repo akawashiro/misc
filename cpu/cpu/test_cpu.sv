@@ -45,10 +45,22 @@ endmodule
 module test_instruction_memory;
     logic [31:0] pc;
     logic [31:0] instruction;
+    logic [31:0] initial_instructions [31:0];
+
+    assign initial_instructions[0] = 32'b0000000_00101_00110_000_00111_0110011;
+    assign initial_instructions[1] = 32'b0100000_01000_01001_000_01010_0110011;
+    assign initial_instructions[2] = 32'b000000000001_01100_000_01101_0010011;
+    genvar i;
+    generate
+        for (i = 3; i < 32; i = i + 1) begin: fill_rom
+            assign initial_instructions[i] = 32'b0;
+        end
+    endgenerate
 
     instruction_memory instruction_memory_inst (
         .pc(pc),
-        .instruction(instruction)
+        .instruction(instruction),
+        .initial_instructions(initial_instructions)
     );
 
     initial begin
@@ -161,6 +173,48 @@ module test_cpu;
     logic [0:0] reg_write_enable_check;
     logic [31:0] imm_ext_check;
     logic use_imm_check;
+    logic [31:0] initial_instructions [31:0];
+
+    // Fill the ROM with RV32I instructions
+    // See https://riscvasm.lucasteske.dev/
+    //
+    // add x7, x6, x5 # x7 <- x6 + x5
+    // 0x005303b3 in hex
+    // 0000000_00101_00110_000_00111_0110011 in binary
+    // opcode: 0110011
+    // funct3: 000
+    // funct7: 0000000
+    // rd:  111 (7)
+    // rs1: 110 (6)
+    // rs2: 101 (5)
+    assign initial_instructions[0] = 32'b0000000_00101_00110_000_00111_0110011;
+    // sub x10, x9, x8 # x10 <- x9 - x8
+    // 0x40848533
+    // 0100000_01000_01001_000_01010_0110011
+    // opcode: 0110011
+    // funct3: 000
+    // funct7: 0100000
+    // rd:  01010 (10)
+    // rs1: 01001 (9)
+    // rs2: 01000 (8)
+    assign initial_instructions[1] = 32'b0100000_01000_01001_000_01010_0110011;
+    // addi x13, x12, 0x1 # x13 <- x12 + 1
+    // 0x00160693
+    // 000000000001_01100_000_01101_0010011
+    // opcode: 0010011
+    // funct3: 000
+    // rd:  01101 (13)
+    // rs1: 01100 (12)
+    // imm: 000000000001
+    assign initial_instructions[2] = 32'b000000000001_01100_000_01101_0010011;
+
+    // Fill the rest of the ROM with 0s
+    genvar i;
+    generate
+        for (i = 3; i < 32; i = i + 1) begin: fill_rom
+            assign initial_instructions[i] = 32'b0;
+        end
+    endgenerate
 
     cpu cpu_inst (
         .clk(clk),
@@ -175,7 +229,8 @@ module test_cpu;
         .alu_result_check(alu_result_check),
         .reg_write_check(reg_write_enable_check),
         .imm_ext_check(imm_ext_check),
-        .use_imm_check(use_imm_check)
+        .use_imm_check(use_imm_check),
+        .initial_instructions(initial_instructions)
     );
 
     initial begin

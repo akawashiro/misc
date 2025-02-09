@@ -23,48 +23,15 @@ endmodule
 
 module instruction_memory (
     input logic [31:0] pc,
-    output logic [31:0] instruction
+    output logic [31:0] instruction,
+    input logic [31:0] initial_instructions [0:31]
 );
     logic [31:0] rom [0:31];
-   
-    // Fill the ROM with RV32I instructions
-    // See https://riscvasm.lucasteske.dev/
-    //
-    // add x7, x6, x5 # x7 <- x6 + x5
-    // 0x005303b3 in hex
-    // 0000000_00101_00110_000_00111_0110011 in binary
-    // opcode: 0110011
-    // funct3: 000
-    // funct7: 0000000
-    // rd:  111 (7)
-    // rs1: 110 (6)
-    // rs2: 101 (5)
-    assign rom[0] = 32'b0000000_00101_00110_000_00111_0110011;
-    // sub x10, x9, x8 # x10 <- x9 - x8
-    // 0x40848533
-    // 0100000_01000_01001_000_01010_0110011
-    // opcode: 0110011
-    // funct3: 000
-    // funct7: 0100000
-    // rd:  01010 (10)
-    // rs1: 01001 (9)
-    // rs2: 01000 (8)
-    assign rom[1] = 32'b0100000_01000_01001_000_01010_0110011;
-    // addi x13, x12, 0x1 # x13 <- x12 + 1
-    // 0x00160693
-    // 000000000001_01100_000_01101_0010011
-    // opcode: 0010011
-    // funct3: 000
-    // rd:  01101 (13)
-    // rs1: 01100 (12)
-    // imm: 000000000001
-    assign rom[2] = 32'b000000000001_01100_000_01101_0010011;
 
-    // Fill the rest of the ROM with 0s
     genvar i;
     generate
-        for (i = 3; i < 32; i = i + 1) begin: fill_rom
-            assign rom[i] = 32'b0;
+        for (i = 0; i < 32; i = i + 1) begin: fill_rom
+            assign rom[i] = initial_instructions[i];
         end
     endgenerate
    
@@ -198,6 +165,7 @@ endmodule
 module cpu (
     input logic clk,
     input logic reset,
+    input logic [31:0] initial_instructions [0:31],
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check,
     output logic [2:0] alu_op_check,
@@ -236,7 +204,8 @@ module cpu (
 
     instruction_memory instruction_memory_0 (
         .pc(pc_out),
-        .instruction(instruction)
+        .instruction(instruction),
+        .initial_instructions(initial_instructions)
     );
     assign instruction_check = instruction;
 
