@@ -74,12 +74,12 @@ module register_file (
     end
 endmodule
 
-typedef enum logic [2:0] {ADD, SUB, AND, OR, XOR, SLL, SRL, SLT} alu_op_t;
+typedef enum logic [3:0] {ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT} alu_op_t;
 
 module alu (
     input logic [31:0] a,
     input logic [31:0] b,
-    input logic [2:0] alu_op,
+    input logic [3:0] alu_op,
     output logic [31:0] result
 );
     always_comb begin
@@ -91,6 +91,7 @@ module alu (
             XOR: result = a ^ b;
             SLL: result = a << b;
             SRL: result = a >> b;
+            SRA: result = a >>> b;
             SLT: result = (a < b) ? 1 : 0;
             default: result = 0;
         endcase
@@ -113,7 +114,7 @@ module control_unit (
     input logic [6:0] opcode,
     input logic [2:0] funct3,
     input logic [6:0] funct7,
-    output logic [2:0] alu_op,
+    output logic [3:0] alu_op,
     output logic [0:0] reg_write,
     output logic use_imm
 );
@@ -144,7 +145,12 @@ module control_unit (
                     3'b000: alu_op = ADD;
                     3'b001: alu_op = SLL;
                     3'b100: alu_op = XOR;
-                    3'b101: alu_op = SRL;
+                    3'b101: begin 
+                        case (funct7)
+                            7'b0000000: alu_op = SRL;
+                            7'b0100000: alu_op = SRA;
+                        endcase
+                    end
                     3'b110: alu_op = OR;
                     3'b111: alu_op = AND;
                 endcase
@@ -173,7 +179,7 @@ module cpu (
     input logic [31:0] initial_register_values [0:31],
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check,
-    output logic [2:0] alu_op_check,
+    output logic [3:0] alu_op_check,
     output logic [31:0] register_data_out1_check,
     output logic [31:0] register_data_out2_check,
     output logic [31:0] b_input_check,
@@ -187,7 +193,7 @@ module cpu (
     logic [31:0] pc_in;
     logic [31:0] pc_out;
     logic [31:0] instruction;
-    logic [2:0] alu_op;
+    logic [3:0] alu_op;
     logic [31:0] register_data_out1;
     logic [31:0] register_data_out2;
     logic [31:0] register_data_in;

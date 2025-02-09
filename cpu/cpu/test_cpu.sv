@@ -139,7 +139,7 @@ endmodule
 module test_alu;
     logic [31:0] a;
     logic [31:0] b;
-    logic [2:0] alu_op;
+    logic [3:0] alu_op;
     logic [31:0] result;
 
     alu alu_inst (
@@ -296,7 +296,7 @@ module test_cpu;
     logic reset;
     logic [31:0] pc_out_check;
     logic [31:0] instruction_check;
-    logic [2:0] alu_op_check;
+    logic [3:0] alu_op_check;
     logic [31:0] register_data_out1_check;
     logic [31:0] register_data_out2_check;
     logic [31:0] b_input_check;
@@ -643,5 +643,40 @@ module test_cpu_srli;
         clk = 1;
         #10
         assert(register_check[8] == 8) else $error("register_check[8] = %d", register_check[8]);
+    end
+endmodule
+
+logic [31:0] srai_x8_x6_4 = 32'h40435413;
+module test_cpu_srai;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = srai_x8_x6_4;
+    assign initial_register_values[6] = -128;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[8] == -8) else $error("register_check[8] = %d", register_check[8]);
     end
 endmodule
