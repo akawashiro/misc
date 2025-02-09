@@ -203,6 +203,7 @@ module test_cpu;
     logic [31:0] register_data_in_check;
     logic [31:0] alu_result_check;
     logic [0:0] reg_write_enable_check;
+    logic [31:0] register_check [31:0];
     logic [31:0] imm_ext_check;
     logic use_imm_check;
     logic [31:0] initial_instructions [31:0];
@@ -234,7 +235,8 @@ module test_cpu;
         .reg_write_check(reg_write_enable_check),
         .imm_ext_check(imm_ext_check),
         .use_imm_check(use_imm_check),
-        .initial_instructions(initial_instructions)
+        .initial_instructions(initial_instructions),
+        .register_check(register_check)
     );
 
     initial begin
