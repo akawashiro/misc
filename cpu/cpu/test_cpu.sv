@@ -85,9 +85,11 @@ module test_register_file;
     logic write_enable;
     logic [31:0] data_out1;
     logic [31:0] data_out2;
-    logic [31:0] register_check[31:0];
+    // You must use wire instead of logic for the register_check because of
+    // https://github.com/steveicarus/iverilog/issues/1001.
+    wire [31:0] register_check[0:31];
 
-    register_file register_file_inst (
+    register_file register_file_0 (
         .rs1(rs1),
         .rs2(rs2),
         .rd(rd),
@@ -101,17 +103,27 @@ module test_register_file;
     );
 
     initial begin
+        reset = 0;
+        clk = 0;
+        #10
+        reset = 1;
+        clk = 1;
+        #10
+        clk = 0;
+        reset = 0;
         rs1 = 1;
-        rs2 = 3;
+        rs2 = 2;
         rd = 3;
         data_in = 32'hdeadbeef;
-        clk = 0;
         write_enable = 0;
         clk = 1;
         write_enable = 1;
         #10
-        assert(data_out2 == 32'hdeadbeef) else $error("data_out2 = %h", data_out2);
-        assert(register_check[1] == 32'hdeadbeef) else $error("register_check[1] = %h", register_check[1]);
+        assert(data_out1 == 3001) else $error("data_out1 = %h", data_out1);
+        assert(data_out2 == 3002) else $error("data_out2 = %h", data_out2);
+        assert(register_check[1] == 3001) else $error("register_check[1] = %h", register_check[1]);
+        assert(register_check[2] == 3002) else $error("register_check[2] = %h", register_check[2]);
+        assert(register_check[3] == 32'hdeadbeef) else $error("register_check[3] = %h", register_check[3]);
     end
 endmodule
 
