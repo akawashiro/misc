@@ -159,6 +159,38 @@ module test_sign_extend;
     end
 endmodule
 
+// See https://riscvasm.lucasteske.dev/
+//
+// add x7, x6, x5 # x7 <- x6 + x5
+// 0x005303b3 in hex
+// 0000000_00101_00110_000_00111_0110011 in binary
+// opcode: 0110011
+// funct3: 000
+// funct7: 0000000
+// rd:  111 (7)
+// rs1: 110 (6)
+// rs2: 101 (5)
+logic [31:0] add_x7_x6_x5 = 32'b0000000_00101_00110_000_00111_0110011;
+// sub x10, x9, x8 # x10 <- x9 - x8
+// 0x40848533
+// 0100000_01000_01001_000_01010_0110011
+// opcode: 0110011
+// funct3: 000
+// funct7: 0100000
+// rd:  01010 (10)
+// rs1: 01001 (9)
+// rs2: 01000 (8)
+logic [31:0] sub_x10_x9_x8 = 32'b0100000_01000_01001_000_01010_0110011;
+// addi x13, x12, 0x1 # x13 <- x12 + 1
+// 0x00160693
+// 000000000001_01100_000_01101_0010011
+// opcode: 0010011
+// funct3: 000
+// rd:  01101 (13)
+// rs1: 01100 (12)
+// imm: 000000000001
+logic [31:0] addi_x13_x12_1 = 32'b000000000001_01100_000_01101_0010011;
+
 module test_cpu;
     logic clk;
     logic reset;
@@ -176,37 +208,9 @@ module test_cpu;
     logic [31:0] initial_instructions [31:0];
 
     // Fill the ROM with RV32I instructions
-    // See https://riscvasm.lucasteske.dev/
-    //
-    // add x7, x6, x5 # x7 <- x6 + x5
-    // 0x005303b3 in hex
-    // 0000000_00101_00110_000_00111_0110011 in binary
-    // opcode: 0110011
-    // funct3: 000
-    // funct7: 0000000
-    // rd:  111 (7)
-    // rs1: 110 (6)
-    // rs2: 101 (5)
-    assign initial_instructions[0] = 32'b0000000_00101_00110_000_00111_0110011;
-    // sub x10, x9, x8 # x10 <- x9 - x8
-    // 0x40848533
-    // 0100000_01000_01001_000_01010_0110011
-    // opcode: 0110011
-    // funct3: 000
-    // funct7: 0100000
-    // rd:  01010 (10)
-    // rs1: 01001 (9)
-    // rs2: 01000 (8)
-    assign initial_instructions[1] = 32'b0100000_01000_01001_000_01010_0110011;
-    // addi x13, x12, 0x1 # x13 <- x12 + 1
-    // 0x00160693
-    // 000000000001_01100_000_01101_0010011
-    // opcode: 0010011
-    // funct3: 000
-    // rd:  01101 (13)
-    // rs1: 01100 (12)
-    // imm: 000000000001
-    assign initial_instructions[2] = 32'b000000000001_01100_000_01101_0010011;
+    assign initial_instructions[0] = add_x7_x6_x5;
+    assign initial_instructions[1] = sub_x10_x9_x8;
+    assign initial_instructions[2] = addi_x13_x12_1;
 
     // Fill the rest of the ROM with 0s
     genvar i;
