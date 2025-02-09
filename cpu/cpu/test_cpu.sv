@@ -223,10 +223,10 @@ module test_cpu;
     logic [31:0] register_data_in_check;
     logic [31:0] alu_result_check;
     logic [0:0] reg_write_enable_check;
-    logic [31:0] register_check [31:0];
     logic [31:0] imm_ext_check;
     logic use_imm_check;
     logic [31:0] initial_instructions [31:0];
+    wire [31:0] register_check [0:31];
 
     // Fill the ROM with RV32I instructions
     assign initial_instructions[0] = add_x7_x6_x5;
@@ -241,7 +241,7 @@ module test_cpu;
         end
     endgenerate
 
-    cpu cpu_inst (
+    cpu cpu_0 (
         .clk(clk),
         .reset(reset),
         .pc_out_check(pc_out_check),
@@ -256,7 +256,7 @@ module test_cpu;
         .imm_ext_check(imm_ext_check),
         .use_imm_check(use_imm_check),
         .initial_instructions(initial_instructions),
-        .register_check_arg(register_check)
+        .register_check(register_check)
     );
 
     initial begin
@@ -275,12 +275,12 @@ module test_cpu;
         assert(register_check[6] == 3006) else $error("register_check[6] = %d", register_check[6]);
         assert(alu_result_check == 6011) else $error("alu_result_check = %d", alu_result_check);
         assert(use_imm_check == 0) else $error("use_imm_check = %d", use_imm_check);
-        assert(register_check[7] == 6011) else $error("register_check[7] = %d", register_check[7]);
         #10
         clk = 0;
         #10
         clk = 1;
         #10
+        assert(register_check[7] == 6011) else $error("register_check[7] = %d", register_check[7]);
         assert(pc_out_check == 4) else $error("pc_out_check = %d", pc_out_check);
         assert(instruction_check == 32'h40848533) else $error("instruction_check = %h", instruction_check);
         assert(alu_op_check == SUB) else $error("alu_op_check = %d", alu_op_check);
