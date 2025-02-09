@@ -265,4 +265,5 @@ module cpu (
         .result(alu_result)
     );
     assign alu_result_check = alu_result;
+    assign register_data_in = alu_result;
 endmodule
