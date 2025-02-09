@@ -193,6 +193,7 @@ module cpu (
     logic [0:0] reg_write;
     logic [31:0] alu_result;
     logic [31:0] imm_ext;
+    logic [0:0] use_imm;
 
     pc pc_0 (
         .clk(clk),

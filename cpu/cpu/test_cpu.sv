@@ -2,11 +2,13 @@
 
 module test_pc;
     logic clk;
+    logic reset;
     logic [31:0] pc_in;
     logic [31:0] pc_out;
 
     pc pc_inst (
         .clk(clk),
+        .reset(reset),
         .pc_in(pc_in),
         .pc_out(pc_out)
     );
@@ -79,6 +81,7 @@ module test_register_file;
     logic [4:0] rd;
     logic [31:0] data_in;
     logic clk;
+    logic reset;
     logic write_enable;
     logic [31:0] data_out1;
     logic [31:0] data_out2;
@@ -89,6 +92,7 @@ module test_register_file;
         .rd(rd),
         .data_in(data_in),
         .clk(clk),
+        .reset(reset),
         .write_enable(write_enable),
         .data_out1(data_out1),
         .data_out2(data_out2)
@@ -252,8 +256,10 @@ module test_cpu;
         assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
         assert(register_data_out1_check == 3006) else $error("register_data_out1_check = %d", register_data_out1_check);
         assert(register_data_out2_check == 3005) else $error("register_data_out2_check = %d", register_data_out2_check);
+        assert(register_check[6] == 3006) else $error("register_check[6] = %d", register_check[6]);
         assert(alu_result_check == 6011) else $error("alu_result_check = %d", alu_result_check);
         assert(use_imm_check == 0) else $error("use_imm_check = %d", use_imm_check);
+        assert(register_check[7] == 6011) else $error("register_check[7] = %d", register_check[7]);
         #10
         clk = 0;
         #10
