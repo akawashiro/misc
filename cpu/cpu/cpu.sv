@@ -181,7 +181,7 @@ module cpu (
     output logic [0:0] reg_write_check,
     output logic [31:0] imm_ext_check,
     output logic [0:0] use_imm_check,
-    output logic [31:0] register_check [0:31]
+    output logic [31:0] register_check_arg [0:31]
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
@@ -194,6 +194,7 @@ module cpu (
     logic [31:0] alu_result;
     logic [31:0] imm_ext;
     logic [0:0] use_imm;
+    logic [31:0] register_check [0:31];
 
     pc pc_0 (
         .clk(clk),
@@ -248,6 +249,7 @@ module cpu (
     assign register_data_out1_check = register_data_out1;
     assign register_data_out2_check = register_data_out2;
     assign register_data_in_check = register_data_in;
+    assign register_check_arg = register_check;
 
     logic [31:0] b_input;
     b_input_mux b_input_mux_0 (

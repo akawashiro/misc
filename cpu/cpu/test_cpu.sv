@@ -85,6 +85,7 @@ module test_register_file;
     logic write_enable;
     logic [31:0] data_out1;
     logic [31:0] data_out2;
+    logic [31:0] register_check[31:0];
 
     register_file register_file_inst (
         .rs1(rs1),
@@ -95,7 +96,8 @@ module test_register_file;
         .reset(reset),
         .write_enable(write_enable),
         .data_out1(data_out1),
-        .data_out2(data_out2)
+        .data_out2(data_out2),
+        .register_check(register_check)
     );
 
     initial begin
@@ -107,7 +109,9 @@ module test_register_file;
         write_enable = 0;
         clk = 1;
         write_enable = 1;
-        #20 assert(data_out2 == 32'hdeadbeef) else $error("data_out2 = %h", data_out2);
+        #10
+        assert(data_out2 == 32'hdeadbeef) else $error("data_out2 = %h", data_out2);
+        assert(register_check[1] == 32'hdeadbeef) else $error("register_check[1] = %h", register_check[1]);
     end
 endmodule
 
@@ -240,7 +244,7 @@ module test_cpu;
         .imm_ext_check(imm_ext_check),
         .use_imm_check(use_imm_check),
         .initial_instructions(initial_instructions),
-        .register_check(register_check)
+        .register_check_arg(register_check)
     );
 
     initial begin
