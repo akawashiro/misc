@@ -180,7 +180,8 @@ endmodule
 typedef enum logic [6:0] {
     ALU_WITH_TWO_REGISTERS = 7'b0110011,
     ALU_WITH_IMMEDIATE = 7'b0010011,
-    LUI = 7'b0110111
+    LUI = 7'b0110111,
+    LW = 7'b0000011
 } OPCODE_TYPE;
 
 module control_unit (
@@ -190,6 +191,7 @@ module control_unit (
     output logic [3:0] alu_op,
     output logic [0:0] reg_write,
     output logic use_imm,
+    output logic [1:0] register_data_in_mux_sel,
     output logic [2:0] sign_extend_type
 );
     always_comb begin
@@ -213,6 +215,7 @@ module control_unit (
                 endcase
                 reg_write = 1;
                 use_imm = 0;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_ALU_RESULT;
             end
             ALU_WITH_IMMEDIATE: begin
                 case (funct3)
@@ -246,12 +249,21 @@ module control_unit (
                 endcase
                 reg_write = 1;
                 use_imm = 1;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_ALU_RESULT;
             end
             LUI: begin
                 alu_op = BPASS;
                 reg_write = 1;
                 use_imm = 1;
                 sign_extend_type = LUI_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_ALU_RESULT;
+            end
+            LW: begin
+                alu_op = ADD;
+                reg_write = 0;
+                use_imm = 1;
+                sign_extend_type = SW_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_MEMORY_DATA;
             end
         endcase
     end
@@ -267,7 +279,7 @@ module b_input_mux (
     assign b_input = use_imm ? imm_ext : register_data_out2;
 endmodule
 
-typedef enum logic [2:0] {
+typedef enum logic [1:0] {
     REGISTER_DATA_IN_MUX_ALU_RESULT,
     REGISTER_DATA_IN_MUX_MEMORY_DATA,
     REGISTER_DATA_IN_MUX_PC_PLUS_4
@@ -276,7 +288,7 @@ typedef enum logic [2:0] {
 module register_data_in_mux (
     input logic [31:0] alu_result,
     input logic [31:0] memory_data,
-    input logic [2:0] register_data_in_mux_sel,
+    input logic [1:0] register_data_in_mux_sel,
     output logic [31:0] register_data_in
 );
     always_comb begin
