@@ -766,3 +766,38 @@ module test_cpu_ori;
         assert(register_check[8] == 1) else $error("register_check[8] = %d", register_check[8]);
     end
 endmodule
+
+logic [31:0] andi_x8_x7_1 = 32'h0013f413;
+module test_cpu_andi;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    wire [31:0] register_check [0:31];
+
+    assign initial_instructions[0] = andi_x8_x7_1;
+    assign initial_register_values[7] = 1;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[8] == 1) else $error("register_check[8] = %d", register_check[8]);
+    end
+endmodule
