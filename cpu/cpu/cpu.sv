@@ -38,6 +38,36 @@ module instruction_memory (
     assign instruction = rom[pc[6:2]];
 endmodule
 
+module memory (
+    input logic [31:0] address,
+    input logic [31:0] data_in,
+    input logic write_enable,
+    input logic clk,
+    input logic reset,
+    output logic [31:0] data_out,
+    input logic [31:0] initial_values [0:31]
+);
+    logic [31:0] mem [0:31];
+    logic [31:0] effective_address;
+    assign effective_address = {address[31:2], 2'b00};
+
+    always_comb begin
+        data_out = mem[effective_address];
+    end
+
+    always_ff @(posedge clk)
+        if (reset) begin
+            for (int i = 0; i < 32; i = i + 1) begin
+                mem[i] <= initial_values[i];
+            end
+        end
+        else begin
+        if (write_enable) begin
+            mem[effective_address] <= data_in;
+        end
+    end
+endmodule
+
 module register_file (
     input logic [4:0] rs1,
     input logic [4:0] rs2,
