@@ -74,7 +74,18 @@ module register_file (
     end
 endmodule
 
-typedef enum logic [3:0] {ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT} alu_op_t;
+typedef enum logic [3:0] {
+    ADD,
+    SUB,
+    AND,
+    OR,
+    XOR,
+    SLL,
+    SRL,
+    SRA,
+    SLT,
+    BPASS // For lui
+} alu_op_t;
 
 module alu (
     input logic signed [31:0] a,
@@ -93,6 +104,7 @@ module alu (
             SRL: result = a >> b;
             SRA: result = a >>> b;
             SLT: result = (a < b) ? 1 : 0;
+            BPASS: result = b;
             default: result = 0;
         endcase
     end
@@ -102,7 +114,7 @@ typedef enum logic [2:0] {
     ADDI_SIGN_EXTEND,
     SLLI_SIGN_EXTEND,
     SW_SIGN_EXTEND,
-    LW_SIGN_EXTEND
+    LUI_SIGN_EXTEND
 } sign_extend_t;
 
 module sign_extend (
@@ -125,7 +137,7 @@ module sign_extend (
            ADDI_SIGN_EXTEND: imm_ext = addi_imm_ext;
            SLLI_SIGN_EXTEND: imm_ext = slli_imm_ext;
            SW_SIGN_EXTEND: imm_ext = sw_imm_ext;
-           LW_SIGN_EXTEND: imm_ext = lw_imm_ext;
+           LUI_SIGN_EXTEND: imm_ext = lw_imm_ext;
            default: imm_ext = 0;
        endcase
    end
@@ -133,7 +145,8 @@ endmodule
 
 typedef enum logic [6:0] {
     ALU_WITH_TWO_REGISTERS = 7'b0110011,
-    ALU_WITH_IMMEDIATE = 7'b0010011
+    ALU_WITH_IMMEDIATE = 7'b0010011,
+    LUI = 7'b0110111
 } OPCODE_TYPE;
 
 module control_unit (
@@ -199,6 +212,12 @@ module control_unit (
                 endcase
                 reg_write = 1;
                 use_imm = 1;
+            end
+            LUI: begin
+                alu_op = BPASS;
+                reg_write = 1;
+                use_imm = 1;
+                sign_extend_type = LUI_SIGN_EXTEND;
             end
         endcase
     end
