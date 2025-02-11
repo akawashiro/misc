@@ -314,9 +314,11 @@ endmodule
 module jal_addr (
     input logic [31:0] pc,
     input logic [31:0] instruction,
+    output logic [31:0] jal_imm_check,
     output logic [31:0] jal_addr
 );
-    logic [31:0] jal_imm = {instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+    logic [31:0] jal_imm = {12'b0, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+    assign jal_imm_check = jal_imm;
     assign jal_addr = pc + jal_imm;
 endmodule
 

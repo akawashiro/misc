@@ -1010,3 +1010,21 @@ module test_cpu_sw;
         assert(memory_check[2] == 32'hdeadbeef) else $error("memory_check[2] = %x", memory_check[2]);
     end
 endmodule
+
+logic [31:0] jal_x8_16 = 32'h0080046f;
+module test_jal_addr;
+    logic [31:0] jal_addr;
+    logic [31:0] jal_imm_check;
+
+    jal_addr jal_addr_0 (
+        .instruction(jal_x8_16),
+        .pc(4),
+        .jal_imm_check(jal_imm_check),
+        .jal_addr(jal_addr)
+    );
+
+    initial begin
+        assert(jal_imm_check == 8) else $error("jal_imm_check = %d", jal_imm_check);
+        assert(jal_addr == 12) else $error("jal_addr = %d", jal_addr);
+    end
+endmodule
