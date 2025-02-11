@@ -311,6 +311,14 @@ module register_data_in_mux (
     end
 endmodule
 
+module jal_addr (
+    input logic [31:0] pc,
+    input logic [31:0] instruction,
+    output logic [31:0] jal_addr
+);
+    logic [31:0] jal_imm = {instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+    assign jal_addr = pc + jal_imm;
+endmodule
 
 module cpu (
     input logic clk,
