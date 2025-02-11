@@ -110,10 +110,16 @@ module sign_extend (
     input logic [2:0] sign_extend_type,
     output logic [31:0] imm_ext
 );
-   logic [31:0] addi_imm_ext = {{20{instruction[31]}}, instruction[31:20]};
-   logic [31:0] slli_imm_ext = {{27{1'b0}}, instruction[24:20]};
-   logic [31:0] sw_imm_ext = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-   logic [31:0] lw_imm_ext = {{12{instruction[31]}}, instruction[31:12]};
+   logic [31:0] addi_imm_ext;
+   logic [31:0] slli_imm_ext;
+   logic [31:0] sw_imm_ext;
+   logic [31:0] lw_imm_ext;
+
+   assign addi_imm_ext = {{20{instruction[31]}}, instruction[31:20]};
+   assign slli_imm_ext = {{27{1'b0}}, instruction[24:20]};
+   assign sw_imm_ext = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+   assign lw_imm_ext = {{12{instruction[31]}}, instruction[31:12]};
+
    always_comb begin
        case (sign_extend_type)
            ADDI_SIGN_EXTEND: imm_ext = addi_imm_ext;

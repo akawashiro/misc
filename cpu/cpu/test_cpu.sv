@@ -173,19 +173,24 @@ endmodule
 
 module test_sign_extend;
     logic [31:0] instruction;
+    logic [2:0] sign_extend_type;
     logic [31:0] imm_ext;
 
-    sign_extend sign_extend_inst (
+    sign_extend sign_extend_0 (
         .instruction(instruction),
-        .sign_extend_type(ADDI_SIGN_EXTEND),
+        .sign_extend_type(sign_extend_type),
         .imm_ext(imm_ext)
     );
 
     initial begin
-        instruction = 32'b10101010101000000000000000000000;
-        #10 assert(imm_ext == 32'b11111111111111111111101010101010) else $error("imm_ext = %h", imm_ext);
-        instruction = 32'b01010101010100000000000000000000;
-        #10 assert(imm_ext == 32'b00000000000000000000010101010101) else $error("imm_ext = %h", imm_ext);
+        sign_extend_type = ADDI_SIGN_EXTEND;
+        assign instruction = 32'b10101010101000000000000000000000;
+        #10
+        assert(imm_ext == 32'b11111111111111111111101010101010) else $error("imm_ext = %b", imm_ext);
+        #10
+        assign instruction = 32'b01010101010100000000000000000000;
+        #10
+        assert(imm_ext == 32'b00000000000000000000010101010101) else $error("imm_ext = %b", imm_ext);
     end
 endmodule
 
