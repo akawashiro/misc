@@ -182,7 +182,8 @@ typedef enum logic [6:0] {
     ALU_WITH_IMMEDIATE = 7'b0010011,
     LUI = 7'b0110111,
     LW = 7'b0000011,
-    SW = 7'b0100011
+    SW = 7'b0100011,
+    JAL = 7'b1101111
 } OPCODE_TYPE;
 
 module control_unit (
@@ -199,6 +200,14 @@ module control_unit (
 );
     always_comb begin
         case (opcode)
+            JAL: begin
+                alu_op = BPASS;
+                reg_write = 1;
+                use_imm = 0;
+                sign_extend_type = ADDI_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_PC_PLUS_4;
+                pc_in_mux_sel = PC_IN_MUX_JAL_ADDR;
+            end
             ALU_WITH_TWO_REGISTERS: begin
                 case (funct3)
                     3'b000: begin
@@ -304,6 +313,7 @@ typedef enum logic [1:0] {
 module register_data_in_mux (
     input logic [31:0] alu_result,
     input logic [31:0] memory_data,
+    input logic [31:0] pc_plus_4,
     input logic [1:0] register_data_in_mux_sel,
     output logic [31:0] register_data_in
 );
@@ -311,7 +321,7 @@ module register_data_in_mux (
         case (register_data_in_mux_sel)
             REGISTER_DATA_IN_MUX_ALU_RESULT: register_data_in = alu_result;
             REGISTER_DATA_IN_MUX_MEMORY_DATA: register_data_in = memory_data;
-            REGISTER_DATA_IN_MUX_PC_PLUS_4: register_data_in = memory_data;
+            REGISTER_DATA_IN_MUX_PC_PLUS_4: register_data_in = pc_plus_4;
             default: register_data_in = 0;
         endcase
     end
@@ -498,6 +508,7 @@ module cpu (
     register_data_in_mux register_data_in_mux_0 (
         .alu_result(alu_result),
         .memory_data(memory_data),
+        .pc_plus_4(pc_plus_4_0.pc_out),
         .register_data_in_mux_sel(control_unit_0.register_data_in_mux_sel),
         .register_data_in(register_data_in)
     );
