@@ -967,3 +967,43 @@ module test_cpu_lw;
         assert(register_check[8] == 1234) else $error("register_check[8] = %x", register_check[8]);
     end
 endmodule
+
+logic [31:0] sw_x8_4_x6 = 32'h00832223;
+module test_cpu_sw;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
+    wire [31:0] register_check [0:31];
+    wire [31:0] memory_check [0:31];
+
+    assign initial_instructions[0] = sw_x8_4_x6;
+    assign initial_register_values[6] = 4;
+    assign initial_register_values[8] = 32'hdeadbeef;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
+        .register_check(register_check),
+        .memory_check(memory_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[2] == 32'hdeadbeef) else $error("register_check[2] = %x", register_check[2]);
+    end
+endmodule
