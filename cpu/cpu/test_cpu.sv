@@ -1033,6 +1033,7 @@ module test_cpu_jal;
     logic clk;
     logic reset;
     logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
     logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
     logic [31:0] pc_out_check;
@@ -1043,6 +1044,7 @@ module test_cpu_jal;
         .clk(clk),
         .reset(reset),
         .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
         .initial_memory_values(initial_memory_values),
         .pc_out_check(pc_out_check),
         .register_check(register_check)
