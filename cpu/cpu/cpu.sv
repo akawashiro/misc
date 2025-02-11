@@ -125,19 +125,19 @@ module sign_extend (
    logic [31:0] addi_imm_ext;
    logic [31:0] slli_imm_ext;
    logic [31:0] sw_imm_ext;
-   logic [31:0] lw_imm_ext;
+   logic [31:0] lui_imm_ext;
 
    assign addi_imm_ext = {{20{instruction[31]}}, instruction[31:20]};
    assign slli_imm_ext = {{27{1'b0}}, instruction[24:20]};
    assign sw_imm_ext = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-   assign lw_imm_ext = {{12{instruction[31]}}, instruction[31:12]};
+   assign lui_imm_ext = {instruction[31:12], 12'b0};
 
    always_comb begin
        case (sign_extend_type)
            ADDI_SIGN_EXTEND: imm_ext = addi_imm_ext;
            SLLI_SIGN_EXTEND: imm_ext = slli_imm_ext;
            SW_SIGN_EXTEND: imm_ext = sw_imm_ext;
-           LUI_SIGN_EXTEND: imm_ext = lw_imm_ext;
+           LUI_SIGN_EXTEND: imm_ext = lui_imm_ext;
            default: imm_ext = 0;
        endcase
    end
