@@ -284,6 +284,7 @@ module test_cpu_add;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = add_x7_x6_x5;
@@ -295,6 +296,7 @@ module test_cpu_add;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -319,6 +321,7 @@ module test_cpu_sub;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = sub_x10_x9_x8;
@@ -330,6 +333,7 @@ module test_cpu_sub;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -365,6 +369,7 @@ module test_cpu;
     logic use_imm_check;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     // Fill the ROM with RV32I instructions
@@ -403,7 +408,8 @@ module test_cpu;
         .use_imm_check(use_imm_check),
         .initial_instructions(initial_instructions),
         .register_check(register_check),
-        .initial_register_values(initial_register_values)
+        .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values)
     );
 
     initial begin
@@ -461,6 +467,7 @@ module test_cpu_slt_0;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = slt_x8_x7_x6;
@@ -472,6 +479,7 @@ module test_cpu_slt_0;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -496,6 +504,7 @@ module test_cpu_slt_1;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = slt_x8_x6_x7;
@@ -507,6 +516,7 @@ module test_cpu_slt_1;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -532,6 +542,7 @@ module test_cpu_xor;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = xor_x8_x7_x6;
@@ -543,6 +554,7 @@ module test_cpu_xor;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -568,6 +580,7 @@ module test_cpu_or;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = or_x8_x7_x6;
@@ -579,6 +592,7 @@ module test_cpu_or;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -604,6 +618,7 @@ module test_cpu_and;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = and_x8_x7_x6;
@@ -615,6 +630,7 @@ module test_cpu_and;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -640,6 +656,7 @@ module test_cpu_slli;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = slli_x8_x6_4;
@@ -650,6 +667,7 @@ module test_cpu_slli;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -675,6 +693,7 @@ module test_cpu_srli;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = srli_x8_x6_4;
@@ -685,6 +704,7 @@ module test_cpu_srli;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -710,6 +730,7 @@ module test_cpu_srai;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
     logic [3:0] alu_op_check;
     logic [31:0] alu_result_check;
@@ -724,6 +745,7 @@ module test_cpu_srai;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check),
         .alu_op_check(alu_op_check),
         .use_imm_check(use_imm_check),
@@ -755,6 +777,7 @@ module test_cpu_xori;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = xori_x8_x7_1;
@@ -765,6 +788,7 @@ module test_cpu_xori;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -790,6 +814,7 @@ module test_cpu_ori;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = ori_x8_x7_1;
@@ -800,6 +825,7 @@ module test_cpu_ori;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -825,6 +851,7 @@ module test_cpu_andi;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = andi_x8_x7_1;
@@ -835,6 +862,7 @@ module test_cpu_andi;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 
@@ -860,6 +888,7 @@ module test_cpu_lui;
     logic reset;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
     wire [31:0] register_check [0:31];
 
     assign initial_instructions[0] = lui_x8_1234;
@@ -869,6 +898,7 @@ module test_cpu_lui;
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
         .register_check(register_check)
     );
 

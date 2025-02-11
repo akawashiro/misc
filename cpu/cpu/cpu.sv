@@ -273,6 +273,7 @@ module cpu (
     input logic reset,
     input logic [31:0] initial_instructions [0:31],
     input logic [31:0] initial_register_values [0:31],
+    input logic [31:0] initial_memory_values [0:31],
     output logic [31:0] pc_out_check,
     output logic [31:0] instruction_check,
     output logic [3:0] alu_op_check,
@@ -284,7 +285,8 @@ module cpu (
     output logic [0:0] reg_write_check,
     output logic [31:0] imm_ext_check,
     output logic [0:0] use_imm_check,
-    output wire [31:0] register_check [0:31]
+    output wire [31:0] register_check [0:31],
+    output wire [31:0] memory_check [0:31]
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
@@ -298,6 +300,7 @@ module cpu (
     logic [31:0] imm_ext;
     logic [0:0] use_imm;
     logic [2:0] sign_extend_type;
+    logic [0:0] memory_write;
 
     pc pc_0 (
         .clk(clk),
@@ -373,4 +376,15 @@ module cpu (
     );
     assign alu_result_check = alu_result;
     assign register_data_in = alu_result;
+
+    memory memory_0 (
+        .address(alu_result),
+        .data_in(register_data_out2),
+        .write_enable(memory_write),
+        .clk(clk),
+        .reset(reset),
+        // .data_out(register_data_in),
+        .initial_values(initial_memory_values),
+        .memory_check(memory_check)
+    );
 endmodule
