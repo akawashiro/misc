@@ -262,7 +262,7 @@ module control_unit (
                 alu_op = ADD;
                 reg_write = 0;
                 use_imm = 1;
-                sign_extend_type = SW_SIGN_EXTEND;
+                sign_extend_type = ADDI_SIGN_EXTEND;
                 register_data_in_mux_sel = REGISTER_DATA_IN_MUX_MEMORY_DATA;
             end
         endcase
@@ -320,7 +320,8 @@ module cpu (
     output logic [31:0] imm_ext_check,
     output logic [0:0] use_imm_check,
     output wire [31:0] register_check [0:31],
-    output wire [31:0] memory_check [0:31]
+    output wire [31:0] memory_check [0:31],
+    output logic [2:0] sign_extend_type_check
 );
     logic [31:0] pc_in;
     logic [31:0] pc_out;
@@ -368,6 +369,7 @@ module cpu (
     assign alu_op_check = alu_op;
     assign reg_write_check = reg_write;
     assign use_imm_check = use_imm;
+    assign sign_extend_type_check = sign_extend_type;
 
     sign_extend sign_extend_0 (
         .instruction(instruction),
@@ -409,7 +411,6 @@ module cpu (
         .result(alu_result)
     );
     assign alu_result_check = alu_result;
-    // assign register_data_in = alu_result;
 
     logic [31:0] memory_data;
 

@@ -917,3 +917,53 @@ module test_cpu_lui;
         assert(register_check[8] == 32'hdead << 12) else $error("register_check[8] = %h", register_check[8]);
     end
 endmodule
+
+logic [31:0] lw_x8_4_x6 = 32'h00432403;
+module test_cpu_lw;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
+    logic [31:0] alu_result_check;
+    logic [3:0] alu_op_check;
+    logic [31:0] imm_ext_check;
+    wire [31:0] register_check [0:31];
+    logic [2:0] sign_extend_type_check;
+
+    assign initial_instructions[0] = lw_x8_4_x6;
+    assign initial_register_values[6] = 4;
+    assign initial_memory_values[2] = 1234;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
+        .register_check(register_check),
+        .alu_result_check(alu_result_check),
+        .alu_op_check(alu_op_check),
+        .imm_ext_check(imm_ext_check),
+        .sign_extend_type_check(sign_extend_type_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
+        assert(imm_ext_check == 4) else $error("imm_ext_check = %d", imm_ext_check);
+        assert(sign_extend_type_check == ADDI_SIGN_EXTEND) else $error("sign_extend_type_check = %d", sign_extend_type_check);
+        assert (alu_result_check == 8) else $error("alu_result_check = %d", alu_result_check);
+        assert(register_check[8] == 1234) else $error("register_check[8] = %x", register_check[8]);
+    end
+endmodule
