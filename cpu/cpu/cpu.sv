@@ -182,6 +182,7 @@ typedef enum logic [6:0] {
     ALU_WITH_IMMEDIATE = 7'b0010011,
     LUI = 7'b0110111,
     LW = 7'b0000011
+    SW = 7'b0100011
 } OPCODE_TYPE;
 
 module control_unit (
@@ -364,7 +365,8 @@ module cpu (
         .alu_op(alu_op),
         .reg_write(reg_write),
         .use_imm(use_imm),
-        .sign_extend_type(sign_extend_type)
+        .sign_extend_type(sign_extend_type),
+        .memory_write(memory_write)
     );
     assign alu_op_check = alu_op;
     assign reg_write_check = reg_write;
