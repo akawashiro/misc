@@ -409,7 +409,9 @@ module cpu (
         .result(alu_result)
     );
     assign alu_result_check = alu_result;
-    assign register_data_in = alu_result;
+    // assign register_data_in = alu_result;
+
+    logic [31:0] memory_data;
 
     memory memory_0 (
         .address(alu_result),
@@ -417,8 +419,15 @@ module cpu (
         .write_enable(memory_write),
         .clk(clk),
         .reset(reset),
-        // .data_out(register_data_in),
+        .data_out(memory_data),
         .initial_values(initial_memory_values),
         .memory_check(memory_check)
+    );
+
+    register_data_in_mux register_data_in_mux_0 (
+        .alu_result(alu_result),
+        .memory_data(memory_data),
+        .register_data_in_mux_sel(control_unit_0.register_data_in_mux_sel),
+        .register_data_in(register_data_in)
     );
 endmodule
