@@ -1011,13 +1011,13 @@ module test_cpu_sw;
     end
 endmodule
 
-logic [31:0] jal_x8_16 = 32'h0080046f;
+logic [31:0] jal_x8_8 = 32'h0080046f;
 module test_jal_addr;
     logic [31:0] jal_addr;
     logic [31:0] jal_imm_check;
 
     jal_addr jal_addr_0 (
-        .instruction(jal_x8_16),
+        .instruction(jal_x8_8),
         .pc(4),
         .jal_imm_check(jal_imm_check),
         .jal_addr(jal_addr)
@@ -1026,5 +1026,41 @@ module test_jal_addr;
     initial begin
         assert(jal_imm_check == 8) else $error("jal_imm_check = %d", jal_imm_check);
         assert(jal_addr == 12) else $error("jal_addr = %d", jal_addr);
+    end
+endmodule
+
+module test_cpu_jal;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_memory_values [31:0];
+    wire [31:0] register_check [0:31];
+    logic [31:0] pc_out_check;
+
+    assign initial_instructions[0] = jal_x8_8;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_memory_values(initial_memory_values),
+        .pc_out_check(pc_out_check),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(pc_out_check == 12) else $error("pc_out_check = %d", pc_out_check);
+        assert(register_check[8] == 4) else $error("register_check[8] = %d", register_check[8]);
     end
 endmodule
