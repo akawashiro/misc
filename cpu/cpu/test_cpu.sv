@@ -975,7 +975,7 @@ module test_cpu_sw;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
     logic [31:0] initial_memory_values [31:0];
-    logic [31:0] sign_extend_check;
+    logic [31:0] imm_ext_check;
     wire [31:0] register_check [0:31];
     wire [31:0] memory_check [0:31];
 
@@ -991,7 +991,7 @@ module test_cpu_sw;
         .initial_memory_values(initial_memory_values),
         .register_check(register_check),
         .memory_check(memory_check),
-        .sign_extend_check(sign_extend_check)
+        .imm_ext_check(imm_ext_check)
     );
 
     initial begin
@@ -1005,8 +1005,8 @@ module test_cpu_sw;
         clk = 0;
         #10
         clk = 1;
-        assert(sign_extend_check == 4) else $error("sign_extend_check = %x", sign_extend_check);
+        assert(imm_ext_check == 4) else $error("imm_ext_check = %x", imm_ext_check);
         #10
-        assert(register_check[2] == 32'hdeadbeef) else $error("register_check[2] = %x", register_check[2]);
+        assert(memory_check[2] == 32'hdeadbeef) else $error("memory_check[2] = %x", memory_check[2]);
     end
 endmodule
