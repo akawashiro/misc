@@ -1103,5 +1103,6 @@ module test_cpu_jalr;
         clk = 1;
         #10
         assert(register_check[8] == 4) else $error("register_check[8] = %d", register_check[8]);
+        assert(pc_out_check == 12) else $error("pc_out_check = %d", pc_out_check);
     end
 endmodule
