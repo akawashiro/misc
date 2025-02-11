@@ -1066,3 +1066,42 @@ module test_cpu_jal;
         assert(register_check[8] == 4) else $error("register_check[8] = %d", register_check[8]);
     end
 endmodule
+
+logic [31:0] jalr_x8_x6_8 = 32'h00830467;
+module test_cpu_jalr;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_instructions [31:0];
+    logic [31:0] initial_register_values [31:0];
+    logic [31:0] initial_memory_values [31:0];
+    wire [31:0] register_check [0:31];
+    logic [31:0] pc_out_check;
+
+    assign initial_instructions[0] = jalr_x8_x6_8;
+    assign initial_register_values[6] = 4;
+
+    cpu cpu_0 (
+        .clk(clk),
+        .reset(reset),
+        .initial_instructions(initial_instructions),
+        .initial_register_values(initial_register_values),
+        .initial_memory_values(initial_memory_values),
+        .pc_out_check(pc_out_check),
+        .register_check(register_check)
+    );
+
+    initial begin
+        clk = 0;
+        reset = 0;
+        #10
+        clk = 1;
+        reset = 1;
+        #10
+        reset = 0;
+        clk = 0;
+        #10
+        clk = 1;
+        #10
+        assert(register_check[8] == 4) else $error("register_check[8] = %d", register_check[8]);
+    end
+endmodule

@@ -183,7 +183,8 @@ typedef enum logic [6:0] {
     LUI = 7'b0110111,
     LW = 7'b0000011,
     SW = 7'b0100011,
-    JAL = 7'b1101111
+    JAL = 7'b1101111,
+    JALR = 7'b1100111
 } OPCODE_TYPE;
 
 module control_unit (
@@ -207,6 +208,14 @@ module control_unit (
                 sign_extend_type = ADDI_SIGN_EXTEND;
                 register_data_in_mux_sel = REGISTER_DATA_IN_MUX_PC_PLUS_4;
                 pc_in_mux_sel = PC_IN_MUX_JAL_ADDR;
+            end
+            JALR: begin
+                alu_op = ADD;
+                reg_write = 1;
+                use_imm = 1;
+                sign_extend_type = ADDI_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_PC_PLUS_4;
+                pc_in_mux_sel = PC_IN_MUX_ALU_RESULT;
             end
             ALU_WITH_TWO_REGISTERS: begin
                 case (funct3)
