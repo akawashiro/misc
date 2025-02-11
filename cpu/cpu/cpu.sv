@@ -181,7 +181,7 @@ typedef enum logic [6:0] {
     ALU_WITH_TWO_REGISTERS = 7'b0110011,
     ALU_WITH_IMMEDIATE = 7'b0010011,
     LUI = 7'b0110111,
-    LW = 7'b0000011
+    LW = 7'b0000011,
     SW = 7'b0100011
 } OPCODE_TYPE;
 
@@ -193,7 +193,8 @@ module control_unit (
     output logic [0:0] reg_write,
     output logic use_imm,
     output logic [1:0] register_data_in_mux_sel,
-    output logic [2:0] sign_extend_type
+    output logic [2:0] sign_extend_type,
+    output logic [0:0] memory_write
 );
     always_comb begin
         case (opcode)
@@ -265,6 +266,14 @@ module control_unit (
                 use_imm = 1;
                 sign_extend_type = ADDI_SIGN_EXTEND;
                 register_data_in_mux_sel = REGISTER_DATA_IN_MUX_MEMORY_DATA;
+            end
+            SW: begin
+                alu_op = ADD;
+                reg_write = 0;
+                use_imm = 1;
+                sign_extend_type = SW_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_MEMORY_DATA;
+                memory_write = 1;
             end
         endcase
     end
