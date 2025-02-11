@@ -172,18 +172,19 @@ module test_alu;
 endmodule
 
 module test_sign_extend;
-    logic [11:0] imm;
+    logic [31:0] instruction;
     logic [31:0] imm_ext;
 
     sign_extend sign_extend_inst (
-        .imm(imm),
+        .instruction(instruction),
+        .sign_extend_type(ADDI_SIGN_EXTEND),
         .imm_ext(imm_ext)
     );
 
     initial begin
-        imm = 12'b101010101010;
+        instruction = 32'b10101010101000000000000000000000;
         #10 assert(imm_ext == 32'b11111111111111111111101010101010) else $error("imm_ext = %h", imm_ext);
-        imm = 12'b010101010101;
+        instruction = 32'b01010101010100000000000000000000;
         #10 assert(imm_ext == 32'b00000000000000000000010101010101) else $error("imm_ext = %h", imm_ext);
     end
 endmodule
@@ -653,16 +654,24 @@ module test_cpu_srai;
     logic [31:0] initial_instructions [31:0];
     logic [31:0] initial_register_values [31:0];
     wire [31:0] register_check [0:31];
+    logic [3:0] alu_op_check;
+    logic [31:0] alu_result_check;
+    logic use_imm_check;
+    logic [31:0] b_input_check;
 
     assign initial_instructions[0] = srai_x8_x6_4;
-    assign initial_register_values[6] = -128;
+    assign initial_register_values[6] = 32'b11111111111111111111111100000000;
 
     cpu cpu_0 (
         .clk(clk),
         .reset(reset),
         .initial_instructions(initial_instructions),
         .initial_register_values(initial_register_values),
-        .register_check(register_check)
+        .register_check(register_check),
+        .alu_op_check(alu_op_check),
+        .use_imm_check(use_imm_check),
+        .alu_result_check(alu_result_check),
+        .b_input_check(b_input_check)
     );
 
     initial begin
@@ -677,6 +686,8 @@ module test_cpu_srai;
         #10
         clk = 1;
         #10
-        assert(register_check[8] == -8) else $error("register_check[8] = %d", register_check[8]);
+        assert(alu_op_check == SRA) else $error("alu_op_check = %d", alu_op_check);
+        assert(use_imm_check == 1) else $error("use_imm_check = %d", use_imm_check);
+        assert(register_check[8] == 32'b11111111111111111111111111110000) else $error("register_check[8] = %b", register_check[8]);
     end
 endmodule

@@ -77,8 +77,8 @@ endmodule
 typedef enum logic [3:0] {ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT} alu_op_t;
 
 module alu (
-    input logic [31:0] a,
-    input logic [31:0] b,
+    input logic signed [31:0] a,
+    input logic signed [31:0] b,
     input logic [3:0] alu_op,
     output logic [31:0] result
 );
@@ -98,11 +98,31 @@ module alu (
     end
 endmodule
 
+typedef enum logic [2:0] {
+    ADDI_SIGN_EXTEND,
+    SLLI_SIGN_EXTEND,
+    SW_SIGN_EXTEND,
+    LW_SIGN_EXTEND
+} sign_extend_t;
+
 module sign_extend (
-    input logic [11:0] imm,
+    input logic [31:0] instruction,
+    input logic [2:0] sign_extend_type,
     output logic [31:0] imm_ext
 );
-    assign imm_ext = {{20{imm[11]}}, imm};
+   logic [31:0] addi_imm_ext = {{20{instruction[31]}}, instruction[31:20]};
+   logic [31:0] slli_imm_ext = {{27{1'b0}}, instruction[24:20]};
+   logic [31:0] sw_imm_ext = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+   logic [31:0] lw_imm_ext = {{12{instruction[31]}}, instruction[31:12]};
+   always_comb begin
+       case (sign_extend_type)
+           ADDI_SIGN_EXTEND: imm_ext = addi_imm_ext;
+           SLLI_SIGN_EXTEND: imm_ext = slli_imm_ext;
+           SW_SIGN_EXTEND: imm_ext = sw_imm_ext;
+           LW_SIGN_EXTEND: imm_ext = lw_imm_ext;
+           default: imm_ext = 0;
+       endcase
+   end
 endmodule
 
 typedef enum logic [6:0] {
@@ -116,7 +136,8 @@ module control_unit (
     input logic [6:0] funct7,
     output logic [3:0] alu_op,
     output logic [0:0] reg_write,
-    output logic use_imm
+    output logic use_imm,
+    output logic [2:0] sign_extend_type
 );
     always_comb begin
         case (opcode)
@@ -142,17 +163,33 @@ module control_unit (
             end
             ALU_WITH_IMMEDIATE: begin
                 case (funct3)
-                    3'b000: alu_op = ADD;
-                    3'b001: alu_op = SLL;
-                    3'b100: alu_op = XOR;
+                    3'b000: begin
+                        alu_op = ADD;
+                        sign_extend_type = ADDI_SIGN_EXTEND;
+                    end
+                    3'b001: begin
+                        alu_op = SLL;
+                        sign_extend_type = SLLI_SIGN_EXTEND;
+                    end
+                    3'b100: begin
+                        alu_op = XOR;
+                        sign_extend_type = ADDI_SIGN_EXTEND;
+                    end
                     3'b101: begin 
                         case (funct7)
                             7'b0000000: alu_op = SRL;
                             7'b0100000: alu_op = SRA;
                         endcase
+                        sign_extend_type = SLLI_SIGN_EXTEND;
                     end
-                    3'b110: alu_op = OR;
-                    3'b111: alu_op = AND;
+                    3'b110: begin
+                        alu_op = OR;
+                        sign_extend_type = ADDI_SIGN_EXTEND;
+                    end
+                    3'b111: begin
+                        alu_op = AND;
+                        sign_extend_type = ADDI_SIGN_EXTEND;
+                    end
                 endcase
                 reg_write = 1;
                 use_imm = 1;
@@ -201,6 +238,7 @@ module cpu (
     logic [31:0] alu_result;
     logic [31:0] imm_ext;
     logic [0:0] use_imm;
+    logic [2:0] sign_extend_type;
 
     pc pc_0 (
         .clk(clk),
@@ -228,14 +266,16 @@ module cpu (
         .funct7(instruction[31:25]),
         .alu_op(alu_op),
         .reg_write(reg_write),
-        .use_imm(use_imm)
+        .use_imm(use_imm),
+        .sign_extend_type(sign_extend_type)
     );
     assign alu_op_check = alu_op;
     assign reg_write_check = reg_write;
     assign use_imm_check = use_imm;
 
     sign_extend sign_extend_0 (
-        .imm(instruction[31:20]),
+        .instruction(instruction),
+        .sign_extend_type(sign_extend_type),
         .imm_ext(imm_ext)
     );
     assign imm_ext_check = imm_ext;
