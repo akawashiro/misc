@@ -75,6 +75,58 @@ module test_instruction_memory;
     end
 endmodule
 
+module test_memory_reset;
+    logic [31:0] address;
+    logic [31:0] data_in;
+    logic [31:0] data_out;
+    logic write_enable;
+    logic clk;
+    logic reset;
+    logic [31:0] initial_values [31:0];
+    wire [31:0] memory_check [0:31];
+
+    generate
+        genvar i;
+        for (i = 0; i < 32; i = i + 1) begin: fill_initial_values
+            assign initial_values[i] = 3000 + i;
+        end
+    endgenerate
+
+    memory memory_inst (
+        .address(address),
+        .data_in(data_in),
+        .data_out(data_out),
+        .write_enable(write_enable),
+        .clk(clk),
+        .reset(reset),
+        .initial_values(initial_values),
+        .memory_check(memory_check)
+    );
+
+    initial begin
+        reset = 0;
+        clk = 0;
+        #10
+        reset = 1;
+        clk = 1;
+        #10
+        clk = 0;
+        reset = 0;
+        address = 0;
+        assert (memory_check[0] == 3000) else $error("memory_check[0] = %d", memory_check[0]);
+        #10
+        clk = 1;
+        assert (data_out == 3000) else $error("data_out = %d", data_out);
+        #10
+        clk = 0;
+        address = 4;
+        #10
+        clk = 1;
+        assert (data_out == 3001) else $error("data_out = %d", data_out);
+    end
+endmodule
+
+
 module test_register_file;
     logic [4:0] rs1;
     logic [4:0] rs2;

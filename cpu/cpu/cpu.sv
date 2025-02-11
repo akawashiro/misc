@@ -45,14 +45,18 @@ module memory (
     input logic clk,
     input logic reset,
     output logic [31:0] data_out,
-    input logic [31:0] initial_values [0:31]
+    input logic [31:0] initial_values [0:31],
+    output logic [31:0] memory_check [0:31]
 );
     logic [31:0] mem [0:31];
     logic [31:0] effective_address;
-    assign effective_address = {address[31:2], 2'b00};
+    assign effective_address = {2'b00, address[31:2]};
 
     always_comb begin
         data_out = mem[effective_address];
+        for (int j = 0; j < 32; j = j + 1) begin
+            memory_check[j] = mem[j];
+        end
     end
 
     always_ff @(posedge clk)
