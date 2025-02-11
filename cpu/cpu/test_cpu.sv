@@ -1106,3 +1106,16 @@ module test_cpu_jalr;
         assert(pc_out_check == 12) else $error("pc_out_check = %d", pc_out_check);
     end
 endmodule
+
+logic [31:0] beq_x8_x6_8 = 32'h00641463;
+module test_beq_or_bne_addr;
+    beq_or_bne_addr beq_or_bne_addr_0 (
+        .instruction(beq_x8_x6_8),
+        .pc(4),
+        .imm_ext(8)
+    );
+
+    initial begin
+        assert(beq_or_bne_addr_0.beq_or_bne_addr == 12) else $error("branch_addr_check = %d", beq_or_bne_addr_0.beq_or_bne_addr);
+    end
+endmodule
