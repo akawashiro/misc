@@ -260,7 +260,7 @@ module control_unit (
             end
             LW: begin
                 alu_op = ADD;
-                reg_write = 0;
+                reg_write = 1;
                 use_imm = 1;
                 sign_extend_type = ADDI_SIGN_EXTEND;
                 register_data_in_mux_sel = REGISTER_DATA_IN_MUX_MEMORY_DATA;

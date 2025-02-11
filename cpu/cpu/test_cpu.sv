@@ -959,11 +959,11 @@ module test_cpu_lw;
         clk = 0;
         #10
         clk = 1;
-        #10
-        assert(alu_op_check == ADD) else $error("alu_op_check = %d", alu_op_check);
-        assert(imm_ext_check == 4) else $error("imm_ext_check = %d", imm_ext_check);
-        assert(sign_extend_type_check == ADDI_SIGN_EXTEND) else $error("sign_extend_type_check = %d", sign_extend_type_check);
+        assert(imm_ext_check == 4) else $error("imm_ext_check = %x", imm_ext_check);
         assert (alu_result_check == 8) else $error("alu_result_check = %d", alu_result_check);
+        #10
+        assert(alu_op_check == ADD) else $error("alu_op_check = %x", alu_op_check);
+        assert(sign_extend_type_check == ADDI_SIGN_EXTEND) else $error("sign_extend_type_check = %d", sign_extend_type_check);
         assert(register_check[8] == 1234) else $error("register_check[8] = %x", register_check[8]);
     end
 endmodule
