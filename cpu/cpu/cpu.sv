@@ -367,6 +367,7 @@ enum logic [2:0] {
 module pc_in_mux (
     input logic [31:0] pc_plus_4,
     input logic [31:0] jal_addr,
+    input logic [31:0] alu_result,
     input logic [2:0] pc_in_mux_sel,
     output logic [31:0] pc_in
 );
@@ -374,6 +375,7 @@ module pc_in_mux (
         case (pc_in_mux_sel)
             PC_IN_MUX_PC_PLUS_4: pc_in = pc_plus_4;
             PC_IN_MUX_JAL_ADDR: pc_in = jal_addr;
+            PC_IN_MUX_ALU_RESULT: pc_in = alu_result;
             default: pc_in = 0;
         endcase
     end
@@ -434,6 +436,7 @@ module cpu (
     pc_in_mux pc_in_mux_0 (
         .pc_plus_4(pc_plus_4_0.pc_out),
         .jal_addr(jal_addr_0.jal_addr),
+        .alu_result(alu_result),
         .pc_in_mux_sel(control_unit_0.pc_in_mux_sel),
         .pc_in(pc_in)
     );
