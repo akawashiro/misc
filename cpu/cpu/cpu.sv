@@ -125,7 +125,8 @@ module alu (
     input logic signed [31:0] a,
     input logic signed [31:0] b,
     input logic [3:0] alu_op,
-    output logic [31:0] result
+    output logic [31:0] result,
+    output logic alu_eq
 );
     always_comb begin
         case (alu_op)
@@ -141,6 +142,7 @@ module alu (
             BPASS: result = b;
             default: result = 0;
         endcase
+        alu_eq = (a == b) ? 1 : 0;
     end
 endmodule
 
@@ -184,13 +186,15 @@ typedef enum logic [6:0] {
     LW = 7'b0000011,
     SW = 7'b0100011,
     JAL = 7'b1101111,
-    JALR = 7'b1100111
+    JALR = 7'b1100111,
+    BEQ = 7'b1100011
 } OPCODE_TYPE;
 
 module control_unit (
     input logic [6:0] opcode,
     input logic [2:0] funct3,
     input logic [6:0] funct7,
+    input logic alu_eq,
     output logic [3:0] alu_op,
     output logic [0:0] reg_write,
     output logic use_imm,
@@ -201,6 +205,27 @@ module control_unit (
 );
     always_comb begin
         case (opcode)
+            BEQ: begin
+                alu_op = BPASS;
+                reg_write = 0;
+                use_imm = 0;
+                sign_extend_type = ADDI_SIGN_EXTEND;
+                register_data_in_mux_sel = REGISTER_DATA_IN_MUX_PC_PLUS_4;
+                case (alu_eq)
+                    1'b0: begin
+                        case (funct3)
+                            3'b000: pc_in_mux_sel = PC_IN_MUX_PC_PLUS_4; // BEQ
+                            3'b001: pc_in_mux_sel = PC_IN_MUX_BEQ_OR_BNE_ADDR ; // BNE
+                        endcase
+                    end
+                    1'b1: begin
+                        case (funct3)
+                            3'b000: pc_in_mux_sel = PC_IN_MUX_BEQ_OR_BNE_ADDR; // BEQ
+                            3'b001: pc_in_mux_sel = PC_IN_MUX_PC_PLUS_4; // BNE
+                        endcase
+                    end
+                endcase
+            end
             JAL: begin
                 alu_op = BPASS;
                 reg_write = 1;
@@ -453,6 +478,7 @@ module cpu (
         .funct3(instruction[14:12]),
         .funct7(instruction[31:25]),
         .alu_op(alu_op),
+        .alu_eq(alu_0.alu_eq),
         .reg_write(reg_write),
         .use_imm(use_imm),
         .sign_extend_type(sign_extend_type),
