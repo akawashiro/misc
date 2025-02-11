@@ -267,6 +267,28 @@ module b_input_mux (
     assign b_input = use_imm ? imm_ext : register_data_out2;
 endmodule
 
+typedef enum logic [2:0] {
+    REGISTER_DATA_IN_MUX_ALU_RESULT,
+    REGISTER_DATA_IN_MUX_MEMORY_DATA,
+    REGISTER_DATA_IN_MUX_PC_PLUS_4
+} REGISTER_DATA_IN_MUX_SEL;
+
+module register_data_in_mux (
+    input logic [31:0] alu_result,
+    input logic [31:0] memory_data,
+    input logic [2:0] register_data_in_mux_sel,
+    output logic [31:0] register_data_in
+);
+    always_comb begin
+        case (register_data_in_mux_sel)
+            REGISTER_DATA_IN_MUX_ALU_RESULT: register_data_in = alu_result;
+            REGISTER_DATA_IN_MUX_MEMORY_DATA: register_data_in = memory_data;
+            REGISTER_DATA_IN_MUX_PC_PLUS_4: register_data_in = memory_data;
+            default: register_data_in = 0;
+        endcase
+    end
+endmodule
+
 
 module cpu (
     input logic clk,
