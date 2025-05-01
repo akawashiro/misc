@@ -76,8 +76,9 @@ int main(int argc, char *argv[]) {
   }
 
   end = clock();
-  cpu_time_used =
-      ((double)(end - start)) / CLOCKS_PER_SEC * 1000.0; // in milliseconds
+  cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds
+  double memory_bandwidth =
+      (double)(size * sizeof(int) * iterations) / cpu_time_used;
 
   printf("Array size: %d\n", size);
   printf("Access type: %s\n", access_type);
@@ -86,7 +87,9 @@ int main(int argc, char *argv[]) {
   }
   printf("Iterations: %d\n", iterations);
   printf("Execution time for one copy: %.2f milliseconds\n",
-         cpu_time_used / iterations);
+         cpu_time_used / iterations * 1000);
+  printf("Memory bandwidth: %.2f MB/s\n",
+         memory_bandwidth / (1024 * 1024)); // Convert to MB/s
 
   free(src);
   free(dest);
