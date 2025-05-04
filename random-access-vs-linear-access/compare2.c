@@ -16,14 +16,27 @@ void print_results(char *function_name, size_t size, double average_time,
          average_time, bandwidth / (1024 * 1024 * 1024));
 }
 
+void shuffle_src(void *src, size_t size_byte) {
+  uint8_t *src_bytes = (uint8_t *)src;
+  int N = size_byte;
+  for (int i = N - 1; i > 0; i--) {
+    int j = rand() % (i + 1);
+    uint8_t temp = src_bytes[i];
+    src_bytes[i] = src_bytes[j];
+    src_bytes[j] = temp;
+  }
+}
+
 void set_src(void *src, size_t size_byte) {
   for (size_t i = 0; i < size_byte; i++) {
     ((uint8_t *)(src))[i] = (uint8_t)(i % 256);
   }
+  shuffle_src(src, size_byte);
 }
 
 void check_dest(void *dest, size_t size_byte) {
   int *count = malloc(sizeof(int) * 256);
+  memset(count, 0, sizeof(int) * 256);
   for (int i = 0; i < size_byte; i++) {
     count[((uint8_t *)(dest))[i]]++;
   }
@@ -44,8 +57,8 @@ void memcpy_copy(size_t size_byte, int warmup, int iterations) {
   set_src(src, size_byte);
   for (int i = 0; i < warmup; i++) {
     memcpy(dest, src, size_byte);
+    check_dest(dest, size_byte);
   }
-  check_dest(dest, size_byte);
 
   clock_t start = clock();
   for (int i = 0; i < iterations; i++) {
@@ -190,7 +203,7 @@ void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
 
 int main() {
   const int WARMUP = 10;
-  const int ITERATIONS = 100;
+  const int ITERATIONS = 10;
 #define N_SIZE 11
   size_t sizes[N_SIZE] = {1UL << 20,  // 1 MiB
                           1UL << 21,  // 2 MiB
