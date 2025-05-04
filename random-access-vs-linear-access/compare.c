@@ -3,6 +3,10 @@
 #include <string.h>
 #include <time.h>
 
+void memcpy_copy(int *src, int *dest, int size) {
+  memcpy(dest, src, size * sizeof(int));
+}
+
 // Function to perform linear access copy
 void linear_copy(int *src, int *dest, int size) {
   for (int i = 0; i < size; i++) {
@@ -63,7 +67,9 @@ int main(int argc, char *argv[]) {
   start = clock();
 
   for (int iter = 0; iter < iterations; iter++) {
-    if (strcmp(access_type, "linear") == 0) {
+    if (strcmp(access_type, "memcpy") == 0) {
+      memcpy_copy(src, dest, size);
+    } else if (strcmp(access_type, "linear") == 0) {
       linear_copy(src, dest, size);
     } else if (strcmp(access_type, "random") == 0) {
       strided_copy(src, dest, size, stride);
