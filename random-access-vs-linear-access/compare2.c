@@ -29,7 +29,8 @@ void check_dest(void *dest, size_t size_byte) {
   }
   for (int i = 0; i < 256; i++) {
     if (count[i] != size_byte / 256) {
-      printf("Error at value %d\n", i);
+      printf("Error at value %d: expected %zu, got %d\n", i,
+             size_byte / 256, count[i]);
     }
   }
 }
@@ -67,8 +68,10 @@ void avx_copy(size_t size_byte, int warmup, int iterations) {
       __m256i *dest_vec = (__m256i *)(dest + j * 32);
       _mm256_storeu_si256(dest_vec, _mm256_loadu_si256(src_vec));
     }
+    if(i == 0) {
+      check_dest(dest, size_byte);
+    }
   }
-  check_dest(dest, size_byte);
 
   clock_t start = clock();
   for (int i = 0; i < iterations; i++) {
@@ -88,7 +91,7 @@ void avx_copy(size_t size_byte, int warmup, int iterations) {
 
 void avx_gather_copy(size_t size_byte, int warmup, int iterations) {
   void *src = aligned_alloc(32, size_byte);
-  size_t *indices = aligned_alloc(32, size_byte / 4 * 8);
+  uint32_t *indices = aligned_alloc(32, size_byte / 4 * sizeof(uint32_t));
   for (size_t i = 0; i < size_byte / 4; i++) {
     indices[i] = i;
   }
@@ -98,6 +101,7 @@ void avx_gather_copy(size_t size_byte, int warmup, int iterations) {
   for (int i = 0; i < warmup; i++) {
     for (size_t j = 0; j < size_byte / 32; j++) {
       __m256i vindices = _mm256_loadu_si256((__m256i *)(indices + j * 8));
+      // printf("indices[%zu] = %zu\n", j * 8, indices[j * 8]);
       __m256i *dest_vec = (__m256i *)(dest + j * 32);
       __m256i gathered = _mm256_i32gather_epi32(src, vindices, 4);
       _mm256_storeu_si256(dest_vec, gathered);
@@ -131,14 +135,15 @@ int main() {
   size_t sizes[N_SIZE] = {1UL << 20, 1UL << 21, 1UL << 22, 1UL << 23,
                           1UL << 24, 1UL << 25, 1UL << 26, 1UL << 27,
                           1UL << 28, 1UL << 29, 1UL << 30};
+#define N_TEST_SIZE 4
   print_header();
-  for (int i = 0; i < N_SIZE; i++) {
+  for (int i = 0; i < N_TEST_SIZE; i++) {
     memcpy_copy(sizes[i], WARMUP, ITERATIONS);
   }
-  for (int i = 0; i < N_SIZE; i++) {
+  for (int i = 0; i < N_TEST_SIZE; i++) {
     avx_copy(sizes[i], WARMUP, ITERATIONS);
   }
-  for (int i = 0; i < N_SIZE; i++) {
+  for (int i = 0; i < N_TEST_SIZE; i++) {
     avx_gather_copy(sizes[i], WARMUP, ITERATIONS);
   }
 }
