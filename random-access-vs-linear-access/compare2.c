@@ -33,6 +33,8 @@ void check_dest(void *dest, size_t size_byte) {
              count[i]);
     }
   }
+  free(count);
+  return;
 }
 
 void memcpy_copy(size_t size_byte, int warmup, int iterations) {
@@ -55,6 +57,8 @@ void memcpy_copy(size_t size_byte, int warmup, int iterations) {
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
   print_results("memcpy", size_byte, average_time, bandwidth);
+  free(src);
+  free(dest);
 }
 
 void avx_copy(size_t size_byte, int warmup, int iterations) {
@@ -87,6 +91,8 @@ void avx_copy(size_t size_byte, int warmup, int iterations) {
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
   print_results("avx", size_byte, average_time, bandwidth);
+  free(src);
+  free(dest);
 }
 
 void shuffle_indices(uint32_t *indices, size_t size_byte) {
@@ -136,6 +142,9 @@ void avx_gather_shuffled_copy(size_t size_byte, int warmup, int iterations) {
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
   print_results("avx_gather_shuffled", size_byte, average_time, bandwidth);
+  free(src);
+  free(dest);
+  free(indices);
 }
 
 void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
@@ -174,6 +183,9 @@ void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
   print_results("avx_gather_sorted", size_byte, average_time, bandwidth);
+  free(src);
+  free(dest);
+  free(indices);
 }
 
 int main() {
