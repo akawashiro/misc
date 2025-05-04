@@ -99,7 +99,7 @@ void shuffle_indices(uint32_t *indices, size_t size_byte) {
   }
 }
 
-void avx_gather_copy(size_t size_byte, int warmup, int iterations) {
+void avx_gather_shuffled_copy(size_t size_byte, int warmup, int iterations) {
   void *src = aligned_alloc(32, size_byte);
   uint32_t *indices = aligned_alloc(32, size_byte / 4 * sizeof(uint32_t));
   for (size_t i = 0; i < size_byte / 4; i++) {
@@ -135,16 +135,62 @@ void avx_gather_copy(size_t size_byte, int warmup, int iterations) {
   double average_time = time_taken / iterations;
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
-  print_results("avx_gather", size_byte, average_time, bandwidth);
+  print_results("avx_gather_shuffled", size_byte, average_time, bandwidth);
+}
+
+void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
+  void *src = aligned_alloc(32, size_byte);
+  uint32_t *indices = aligned_alloc(32, size_byte / 4 * sizeof(uint32_t));
+  for (size_t i = 0; i < size_byte / 4; i++) {
+    indices[i] = i;
+  }
+  void *dest = aligned_alloc(32, size_byte);
+
+  set_src(src, size_byte);
+  for (int i = 0; i < warmup; i++) {
+    for (size_t j = 0; j < size_byte / 32; j++) {
+      __m256i vindices = _mm256_loadu_si256((__m256i *)(indices + j * 8));
+      __m256i *dest_vec = (__m256i *)(dest + j * 32);
+      __m256i gathered = _mm256_i32gather_epi32(src, vindices, 4);
+      _mm256_storeu_si256(dest_vec, gathered);
+    }
+    if (i == 0) {
+      check_dest(dest, size_byte);
+    }
+  }
+
+  clock_t start = clock();
+  for (int i = 0; i < warmup; i++) {
+    for (size_t j = 0; j < size_byte / 32; j++) {
+      __m256i vindices = _mm256_loadu_si256((__m256i *)(indices + j * 8));
+      __m256i *dest_vec = (__m256i *)(dest + j * 32);
+      __m256i gathered = _mm256_i32gather_epi32(src, vindices, 4);
+      _mm256_storeu_si256(dest_vec, gathered);
+    }
+  }
+  clock_t end = clock();
+  double time_taken = (double)(end - start) / CLOCKS_PER_SEC;
+  double average_time = time_taken / iterations;
+  double bandwidth =
+      (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
+  print_results("avx_gather_sorted", size_byte, average_time, bandwidth);
 }
 
 int main() {
   const int WARMUP = 10;
   const int ITERATIONS = 100;
 #define N_SIZE 11
-  size_t sizes[N_SIZE] = {1UL << 20, 1UL << 21, 1UL << 22, 1UL << 23,
-                          1UL << 24, 1UL << 25, 1UL << 26, 1UL << 27,
-                          1UL << 28, 1UL << 29, 1UL << 30};
+  size_t sizes[N_SIZE] = {1UL << 20,  // 1 MiB
+                          1UL << 21,  // 2 MiB
+                          1UL << 22,  // 4 MiB
+                          1UL << 23,  // 8 MiB
+                          1UL << 24,  // 16 MiB
+                          1UL << 25,  // 32 MiB
+                          1UL << 26,  // 64 MiB
+                          1UL << 27,  // 128 MiB
+                          1UL << 28,  // 256 MiB
+                          1UL << 29,  // 512 MiB
+                          1UL << 30}; // 1024 MiB
 #define N_TEST_SIZE N_SIZE
   print_header();
   for (int i = 0; i < N_TEST_SIZE; i++) {
@@ -154,6 +200,9 @@ int main() {
     avx_copy(sizes[i], WARMUP, ITERATIONS);
   }
   for (int i = 0; i < N_TEST_SIZE; i++) {
-    avx_gather_copy(sizes[i], WARMUP, ITERATIONS);
+    avx_gather_shuffled_copy(sizes[i], WARMUP, ITERATIONS);
+  }
+  for (int i = 0; i < N_TEST_SIZE; i++) {
+    avx_gather_sorted_copy(sizes[i], WARMUP, ITERATIONS);
   }
 }
