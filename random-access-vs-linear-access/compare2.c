@@ -7,13 +7,15 @@
 #include <time.h>
 
 void print_header() {
-  printf("Function\tSize (MiB)\tAverage Time (s)\tBandwidth (GiB/s)\n");
+  printf("Function\tSize (MiB)\tAverage Time (s)\tBandwidth (GiB/s)\t"
+         "Cycles/Byte\n");
 }
 
 void print_results(char *function_name, size_t size, double average_time,
                    double bandwidth) {
-  printf("%s\t%zu\t%.6f\t%.6f\n", function_name, size / (1024 * 1024),
-         average_time, bandwidth / (1024 * 1024 * 1024));
+  double cycles_per_byte = 5000.0 * 1000 * 1000 * average_time / size;
+  printf("%s\t%zu\t%.6f\t%.6f\t%.6f\n", function_name, size / (1024 * 1024),
+         average_time, bandwidth / (1024 * 1024 * 1024), cycles_per_byte);
 }
 
 void shuffle_src(void *src, size_t size_byte) {
