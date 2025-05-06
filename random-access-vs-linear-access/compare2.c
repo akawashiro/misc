@@ -7,15 +7,15 @@
 #include <time.h>
 
 void print_header() {
-  printf("Function\tSize (MiB)\tAverage Time (s)\tBandwidth (GiB/s)\t"
+  printf("Type\tSize (MiB)\tAverage Time (ms)\tBandwidth (GiB/s)\t"
          "Cycles/Byte\n");
 }
 
-void print_results(char *function_name, size_t size, double average_time,
+void print_results(char *type, size_t size, double average_time,
                    double bandwidth) {
   double cycles_per_byte = 5000.0 * 1000 * 1000 * average_time / size;
-  printf("%s\t%zu\t%.6f\t%.6f\t%.6f\n", function_name, size / (1024 * 1024),
-         average_time, bandwidth / (1024 * 1024 * 1024), cycles_per_byte);
+  printf("%s\t%zu\t%.6f\t%.6f\t%.6f\n", type, size / (1024 * 1024),
+         average_time * 1000, bandwidth / (1024 * 1024 * 1024), cycles_per_byte);
 }
 
 void shuffle_src(void *src, size_t size_byte) {
@@ -76,7 +76,7 @@ void memcpy_copy(size_t size_byte, int warmup, int iterations) {
   free(dest);
 }
 
-void avx_copy(size_t size_byte, int warmup, int iterations) {
+void avx2_copy(size_t size_byte, int warmup, int iterations) {
   void *src = aligned_alloc(32, size_byte);
   void *dest = aligned_alloc(32, size_byte);
 
@@ -105,7 +105,7 @@ void avx_copy(size_t size_byte, int warmup, int iterations) {
   double average_time = time_taken / iterations;
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
-  print_results("avx", size_byte, average_time, bandwidth);
+  print_results("avx2", size_byte, average_time, bandwidth);
   free(src);
   free(dest);
 }
@@ -120,7 +120,7 @@ void shuffle_indices(uint32_t *indices, size_t size_byte) {
   }
 }
 
-void avx_gather_shuffled_copy(size_t size_byte, int warmup, int iterations) {
+void avx2_gather_shuffled_copy(size_t size_byte, int warmup, int iterations) {
   void *src = aligned_alloc(32, size_byte);
   uint32_t *indices = aligned_alloc(32, size_byte / 4 * sizeof(uint32_t));
   for (size_t i = 0; i < size_byte / 4; i++) {
@@ -156,13 +156,13 @@ void avx_gather_shuffled_copy(size_t size_byte, int warmup, int iterations) {
   double average_time = time_taken / iterations;
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
-  print_results("avx_gather_shuffled", size_byte, average_time, bandwidth);
+  print_results("avx2_gather_shuffled", size_byte, average_time, bandwidth);
   free(src);
   free(dest);
   free(indices);
 }
 
-void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
+void avx2_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
   void *src = aligned_alloc(32, size_byte);
   uint32_t *indices = aligned_alloc(32, size_byte / 4 * sizeof(uint32_t));
   for (size_t i = 0; i < size_byte / 4; i++) {
@@ -197,7 +197,7 @@ void avx_gather_sorted_copy(size_t size_byte, int warmup, int iterations) {
   double average_time = time_taken / iterations;
   double bandwidth =
       (double)(size_byte * sizeof(int32_t) * iterations) / time_taken;
-  print_results("avx_gather_sorted", size_byte, average_time, bandwidth);
+  print_results("avx2_gather_sorted", size_byte, average_time, bandwidth);
   free(src);
   free(dest);
   free(indices);
@@ -224,12 +224,12 @@ int main() {
     memcpy_copy(sizes[i], WARMUP, ITERATIONS);
   }
   for (int i = 0; i < N_TEST_SIZE; i++) {
-    avx_copy(sizes[i], WARMUP, ITERATIONS);
+    avx2_copy(sizes[i], WARMUP, ITERATIONS);
   }
   for (int i = 0; i < N_TEST_SIZE; i++) {
-    avx_gather_shuffled_copy(sizes[i], WARMUP, ITERATIONS);
+    avx2_gather_shuffled_copy(sizes[i], WARMUP, ITERATIONS);
   }
   for (int i = 0; i < N_TEST_SIZE; i++) {
-    avx_gather_sorted_copy(sizes[i], WARMUP, ITERATIONS);
+    avx2_gather_sorted_copy(sizes[i], WARMUP, ITERATIONS);
   }
 }
