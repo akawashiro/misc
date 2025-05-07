@@ -2,5 +2,5 @@
 
 set -eux -o pipefail
 
-gcc -o compare2 compare2.c -mavx2
+g++ -o compare2 compare2.cc -mavx2 -Wall -mavx512f
 ./compare2
