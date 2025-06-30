@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.20)
+project(bandwidth LANGUAGES CXX)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_executable(memcpy memcpy.cc)
+add_executable(memcpy_mt memcpy_mt.cc)

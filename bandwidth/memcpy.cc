@@ -8,13 +8,13 @@
 int main() {
   constexpr uint64_t size = (1 << 30); // 1 GiB
   constexpr uint64_t iterations = 10;
-  void *src = malloc(size);
-  void *dst = malloc(size);
+  std::vector<uint8_t> src(size, 0xFF);
+  std::vector<uint8_t> dst(size, 0x00);
 
   std::vector<double> durations;
   for (uint64_t i = 0; i < iterations; ++i) {
     const auto start = std::chrono::high_resolution_clock::now();
-    std::memcpy(dst, src, size);
+    std::memcpy(dst.data(), src.data(), size);
     const auto end = std::chrono::high_resolution_clock::now();
     const double duration_ns =
         std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
