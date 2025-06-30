@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -138,6 +139,7 @@ void run_sender() {
 
   // Loop to send data
   for (uint64_t i = 0; i < NUM_PACKETS; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       // Display error but continue
