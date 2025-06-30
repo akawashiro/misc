@@ -2,7 +2,8 @@
 
 set -eux -o pipefail
 
-g++ -o memcpy memcpy.cc
-./memcpy
-g++ -o memcpy_mt memcpy_mt.cc
-./memcpy_mt
+cmake -S . -B build
+cmake --build build
+./build/memcpy
+# ./build/memcpy_mt
+./build/udp
