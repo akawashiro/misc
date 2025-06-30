@@ -7,4 +7,5 @@ cmake --build build
 # ./build/memcpy
 # ./build/memcpy_mt
 # ./build/udp
-./build/uds
+# ./build/uds
+./build/tcp
