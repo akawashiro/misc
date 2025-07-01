@@ -1,0 +1,5 @@
+# Important
+
+Run the following scripts after you finished a task.
+- ./build.sh
+- ./format.sh
