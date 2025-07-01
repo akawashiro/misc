@@ -1,6 +1,6 @@
+#include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <ctime>
 #include <thread>
 #include <vector>
 
@@ -16,10 +16,12 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   auto copy_chunk = [&](uint64_t thread_id) {
     uint64_t start = thread_id * chunk_size;
     uint64_t end = (thread_id == n_threads - 1) ? size : start + chunk_size;
+    LOG(INFO) << "Thread " << thread_id << " copying from " << start << " to "
+              << end << " (size: " << (end - start) << " bytes)";
     std::memcpy(dst.data() + start, src.data() + start, end - start);
   };
 
-  clock_t start = clock();
+  auto start = std::chrono::high_resolution_clock::now();
   std::vector<std::thread> threads;
   for (uint64_t i = 0; i < n_threads; ++i) {
     threads.emplace_back(copy_chunk, i);
@@ -27,8 +29,8 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   for (auto &t : threads) {
     t.join();
   }
-  clock_t end = clock();
-  double elapsed = static_cast<double>(end - start) / CLOCKS_PER_SEC;
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration<double>(end - start).count();
   LOG(INFO) << "Bandwidth: " << static_cast<double>(size) / (1 << 30) / elapsed
             << " GiByte/sec. Threads: " << n_threads;
 }
