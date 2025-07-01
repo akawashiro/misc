@@ -18,6 +18,12 @@ target_link_libraries(uds absl::log absl::base absl::synchronization
 add_executable(tcp tcp.cc)
 target_link_libraries(tcp absl::log absl::base absl::synchronization
                       absl::log_initialize)
+add_executable(pipe pipe.cc)
+target_link_libraries(pipe absl::log absl::base absl::synchronization
+                      absl::log_initialize)
+add_executable(mmap mmap.cc)
+target_link_libraries(mmap absl::log absl::base absl::synchronization
+                      absl::log_initialize)
 add_executable(shm shm.cc)
 target_link_libraries(
   shm

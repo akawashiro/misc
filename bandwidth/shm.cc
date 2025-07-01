@@ -18,9 +18,9 @@
 const std::string SHM_NAME = "/shm_bandwidth_test";
 const std::string SEM_WRITER_NAME = "/sem_writer_bandwidth";
 const std::string SEM_READER_NAME = "/sem_reader_bandwidth";
-const size_t DATA_SIZE = 128 * 1024 * 1024;  // 128 MiB
-const size_t BUFFER_SIZE = 64 * 1024;        // 64KB buffer for shared memory
-const int NUM_ITERATIONS = 10;               // Number of measurement iterations
+const size_t DATA_SIZE = 128 * 1024 * 1024; // 128 MiB
+const size_t BUFFER_SIZE = 64 * 1024;       // 64KB buffer for shared memory
+const int NUM_ITERATIONS = 10;              // Number of measurement iterations
 
 struct SharedBuffer {
   size_t data_size;
@@ -52,8 +52,9 @@ void server_process() {
     return;
   }
 
-  SharedBuffer* shared_buffer = static_cast<SharedBuffer*>(
-      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+  SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
+      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+           shm_fd, 0));
   if (shared_buffer == MAP_FAILED) {
     perror("server: mmap");
     close(shm_fd);
@@ -62,8 +63,8 @@ void server_process() {
   }
 
   // Create semaphores for synchronization
-  sem_t* sem_writer = sem_open(SEM_WRITER_NAME.c_str(), O_CREAT, 0666, 1);
-  sem_t* sem_reader = sem_open(SEM_READER_NAME.c_str(), O_CREAT, 0666, 0);
+  sem_t *sem_writer = sem_open(SEM_WRITER_NAME.c_str(), O_CREAT, 0666, 1);
+  sem_t *sem_reader = sem_open(SEM_READER_NAME.c_str(), O_CREAT, 0666, 0);
   if (sem_writer == SEM_FAILED || sem_reader == SEM_FAILED) {
     perror("server: sem_open");
     munmap(shared_buffer, sizeof(SharedBuffer));
@@ -83,13 +84,13 @@ void server_process() {
     while (total_received < DATA_SIZE) {
       // Wait for writer to signal data is ready
       sem_wait(sem_reader);
-      
+
       if (shared_buffer->transfer_complete) {
         break;
       }
 
       total_received += shared_buffer->data_size;
-      
+
       // Signal writer that data has been read
       sem_post(sem_writer);
     }
@@ -100,24 +101,25 @@ void server_process() {
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
-    VLOG(1) << "Server: Starting iteration " << iteration + 1 << "/" << NUM_ITERATIONS;
-    
+    VLOG(1) << "Server: Starting iteration " << iteration + 1 << "/"
+            << NUM_ITERATIONS;
+
     size_t total_received = 0;
     shared_buffer->transfer_complete = false;
-    
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Receive data until DATA_SIZE is reached
     while (total_received < DATA_SIZE) {
       // Wait for writer to signal data is ready
       sem_wait(sem_reader);
-      
+
       if (shared_buffer->transfer_complete) {
         break;
       }
 
       total_received += shared_buffer->data_size;
-      
+
       // Signal writer that data has been read
       sem_post(sem_writer);
     }
@@ -165,8 +167,9 @@ void client_process() {
     return;
   }
 
-  SharedBuffer* shared_buffer = static_cast<SharedBuffer*>(
-      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+  SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
+      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+           shm_fd, 0));
   if (shared_buffer == MAP_FAILED) {
     perror("client: mmap");
     close(shm_fd);
@@ -174,8 +177,8 @@ void client_process() {
   }
 
   // Open existing semaphores
-  sem_t* sem_writer = sem_open(SEM_WRITER_NAME.c_str(), 0);
-  sem_t* sem_reader = sem_open(SEM_READER_NAME.c_str(), 0);
+  sem_t *sem_writer = sem_open(SEM_WRITER_NAME.c_str(), 0);
+  sem_t *sem_reader = sem_open(SEM_READER_NAME.c_str(), 0);
   if (sem_writer == SEM_FAILED || sem_reader == SEM_FAILED) {
     perror("client: sem_open");
     munmap(shared_buffer, sizeof(SharedBuffer));
@@ -192,16 +195,16 @@ void client_process() {
     while (total_sent < DATA_SIZE) {
       // Wait for permission to write
       sem_wait(sem_writer);
-      
+
       size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
       shared_buffer->data_size = bytes_to_send;
       memcpy(shared_buffer->data, send_data.data(), bytes_to_send);
       total_sent += bytes_to_send;
-      
+
       if (total_sent >= DATA_SIZE) {
         shared_buffer->transfer_complete = true;
       }
-      
+
       // Signal reader that data is ready
       sem_post(sem_reader);
     }
@@ -213,27 +216,28 @@ void client_process() {
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
-    VLOG(1) << "Client: Starting iteration " << iteration + 1 << "/" << NUM_ITERATIONS;
-    
+    VLOG(1) << "Client: Starting iteration " << iteration + 1 << "/"
+            << NUM_ITERATIONS;
+
     std::vector<char> send_data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
     size_t total_sent = 0;
-    
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until DATA_SIZE is reached
     while (total_sent < DATA_SIZE) {
       // Wait for permission to write
       sem_wait(sem_writer);
-      
+
       size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
       shared_buffer->data_size = bytes_to_send;
       memcpy(shared_buffer->data, send_data.data(), bytes_to_send);
       total_sent += bytes_to_send;
-      
+
       if (total_sent >= DATA_SIZE) {
         shared_buffer->transfer_complete = true;
       }
-      
+
       // Signal reader that data is ready
       sem_post(sem_reader);
     }
@@ -289,7 +293,7 @@ int main() {
   } else {
     // Parent process (server)
     server_process();
-    
+
     // Wait for child process to complete
     int status;
     wait(&status);
