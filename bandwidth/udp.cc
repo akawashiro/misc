@@ -74,12 +74,6 @@ void run_receiver(int pipe_write_fd) {
 
   // Receive data until total size is reached
   while (total_bytes_received < TOTAL_DATA_SIZE) {
-    LOG(INFO) << "[Receiver] Received: " << total_bytes_received << " bytes in "
-              << TOTAL_DATA_SIZE << " bytes ("
-              << (static_cast<double>(total_bytes_received) / TOTAL_DATA_SIZE) *
-                     100
-              << "%)" << " remaining bytes: "
-              << (TOTAL_DATA_SIZE - total_bytes_received) << " bytes";
     bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received > 0) {
@@ -96,12 +90,7 @@ void run_receiver(int pipe_write_fd) {
       (static_cast<double>(total_bytes_received) / (1024.0 * 1024.0 * 1024.0)) /
       elapsed.count();
 
-  LOG(INFO) << "--- Reception Results ---";
-  LOG(INFO) << "Total Data Received: "
-            << static_cast<double>(total_bytes_received) / (1024 * 1024)
-            << " MiB";
-  LOG(INFO) << "Time Elapsed:          " << elapsed.count() << " seconds";
-  LOG(INFO) << "Average Bandwidth:     " << gibytes_per_second << " GiByte/sec";
+  LOG(INFO) << "Bandwidth: " << gibytes_per_second << " GiByte/sec";
 
   close(sockfd);
 }
@@ -126,12 +115,11 @@ void run_sender() {
 
   std::vector<char> buffer(CHUNK_SIZE, 'D');
 
-  LOG(INFO) << "[Sender] Sending 1 GiB (" << TOTAL_DATA_SIZE
-            << " bytes) of data...";
-
   // Loop to send data
   for (uint64_t i = 0; i < NUM_PACKETS; ++i) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    if (i % 10 == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
     if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       // Display error but continue
