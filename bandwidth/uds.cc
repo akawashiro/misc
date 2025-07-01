@@ -49,7 +49,7 @@ void server_process() {
     return;
   }
 
-  LOG(INFO) << "Server: Waiting for client connection on " << SOCKET_PATH;
+  VLOG(1) << "Server: Waiting for client connection on " << SOCKET_PATH;
 
   // Accept a client connection
   conn_fd = accept(listen_fd, NULL, NULL);
@@ -59,7 +59,7 @@ void server_process() {
     return;
   }
 
-  LOG(INFO) << "Server: Client connected. Receiving data...";
+  VLOG(1) << "Server: Client connected. Receiving data...";
 
   std::vector<char> recv_buffer(BUFFER_SIZE);
   size_t total_received = 0;
@@ -73,7 +73,7 @@ void server_process() {
       break;
     }
     if (bytes_received == 0) {
-      LOG(INFO) << "Server: Client disconnected prematurely.";
+      VLOG(1) << "Server: Client disconnected prematurely.";
       break;
     }
     total_received += bytes_received;
@@ -82,20 +82,18 @@ void server_process() {
   auto end_time = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed_time = end_time - start_time;
 
-  LOG(INFO) << "Server: Received "
-            << total_received / (1024.0 * 1024.0 * 1024.0) << " GiB of data.";
-  LOG(INFO) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
+  VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
   if (elapsed_time.count() > 0) {
     double bandwidth_gibps = total_received / (elapsed_time.count() * 1024.0 *
                                                1024.0 * 1024.0); // GiByte/sec
-    LOG(INFO) << "Server: Bandwidth: " << bandwidth_gibps << " GiByte/sec";
+    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
   }
 
   // Close sockets and remove the socket file
   close(conn_fd);
   close(listen_fd);
   remove(SOCKET_PATH.c_str());
-  LOG(INFO) << "Server: Exiting.";
+  VLOG(1) << "Server: Exiting.";
 }
 
 void client_process() {
@@ -115,7 +113,7 @@ void client_process() {
   strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
   // Connect to the server
-  LOG(INFO) << "Client: Connecting to server on " << SOCKET_PATH;
+  VLOG(1) << "Client: Connecting to server on " << SOCKET_PATH;
   while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
     if (errno == ENOENT) {
       // Server socket not found, wait and retry
@@ -128,7 +126,7 @@ void client_process() {
     }
   }
 
-  LOG(INFO) << "Client: Connected to server. Sending data...";
+  VLOG(1) << "Client: Connected to server. Sending data...";
 
   std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
   size_t total_sent = 0;
@@ -149,18 +147,15 @@ void client_process() {
   auto end_time = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed_time = end_time - start_time;
 
-  LOG(INFO) << "Client: Sent " << total_sent / (1024.0 * 1024.0 * 1024.0)
-            << " GiB of data.";
-  LOG(INFO) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
   if (elapsed_time.count() > 0) {
     double bandwidth_gibps = total_sent / (elapsed_time.count() * 1024.0 *
                                            1024.0 * 1024.0); // GiByte/sec
-    LOG(INFO) << "Client: Bandwidth: " << bandwidth_gibps << " GiByte/sec";
+    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
   }
 
   // Close the socket
   close(sock_fd);
-  LOG(INFO) << "Client: Exiting.";
+  VLOG(1) << "Client: Exiting.";
 }
 
 int main() {

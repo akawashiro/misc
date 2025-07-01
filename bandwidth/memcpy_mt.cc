@@ -37,7 +37,7 @@ int main() {
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
   constexpr uint64_t size = 128 * 1024 * 1024; // 128 MiB
-  for (uint64_t n_threads = 1; n_threads <= 8; ++n_threads) {
+  for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
     memcpy_in_multi_thread(size, n_threads);
   }
 }
