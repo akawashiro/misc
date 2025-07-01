@@ -1,0 +1,3 @@
+[submodule "bandwidth/abseil-cpp"]
+	path = bandwidth/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git
