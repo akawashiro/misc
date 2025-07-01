@@ -1,9 +1,10 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <numeric>
 #include <vector>
+
+#include "absl/log/log.h"
 
 int main() {
   constexpr uint64_t size = (1 << 30); // 1 GiB
@@ -30,5 +31,5 @@ int main() {
       durations.size();
   double bandwidth = size / average_duration;
 
-  std::cout << "Bandwidth: " << bandwidth / (1 << 30) << " GiB/sec" << std::endl;
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiB/sec";
 }

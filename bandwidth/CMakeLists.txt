@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(bandwidth LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_subdirectory(abseil-cpp)
+
 add_executable(memcpy memcpy.cc)
+target_link_libraries(memcpy absl::log)
 add_executable(memcpy_mt memcpy_mt.cc)
 add_executable(udp udp.cc)
 add_executable(uds uds.cc)
