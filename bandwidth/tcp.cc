@@ -63,6 +63,35 @@ void server_process() {
 
   VLOG(1) << "Server: Listening on " << LOOPBACK_IP << ":" << PORT;
 
+  // Perform warm-up runs
+  VLOG(1) << "Server: Performing warm-up runs...";
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+    if (conn_fd == -1) {
+      perror("server: accept during warmup");
+      close(listen_fd);
+      return;
+    }
+
+    std::vector<char> recv_buffer(BUFFER_SIZE);
+    size_t total_received = 0;
+    while (total_received < DATA_SIZE) {
+      ssize_t bytes_received =
+          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
+      if (bytes_received == -1) {
+        perror("server: recv during warmup");
+        break;
+      }
+      if (bytes_received == 0) {
+        break;
+      }
+      total_received += bytes_received;
+    }
+    close(conn_fd);
+    VLOG(1) << "Server: Warm-up " << warmup + 1 << "/3 completed";
+  }
+  VLOG(1) << "Server: Warm-up complete. Starting measurements...";
+
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
@@ -132,6 +161,47 @@ void server_process() {
 }
 
 void client_process() {
+  // Perform warm-up runs
+  VLOG(1) << "Client: Performing warm-up runs...";
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    int sock_fd;
+    struct sockaddr_in server_addr;
+
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_fd == -1) {
+      perror("client: socket during warmup");
+      return;
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+    server_addr.sin_port = htons(PORT);
+
+    while (connect(sock_fd, (struct sockaddr *)&server_addr,
+                   sizeof(server_addr)) == -1) {
+      sleep(1);
+    }
+
+    std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
+    size_t total_sent = 0;
+    while (total_sent < DATA_SIZE) {
+      size_t bytes_to_send =
+          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
+      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      if (bytes_sent == -1) {
+        perror("client: send during warmup");
+        break;
+      }
+      total_sent += bytes_sent;
+    }
+    shutdown(sock_fd, SHUT_WR);
+    close(sock_fd);
+    VLOG(1) << "Client: Warm-up " << warmup + 1 << "/3 completed";
+    usleep(100000); // 100ms delay between warmup runs
+  }
+  VLOG(1) << "Client: Warm-up complete. Starting measurements...";
+
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {

@@ -61,6 +61,34 @@ void run_receiver(int pipe_write_fd) {
   LOG(INFO) << "[Receiver] Waiting for data... (Port: " << PORT << ")";
 
   std::vector<char> buffer(CHUNK_SIZE);
+
+  // Perform warm-up runs
+  VLOG(1) << "[Receiver] Performing warm-up runs...";
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    uint64_t total_bytes_received = 0;
+    ssize_t bytes_received;
+
+    // Wait for warmup start signal from sender
+    bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+                              (struct sockaddr *)&cli_addr, &cli_len);
+    if (bytes_received < 0) {
+      die("Receiver: recvfrom() failed on warmup start");
+    }
+
+    if (buffer[0] == 'W') { // 'W' for warmup
+      total_bytes_received += bytes_received;
+      while (total_bytes_received < TOTAL_DATA_SIZE) {
+        bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+                                  (struct sockaddr *)&cli_addr, &cli_len);
+        if (bytes_received > 0) {
+          total_bytes_received += bytes_received;
+        }
+      }
+      VLOG(1) << "[Receiver] Warm-up " << warmup + 1 << "/3 completed";
+    }
+  }
+  VLOG(1) << "[Receiver] Warm-up complete. Starting measurements...";
+
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
@@ -137,6 +165,33 @@ void run_sender() {
   if (inet_aton(HOST, &serv_addr.sin_addr) == 0) {
     die("Sender: inet_aton() failed");
   }
+
+  // Perform warm-up runs
+  VLOG(1) << "[Sender] Performing warm-up runs...";
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    // First packet marked with 'W' to signal warmup
+    std::vector<char> warmup_buffer(CHUNK_SIZE, 'W');
+    if (sendto(sockfd, warmup_buffer.data(), CHUNK_SIZE, 0,
+               (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+      perror("Sender: sendto() error on warmup signal");
+    }
+
+    // Send remaining packets
+    std::vector<char> buffer(CHUNK_SIZE, 'w');
+    for (uint64_t i = 1; i < NUM_PACKETS; ++i) {
+      if (i % 10 == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+      if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
+                 (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        // Display error but continue
+        perror("Sender: sendto() error during warmup");
+      }
+    }
+    VLOG(1) << "[Sender] Warm-up " << warmup + 1 << "/3 completed";
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  VLOG(1) << "[Sender] Warm-up complete. Starting measurements...";
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
     LOG(INFO) << "[Sender] Starting iteration " << iteration + 1 << "/"

@@ -21,6 +21,18 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
     std::memcpy(dst.data() + start, src.data() + start, end - start);
   };
 
+  // Perform warm-up runs to stabilize cache and memory subsystem
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    std::fill(dst.begin(), dst.end(), 0x00);
+    std::vector<std::thread> warmup_threads;
+    for (uint64_t i = 0; i < n_threads; ++i) {
+      warmup_threads.emplace_back(copy_chunk, i);
+    }
+    for (auto &t : warmup_threads) {
+      t.join();
+    }
+  }
+
   // Perform 10 measurements
   std::vector<double> durations;
   for (int iteration = 0; iteration < 10; ++iteration) {
@@ -58,6 +70,7 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
 int main() {
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
+  LOG(INFO) << "Starting multi-threaded memcpy bandwidth test...";
   constexpr uint64_t size = 128 * 1024 * 1024; // 128 MiB
   for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
     memcpy_in_multi_thread(size, n_threads);

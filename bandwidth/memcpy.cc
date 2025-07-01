@@ -16,6 +16,14 @@ int main() {
   std::vector<uint8_t> src(size, 0xFF);
   std::vector<uint8_t> dst(size, 0x00);
 
+  // Perform warm-up runs to stabilize cache and memory subsystem
+  VLOG(1) << "Performing warm-up runs...";
+  for (int warmup = 0; warmup < 3; ++warmup) {
+    std::fill(dst.begin(), dst.end(), 0x00);
+    std::memcpy(dst.data(), src.data(), size);
+  }
+  VLOG(1) << "Warm-up complete. Starting measurements...";
+
   // Perform 10 measurements
   std::vector<double> durations;
   for (int iteration = 0; iteration < 10; ++iteration) {
