@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include "absl/log/globals.h"
+#include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
@@ -162,6 +164,9 @@ void client_process() {
 }
 
 int main() {
+  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
+  absl::InitializeLog();
+
   pid_t pid = fork();
 
   if (pid == -1) {

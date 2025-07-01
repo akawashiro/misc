@@ -1,7 +1,6 @@
 #include <arpa/inet.h>
 #include <chrono>
 #include <cstring>
-#include <iomanip>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -9,6 +8,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include "absl/log/globals.h"
+#include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
 // --- Common Settings ---
@@ -132,6 +133,9 @@ void run_sender() {
 }
 
 int main() {
+  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
+  absl::InitializeLog();
+
   // Pipe for parent-child synchronization
   int pipefd[2];
   if (pipe(pipefd) == -1) {

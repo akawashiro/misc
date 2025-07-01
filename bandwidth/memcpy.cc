@@ -4,9 +4,13 @@
 #include <numeric>
 #include <vector>
 
+#include "absl/log/globals.h"
+#include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
 int main() {
+  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
+  absl::InitializeLog();
   constexpr uint64_t size = 128 * 1024 * 1024; // 128 MiB
   constexpr uint64_t iterations = 10;
   std::vector<uint8_t> src(size, 0xFF);
