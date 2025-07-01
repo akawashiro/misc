@@ -1,40 +1,50 @@
-#include <algorithm> // For std::min
-#include <chrono>
-#include <cstdio> // For remove()
-#include <cstring>
+#include <algorithm>   // For std::min
+#include <arpa/inet.h> // For inet_addr
+#include <chrono>      // For time measurement
+#include <cstring>     // For memset
+#include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
 #include <string>
 #include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
+#include <unistd.h> // For fork, close
 #include <vector>
 
 #include "absl/log/log.h"
 
-const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
+const int PORT = 12345; // Port number for TCP communication
+const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 const size_t DATA_SIZE = 1024 * 1024 * 1024; // 1 GiB
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
 
 void server_process() {
   int listen_fd, conn_fd;
-  struct sockaddr_un addr;
+  struct sockaddr_in server_addr, client_addr;
+  socklen_t client_len = sizeof(client_addr);
 
-  // Create a Unix domain stream socket
-  listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  // Create a TCP socket
+  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_fd == -1) {
     perror("server: socket");
     return;
   }
 
-  // Remove the socket file if it already exists (from previous runs)
-  remove(SOCKET_PATH.c_str());
+  // Allow immediate reuse of the port after the program exits
+  int optval = 1;
+  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                 sizeof(optval)) == -1) {
+    perror("server: setsockopt SO_REUSEADDR");
+    close(listen_fd);
+    return;
+  }
 
-  // Configure the socket address
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
+  // Configure server address
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+  server_addr.sin_port = htons(PORT);
 
-  // Bind the socket to the specified path
-  if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+  // Bind the socket to the specified IP address and port
+  if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) ==
+      -1) {
     perror("server: bind");
     close(listen_fd);
     return;
@@ -47,17 +57,19 @@ void server_process() {
     return;
   }
 
-  LOG(INFO) << "Server: Waiting for client connection on " << SOCKET_PATH;
+  LOG(INFO) << "Server: Listening on " << LOOPBACK_IP << ":" << PORT;
 
   // Accept a client connection
-  conn_fd = accept(listen_fd, NULL, NULL);
+  conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
   if (conn_fd == -1) {
     perror("server: accept");
     close(listen_fd);
     return;
   }
 
-  LOG(INFO) << "Server: Client connected. Receiving data...";
+  LOG(INFO) << "Server: Client connected from "
+            << inet_ntoa(client_addr.sin_addr) << ":"
+            << ntohs(client_addr.sin_port) << ". Receiving data...";
 
   std::vector<char> recv_buffer(BUFFER_SIZE);
   size_t total_received = 0;
@@ -89,46 +101,40 @@ void server_process() {
     LOG(INFO) << "Server: Bandwidth: " << bandwidth_gibps << " GiB/s";
   }
 
-  // Close sockets and remove the socket file
+  // Close sockets
   close(conn_fd);
   close(listen_fd);
-  remove(SOCKET_PATH.c_str());
   LOG(INFO) << "Server: Exiting.";
 }
 
 void client_process() {
   int sock_fd;
-  struct sockaddr_un addr;
+  struct sockaddr_in server_addr;
 
-  // Create a Unix domain stream socket
-  sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  // Create a TCP socket
+  sock_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (sock_fd == -1) {
     perror("client: socket");
     return;
   }
 
-  // Configure the socket address
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
+  // Configure server address to connect to
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+  server_addr.sin_port = htons(PORT);
 
   // Connect to the server
-  LOG(INFO) << "Client: Connecting to server on " << SOCKET_PATH;
-  while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-    if (errno == ENOENT) {
-      // Server socket not found, wait and retry
-      LOG(ERROR) << "Client: Server socket not found, retrying in 1 second...";
-      sleep(1);
-    } else {
-      perror("client: connect");
-      close(sock_fd);
-      return;
-    }
+  LOG(INFO) << "Client: Connecting to server at " << LOOPBACK_IP << ":" << PORT;
+  while (connect(sock_fd, (struct sockaddr *)&server_addr,
+                 sizeof(server_addr)) == -1) {
+    perror("client: connect (retrying in 1 second)");
+    sleep(1); // Wait a bit if server isn't ready yet
   }
 
   LOG(INFO) << "Client: Connected to server. Sending data...";
 
-  std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
+  std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
   size_t total_sent = 0;
   auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -143,6 +149,9 @@ void client_process() {
     }
     total_sent += bytes_sent;
   }
+
+  // Ensure all data is sent before closing the socket (optional, but good
+  // practice for benchmarks) shutdown(sock_fd, SHUT_WR);
 
   auto end_time = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed_time = end_time - start_time;

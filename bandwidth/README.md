@@ -17,7 +17,7 @@ $ perf bench mem memcpy --size 1GB
 
 masumi <-> masumi
 ```
-$ iperf3 -c localhost --format G -bytes 1G
+$ iperf3 -c localhost --format g -bytes 1g
 Connecting to host localhost, port 5201
 [  5] local 127.0.0.1 port 59876 connected to 127.0.0.1 port 5201
 [ ID] Interval           Transfer     Bitrate         Retr  Cwnd

@@ -1,21 +1,10 @@
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <thread>
 #include <vector>
 
-void memcpy_in_single_thread(uint64_t size) {
-  std::vector<uint8_t> src(size);
-  std::vector<uint8_t> dst(size);
-
-  clock_t start = clock();
-  std::memcpy(dst.data(), src.data(), size);
-  clock_t end = clock();
-  double elapsed = static_cast<double>(end - start) / CLOCKS_PER_SEC;
-  printf("Memcpy in single thread: %f seconds, bandwidth: %f GiByte/s\n",
-         elapsed, static_cast<double>(size) / (elapsed * (1 << 30)));
-}
+#include "absl/log/log.h"
 
 void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   std::vector<uint8_t> src(size, 0xFF);
@@ -38,14 +27,13 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   }
   clock_t end = clock();
   double elapsed = static_cast<double>(end - start) / CLOCKS_PER_SEC;
-  printf("Memcpy in %lu threads: %f seconds, bandwidth: %f GiByte/s\n",
-         n_threads, elapsed,
-         static_cast<double>(size) / (elapsed * (1 << 30)));
+  LOG(INFO) << "Memcpy in " << n_threads << " threads: " << elapsed
+            << " seconds, bandwidth: "
+            << static_cast<double>(size) / (elapsed * (1 << 30)) << " GiByte/s";
 }
 
 int main() {
-  constexpr uint64_t size = 10UL * (1 << 30);
-  memcpy_in_single_thread(size);
+  constexpr uint64_t size = (1 << 30);
   for (uint64_t n_threads = 1; n_threads <= 8; ++n_threads) {
     memcpy_in_multi_thread(size, n_threads);
   }

@@ -2,13 +2,14 @@
 #include <chrono>
 #include <cstring>
 #include <iomanip>
-#include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
+
+#include "absl/log/log.h"
 
 // --- Common Settings ---
 constexpr int PORT = 12345;
@@ -53,8 +54,7 @@ void run_receiver(int pipe_write_fd) {
   }
   close(pipe_write_fd); // Close pipe after notification
 
-  std::cout << "[Receiver] Waiting for data... (Port: " << PORT << ")"
-            << std::endl;
+  LOG(INFO) << "[Receiver] Waiting for data... (Port: " << PORT << ")";
 
   std::vector<char> buffer(CHUNK_SIZE);
   uint64_t total_bytes_received = 0;
@@ -70,17 +70,16 @@ void run_receiver(int pipe_write_fd) {
 
   // Start measurement
   auto start_time = std::chrono::high_resolution_clock::now();
-  std::cout << "[Receiver] Receiving started..." << std::endl;
+  LOG(INFO) << "[Receiver] Receiving started...";
 
   // Receive data until total size is reached
   while (total_bytes_received < TOTAL_DATA_SIZE) {
-    std::cout << "\r[Receiver] Received: " << total_bytes_received
-              << " bytes in " << TOTAL_DATA_SIZE << " bytes ("
+    LOG(INFO) << "[Receiver] Received: " << total_bytes_received << " bytes in "
+              << TOTAL_DATA_SIZE << " bytes ("
               << (static_cast<double>(total_bytes_received) / TOTAL_DATA_SIZE) *
                      100
               << "%)" << " remaining bytes: "
-              << (TOTAL_DATA_SIZE - total_bytes_received) << " bytes"
-              << std::endl;
+              << (TOTAL_DATA_SIZE - total_bytes_received) << " bytes";
     bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received > 0) {
@@ -99,17 +98,13 @@ void run_receiver(int pipe_write_fd) {
   double gigabits_per_second =
       (static_cast<double>(total_bytes_received) * 8 / 1e9) / elapsed.count();
 
-  std::cout << "\n--- Reception Results ---" << std::endl;
-  std::cout << std::fixed << std::setprecision(2);
-  std::cout << "Total Data Received: "
+  LOG(INFO) << "--- Reception Results ---";
+  LOG(INFO) << "Total Data Received: "
             << static_cast<double>(total_bytes_received) / (1024 * 1024)
-            << " MiB" << std::endl;
-  std::cout << "Time Elapsed:          " << elapsed.count() << " seconds"
-            << std::endl;
-  std::cout << "Average Bandwidth:     " << megabytes_per_second << " MB/s"
-            << std::endl;
-  std::cout << "Average Bandwidth (Gbps): " << gigabits_per_second << " Gbps"
-            << std::endl;
+            << " MiB";
+  LOG(INFO) << "Time Elapsed:          " << elapsed.count() << " seconds";
+  LOG(INFO) << "Average Bandwidth:     " << megabytes_per_second << " MB/s";
+  LOG(INFO) << "Average Bandwidth (Gbps): " << gigabits_per_second << " Gbps";
 
   close(sockfd);
 }
@@ -134,8 +129,8 @@ void run_sender() {
 
   std::vector<char> buffer(CHUNK_SIZE, 'D');
 
-  std::cout << "[Sender] Sending 1 GiB (" << TOTAL_DATA_SIZE
-            << " bytes) of data..." << std::endl;
+  LOG(INFO) << "[Sender] Sending 1 GiB (" << TOTAL_DATA_SIZE
+            << " bytes) of data...";
 
   // Loop to send data
   for (uint64_t i = 0; i < NUM_PACKETS; ++i) {
@@ -147,7 +142,7 @@ void run_sender() {
     }
   }
 
-  std::cout << "[Sender] Sending complete." << std::endl;
+  LOG(INFO) << "[Sender] Sending complete.";
   close(sockfd);
 }
 
@@ -178,23 +173,21 @@ int main() {
 
     // Wait for ready notification from child process
     char signal_buffer;
-    std::cout << "[Main] Waiting for receiver process to be ready..."
-              << std::endl;
+    LOG(INFO) << "[Main] Waiting for receiver process to be ready...";
     if (read(pipefd[0], &signal_buffer, 1) != 1) {
       die("Main: pipe read failed. Receiver may have failed to start.");
     }
     close(pipefd[0]); // Read complete
 
     if (signal_buffer == 'R') {
-      std::cout << "[Main] Receiver is ready. Starting transmission."
-                << std::endl;
+      LOG(INFO) << "[Main] Receiver is ready. Starting transmission.";
     }
 
     run_sender(); // Execute sender process
 
     // Wait for child process to terminate (prevent zombie processes)
     wait(NULL);
-    std::cout << "[Main] Measurement complete." << std::endl;
+    LOG(INFO) << "[Main] Measurement complete.";
   }
 
   return 0;
