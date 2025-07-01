@@ -16,8 +16,6 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   auto copy_chunk = [&](uint64_t thread_id) {
     uint64_t start = thread_id * chunk_size;
     uint64_t end = (thread_id == n_threads - 1) ? size : start + chunk_size;
-    LOG(INFO) << "Thread " << thread_id << " copying from " << start << " to "
-              << end << " (size: " << (end - start) << " bytes)";
     std::memcpy(dst.data() + start, src.data() + start, end - start);
   };
 
