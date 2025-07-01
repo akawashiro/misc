@@ -92,19 +92,16 @@ void run_receiver(int pipe_write_fd) {
 
   // Calculate and display results
   std::chrono::duration<double> elapsed = end_time - start_time;
-  double megabytes_per_second =
-      (static_cast<double>(total_bytes_received) / (1024 * 1024)) /
+  double gibytes_per_second =
+      (static_cast<double>(total_bytes_received) / (1024.0 * 1024.0 * 1024.0)) /
       elapsed.count();
-  double gigabits_per_second =
-      (static_cast<double>(total_bytes_received) * 8 / 1e9) / elapsed.count();
 
   LOG(INFO) << "--- Reception Results ---";
   LOG(INFO) << "Total Data Received: "
             << static_cast<double>(total_bytes_received) / (1024 * 1024)
             << " MiB";
   LOG(INFO) << "Time Elapsed:          " << elapsed.count() << " seconds";
-  LOG(INFO) << "Average Bandwidth:     " << megabytes_per_second << " MB/s";
-  LOG(INFO) << "Average Bandwidth (Gbps): " << gigabits_per_second << " Gbps";
+  LOG(INFO) << "Average Bandwidth:     " << gibytes_per_second << " GiByte/sec";
 
   close(sockfd);
 }

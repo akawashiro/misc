@@ -29,7 +29,8 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
   double elapsed = static_cast<double>(end - start) / CLOCKS_PER_SEC;
   LOG(INFO) << "Memcpy in " << n_threads << " threads: " << elapsed
             << " seconds, bandwidth: "
-            << static_cast<double>(size) / (elapsed * (1 << 30)) << " GiByte/s";
+            << static_cast<double>(size) / (elapsed * (1 << 30))
+            << " GiByte/sec";
 }
 
 int main() {

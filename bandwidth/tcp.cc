@@ -97,8 +97,8 @@ void server_process() {
   LOG(INFO) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
   if (elapsed_time.count() > 0) {
     double bandwidth_gibps = total_received / (elapsed_time.count() * 1024.0 *
-                                               1024.0 * 1024.0); // GiB/s
-    LOG(INFO) << "Server: Bandwidth: " << bandwidth_gibps << " GiB/s";
+                                               1024.0 * 1024.0); // GiByte/sec
+    LOG(INFO) << "Server: Bandwidth: " << bandwidth_gibps << " GiByte/sec";
   }
 
   // Close sockets
@@ -160,9 +160,9 @@ void client_process() {
             << " GiB of data.";
   LOG(INFO) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
   if (elapsed_time.count() > 0) {
-    double bandwidth_gibps =
-        total_sent / (elapsed_time.count() * 1024.0 * 1024.0 * 1024.0); // GiB/s
-    LOG(INFO) << "Client: Bandwidth: " << bandwidth_gibps << " GiB/s";
+    double bandwidth_gibps = total_sent / (elapsed_time.count() * 1024.0 *
+                                           1024.0 * 1024.0); // GiByte/sec
+    LOG(INFO) << "Client: Bandwidth: " << bandwidth_gibps << " GiByte/sec";
   }
 
   // Close the socket

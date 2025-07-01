@@ -31,5 +31,5 @@ int main() {
       durations.size();
   double bandwidth = size / average_duration;
 
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiB/sec";
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec";
 }
