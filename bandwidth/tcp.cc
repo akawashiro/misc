@@ -3,6 +3,7 @@
 #include <chrono>       // For time measurement
 #include <cstring>      // For memset
 #include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
+#include <numeric>      // For std::accumulate
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h> // For fork, close
@@ -16,6 +17,7 @@ const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 const size_t DATA_SIZE = 128 * 1024 * 1024;  // 128 MiB
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
+const int NUM_ITERATIONS = 10;               // Number of measurement iterations
 
 void server_process() {
   int listen_fd, conn_fd;
@@ -61,111 +63,155 @@ void server_process() {
 
   VLOG(1) << "Server: Listening on " << LOOPBACK_IP << ":" << PORT;
 
-  // Accept a client connection
-  conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
-  if (conn_fd == -1) {
-    perror("server: accept");
-    close(listen_fd);
-    return;
+  std::vector<double> durations;
+
+  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+    // Accept a client connection for each iteration
+    conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+    if (conn_fd == -1) {
+      perror("server: accept");
+      close(listen_fd);
+      return;
+    }
+
+    VLOG(1) << "Server: Client connected from "
+            << inet_ntoa(client_addr.sin_addr) << ":"
+            << ntohs(client_addr.sin_port) << ". Receiving data... (Iteration "
+            << iteration + 1 << "/" << NUM_ITERATIONS << ")";
+
+    std::vector<char> recv_buffer(BUFFER_SIZE);
+    size_t total_received = 0;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    // Receive data until DATA_SIZE is reached
+    while (total_received < DATA_SIZE) {
+      ssize_t bytes_received =
+          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
+      if (bytes_received == -1) {
+        perror("server: recv");
+        break;
+      }
+      if (bytes_received == 0) {
+        LOG(INFO) << "Server: Client disconnected prematurely.";
+        break;
+      }
+      total_received += bytes_received;
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_time = end_time - start_time;
+    durations.push_back(elapsed_time.count());
+
+    VLOG(1) << "Server: Received "
+            << total_received / (1024.0 * 1024.0 * 1024.0) << " GiB of data in "
+            << elapsed_time.count() << " seconds.";
+
+    // Close connection for this iteration
+    close(conn_fd);
   }
 
-  VLOG(1) << "Server: Client connected from " << inet_ntoa(client_addr.sin_addr)
-          << ":" << ntohs(client_addr.sin_port) << ". Receiving data...";
+  // Sort durations and exclude min and max
+  std::sort(durations.begin(), durations.end());
+  std::vector<double> filtered_durations(durations.begin() + 1,
+                                         durations.end() - 1);
 
-  std::vector<char> recv_buffer(BUFFER_SIZE);
-  size_t total_received = 0;
-  auto start_time = std::chrono::high_resolution_clock::now();
+  // Calculate average of remaining 8 measurements
+  double average_duration = std::accumulate(filtered_durations.begin(),
+                                            filtered_durations.end(), 0.0) /
+                            filtered_durations.size();
 
-  // Receive data until DATA_SIZE is reached
-  while (total_received < DATA_SIZE) {
-    ssize_t bytes_received = recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
-    if (bytes_received == -1) {
-      perror("server: recv");
-      break;
-    }
-    if (bytes_received == 0) {
-      LOG(INFO) << "Server: Client disconnected prematurely.";
-      break;
-    }
-    total_received += bytes_received;
-  }
-
-  auto end_time = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed_time = end_time - start_time;
-
-  VLOG(1) << "Server: Received " << total_received / (1024.0 * 1024.0 * 1024.0)
-          << " GiB of data.";
-  VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
-  if (elapsed_time.count() > 0) {
-    double bandwidth_gibps = total_received / (elapsed_time.count() * 1024.0 *
-                                               1024.0 * 1024.0); // GiByte/sec
-    LOG(INFO) << "Server: Bandwidth: " << bandwidth_gibps << " GiByte/sec";
+  if (average_duration > 0) {
+    double bandwidth_gibps =
+        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
+    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
   }
 
   // Close sockets
-  close(conn_fd);
   close(listen_fd);
   VLOG(1) << "Server: Exiting.";
 }
 
 void client_process() {
-  int sock_fd;
-  struct sockaddr_in server_addr;
+  std::vector<double> durations;
 
-  // Create a TCP socket
-  sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock_fd == -1) {
-    perror("client: socket");
-    return;
-  }
+  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+    int sock_fd;
+    struct sockaddr_in server_addr;
 
-  // Configure server address to connect to
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-  server_addr.sin_port = htons(PORT);
-
-  // Connect to the server
-  VLOG(1) << "Client: Connecting to server at " << LOOPBACK_IP << ":" << PORT;
-  while (connect(sock_fd, (struct sockaddr *)&server_addr,
-                 sizeof(server_addr)) == -1) {
-    perror("client: connect (retrying in 1 second)");
-    sleep(1); // Wait a bit if server isn't ready yet
-  }
-
-  VLOG(1) << "Client: Connected to server. Sending data...";
-
-  std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
-  size_t total_sent = 0;
-  auto start_time = std::chrono::high_resolution_clock::now();
-
-  // Send data until DATA_SIZE is reached
-  while (total_sent < DATA_SIZE) {
-    size_t bytes_to_send =
-        std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-    ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
-    if (bytes_sent == -1) {
-      perror("client: send");
-      break;
+    // Create a TCP socket
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_fd == -1) {
+      perror("client: socket");
+      return;
     }
-    total_sent += bytes_sent;
+
+    // Configure server address to connect to
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+    server_addr.sin_port = htons(PORT);
+
+    // Connect to the server
+    VLOG(1) << "Client: Connecting to server at " << LOOPBACK_IP << ":" << PORT
+            << " (Iteration " << iteration + 1 << "/" << NUM_ITERATIONS << ")";
+    while (connect(sock_fd, (struct sockaddr *)&server_addr,
+                   sizeof(server_addr)) == -1) {
+      perror("client: connect (retrying in 1 second)");
+      sleep(1); // Wait a bit if server isn't ready yet
+    }
+
+    VLOG(1) << "Client: Connected to server. Sending data...";
+
+    std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
+    size_t total_sent = 0;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    // Send data until DATA_SIZE is reached
+    while (total_sent < DATA_SIZE) {
+      size_t bytes_to_send =
+          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
+      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      if (bytes_sent == -1) {
+        perror("client: send");
+        break;
+      }
+      total_sent += bytes_sent;
+    }
+
+    // Ensure all data is sent before closing the socket
+    shutdown(sock_fd, SHUT_WR);
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_time = end_time - start_time;
+    durations.push_back(elapsed_time.count());
+
+    VLOG(1) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
+
+    // Close the socket
+    close(sock_fd);
+
+    // Small delay between iterations to allow server to reset
+    if (iteration < NUM_ITERATIONS - 1) {
+      usleep(100000); // 100ms delay
+    }
   }
 
-  // Ensure all data is sent before closing the socket (optional, but good
-  // practice for benchmarks) shutdown(sock_fd, SHUT_WR);
+  // Sort durations and exclude min and max
+  std::sort(durations.begin(), durations.end());
+  std::vector<double> filtered_durations(durations.begin() + 1,
+                                         durations.end() - 1);
 
-  auto end_time = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed_time = end_time - start_time;
+  // Calculate average of remaining 8 measurements
+  double average_duration = std::accumulate(filtered_durations.begin(),
+                                            filtered_durations.end(), 0.0) /
+                            filtered_durations.size();
 
-  VLOG(1) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
-  if (elapsed_time.count() > 0) {
+  if (average_duration > 0) {
     double bandwidth_gibps =
-        total_sent / (elapsed_time.count() * 1024.0 * 1024.0 * 1024.0);
+        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
     LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
   }
 
-  // Close the socket
-  close(sock_fd);
   VLOG(1) << "Client: Exiting.";
 }
 

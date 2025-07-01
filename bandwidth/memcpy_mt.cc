@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <numeric>
 #include <thread>
 #include <vector>
 
@@ -19,17 +21,37 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
     std::memcpy(dst.data() + start, src.data() + start, end - start);
   };
 
-  auto start = std::chrono::high_resolution_clock::now();
-  std::vector<std::thread> threads;
-  for (uint64_t i = 0; i < n_threads; ++i) {
-    threads.emplace_back(copy_chunk, i);
+  // Perform 10 measurements
+  std::vector<double> durations;
+  for (int iteration = 0; iteration < 10; ++iteration) {
+    // Reset destination buffer for each measurement
+    std::fill(dst.begin(), dst.end(), 0x00);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    std::vector<std::thread> threads;
+    for (uint64_t i = 0; i < n_threads; ++i) {
+      threads.emplace_back(copy_chunk, i);
+    }
+    for (auto &t : threads) {
+      t.join();
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration<double>(end - start).count();
+    durations.push_back(elapsed);
   }
-  for (auto &t : threads) {
-    t.join();
-  }
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration<double>(end - start).count();
-  LOG(INFO) << "Bandwidth: " << static_cast<double>(size) / (1 << 30) / elapsed
+
+  // Sort durations and exclude min and max
+  std::sort(durations.begin(), durations.end());
+  std::vector<double> filtered_durations(durations.begin() + 1,
+                                         durations.end() - 1);
+
+  // Calculate average of remaining 8 measurements
+  double average_duration = std::accumulate(filtered_durations.begin(),
+                                            filtered_durations.end(), 0.0) /
+                            filtered_durations.size();
+
+  double bandwidth = static_cast<double>(size) / (1 << 30) / average_duration;
+  LOG(INFO) << "Bandwidth: " << bandwidth
             << " GiByte/sec. Threads: " << n_threads;
 }
 

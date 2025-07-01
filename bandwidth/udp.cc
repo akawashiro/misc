@@ -1,7 +1,9 @@
+#include <algorithm>
 #include <arpa/inet.h>
 #include <chrono>
 #include <cstring>
 #include <netinet/in.h>
+#include <numeric>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <thread>
@@ -18,6 +20,7 @@ constexpr const char *HOST = "127.0.0.1";
 constexpr size_t CHUNK_SIZE = 8192;                        // 8 KB
 constexpr uint64_t TOTAL_DATA_SIZE = 128ULL * 1024 * 1024; // 128 MiB
 constexpr uint64_t NUM_PACKETS = TOTAL_DATA_SIZE / CHUNK_SIZE;
+constexpr int NUM_ITERATIONS = 10; // Number of measurement iterations
 
 // --- Error Handling Function ---
 void die(const char *message) {
@@ -58,39 +61,60 @@ void run_receiver(int pipe_write_fd) {
   LOG(INFO) << "[Receiver] Waiting for data... (Port: " << PORT << ")";
 
   std::vector<char> buffer(CHUNK_SIZE);
-  uint64_t total_bytes_received = 0;
-  ssize_t bytes_received;
+  std::vector<double> durations;
 
-  // Receive the first packet
-  bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
-                            (struct sockaddr *)&cli_addr, &cli_len);
-  if (bytes_received < 0) {
-    die("Receiver: recvfrom() failed on first packet");
-  }
-  total_bytes_received += bytes_received;
+  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+    uint64_t total_bytes_received = 0;
+    ssize_t bytes_received;
 
-  // Start measurement
-  auto start_time = std::chrono::high_resolution_clock::now();
-  LOG(INFO) << "[Receiver] Receiving started...";
-
-  // Receive data until total size is reached
-  while (total_bytes_received < TOTAL_DATA_SIZE) {
+    // Wait for iteration start signal from sender
     bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
-    if (bytes_received > 0) {
+    if (bytes_received < 0) {
+      die("Receiver: recvfrom() failed on iteration start");
+    }
+
+    // Check if this is a start signal (first packet should contain 'S')
+    if (buffer[0] == 'S') {
       total_bytes_received += bytes_received;
+
+      // Start measurement
+      auto start_time = std::chrono::high_resolution_clock::now();
+      LOG(INFO) << "[Receiver] Iteration " << iteration + 1 << "/"
+                << NUM_ITERATIONS << " started...";
+
+      // Receive data until total size is reached
+      while (total_bytes_received < TOTAL_DATA_SIZE) {
+        bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+                                  (struct sockaddr *)&cli_addr, &cli_len);
+        if (bytes_received > 0) {
+          total_bytes_received += bytes_received;
+        }
+      }
+
+      // End measurement
+      auto end_time = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = end_time - start_time;
+      durations.push_back(elapsed.count());
+
+      LOG(INFO) << "[Receiver] Iteration " << iteration + 1 << " completed in "
+                << elapsed.count() << " seconds";
     }
   }
 
-  // End measurement
-  auto end_time = std::chrono::high_resolution_clock::now();
+  // Sort durations and exclude min and max
+  std::sort(durations.begin(), durations.end());
+  std::vector<double> filtered_durations(durations.begin() + 1,
+                                         durations.end() - 1);
 
-  // Calculate and display results
-  std::chrono::duration<double> elapsed = end_time - start_time;
+  // Calculate average of remaining 8 measurements
+  double average_duration = std::accumulate(filtered_durations.begin(),
+                                            filtered_durations.end(), 0.0) /
+                            filtered_durations.size();
+
   double gibytes_per_second =
-      (static_cast<double>(total_bytes_received) / (1024.0 * 1024.0 * 1024.0)) /
-      elapsed.count();
-
+      (static_cast<double>(TOTAL_DATA_SIZE) / (1024.0 * 1024.0 * 1024.0)) /
+      average_duration;
   LOG(INFO) << "Bandwidth: " << gibytes_per_second << " GiByte/sec";
 
   close(sockfd);
@@ -114,21 +138,37 @@ void run_sender() {
     die("Sender: inet_aton() failed");
   }
 
-  std::vector<char> buffer(CHUNK_SIZE, 'D');
+  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+    LOG(INFO) << "[Sender] Starting iteration " << iteration + 1 << "/"
+              << NUM_ITERATIONS;
 
-  // Loop to send data
-  for (uint64_t i = 0; i < NUM_PACKETS; ++i) {
-    if (i % 10 == 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-    if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
+    // First packet marked with 'S' to signal start
+    std::vector<char> start_buffer(CHUNK_SIZE, 'S');
+    if (sendto(sockfd, start_buffer.data(), CHUNK_SIZE, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      // Display error but continue
-      perror("Sender: sendto() error");
+      perror("Sender: sendto() error on start signal");
+    }
+
+    // Send remaining packets
+    std::vector<char> buffer(CHUNK_SIZE, 'D');
+    for (uint64_t i = 1; i < NUM_PACKETS; ++i) {
+      if (i % 10 == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+      if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
+                 (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        // Display error but continue
+        perror("Sender: sendto() error");
+      }
+    }
+
+    // Small delay between iterations
+    if (iteration < NUM_ITERATIONS - 1) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
 
-  LOG(INFO) << "[Sender] Sending complete.";
+  LOG(INFO) << "[Sender] All iterations complete.";
   close(sockfd);
 }
 
