@@ -7,7 +7,7 @@
 #include "absl/log/log.h"
 
 int main() {
-  constexpr uint64_t size = (1 << 30); // 1 GiB
+  constexpr uint64_t size = 128 * 1024 * 1024; // 128 MiB
   constexpr uint64_t iterations = 10;
   std::vector<uint8_t> src(size, 0xFF);
   std::vector<uint8_t> dst(size, 0x00);

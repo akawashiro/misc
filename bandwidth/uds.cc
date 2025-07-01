@@ -11,8 +11,8 @@
 #include "absl/log/log.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
-const size_t DATA_SIZE = 1024 * 1024 * 1024; // 1 GiB
-const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
+const size_t DATA_SIZE = 128 * 1024 * 1024; // 128 MiB
+const int BUFFER_SIZE = 4096;               // 4KB buffer for send/recv
 
 void server_process() {
   int listen_fd, conn_fd;

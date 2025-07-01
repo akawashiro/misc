@@ -1,7 +1,7 @@
-#include <algorithm>   // For std::min
-#include <arpa/inet.h> // For inet_addr
-#include <chrono>      // For time measurement
-#include <cstring>     // For memset
+#include <algorithm>    // For std::min
+#include <arpa/inet.h>  // For inet_addr
+#include <chrono>       // For time measurement
+#include <cstring>      // For memset
 #include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
 #include <string>
 #include <sys/socket.h>
@@ -12,7 +12,7 @@
 
 const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
-const size_t DATA_SIZE = 1024 * 1024 * 1024; // 1 GiB
+const size_t DATA_SIZE = 128 * 1024 * 1024;  // 128 MiB
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
 
 void server_process() {

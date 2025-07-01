@@ -14,8 +14,8 @@
 // --- Common Settings ---
 constexpr int PORT = 12345;
 constexpr const char *HOST = "127.0.0.1";
-constexpr size_t CHUNK_SIZE = 8192;                         // 8 KB
-constexpr uint64_t TOTAL_DATA_SIZE = 1024ULL * 1024 * 1024; // 1 GiB
+constexpr size_t CHUNK_SIZE = 8192;                        // 8 KB
+constexpr uint64_t TOTAL_DATA_SIZE = 128ULL * 1024 * 1024; // 128 MiB
 constexpr uint64_t NUM_PACKETS = TOTAL_DATA_SIZE / CHUNK_SIZE;
 
 // --- Error Handling Function ---
