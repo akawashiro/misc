@@ -4,12 +4,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(abseil-cpp)
 
 add_executable(memcpy memcpy.cc)
-target_link_libraries(memcpy absl::log)
+target_link_libraries(memcpy absl::log absl::base absl::synchronization
+                      absl::log_initialize)
 add_executable(memcpy_mt memcpy_mt.cc)
-target_link_libraries(memcpy_mt absl::log)
+target_link_libraries(memcpy_mt absl::log absl::base absl::synchronization
+                      absl::log_initialize)
 add_executable(udp udp.cc)
-target_link_libraries(udp absl::log)
+target_link_libraries(udp absl::log absl::base absl::synchronization
+                      absl::log_initialize)
 add_executable(uds uds.cc)
-target_link_libraries(uds absl::log)
+target_link_libraries(uds absl::log absl::base absl::synchronization
+                      absl::log_initialize)
 add_executable(tcp tcp.cc)
-target_link_libraries(tcp absl::log)
+target_link_libraries(tcp absl::log absl::base absl::synchronization
+                      absl::log_initialize)
