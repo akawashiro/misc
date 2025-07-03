@@ -70,7 +70,7 @@ void memcpy_in_multi_thread(uint64_t size, uint64_t n_threads) {
 int main() {
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
-  LOG(INFO) << "Starting multi-threaded memcpy bandwidth test...";
+  VLOG(1) << "Starting multi-threaded memcpy bandwidth test...";
   constexpr uint64_t size = 128 * 1024 * 1024; // 128 MiB
   for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
     memcpy_in_multi_thread(size, n_threads);
