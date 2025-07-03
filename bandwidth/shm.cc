@@ -119,23 +119,23 @@ void receive_process() {
     return;
   }
 
-  VLOG(1) << "Server: Shared memory and semaphores initialized";
+  VLOG(1) << "Receiver: Shared memory and semaphores initialized";
 
   // Perform warm-up runs
-  VLOG(1) << "Server: Performing warm-up runs...";
+  VLOG(1) << "Receiver: Performing warm-up runs...";
   for (int warmup = 0; warmup < 3; ++warmup) {
     shared_buffer->transfer_complete = false;
 
     sem_post(sem_writer);
     receive_data(shared_buffer, sem_writer, sem_reader);
-    VLOG(1) << "Server: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/3 completed";
   }
-  VLOG(1) << "Server: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
-    VLOG(1) << "Server: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
             << NUM_ITERATIONS;
 
     shared_buffer->transfer_complete = false;
@@ -150,7 +150,7 @@ void receive_process() {
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
   // Sort durations and exclude min and max
@@ -166,7 +166,7 @@ void receive_process() {
   if (average_duration > 0) {
     double bandwidth_gibps =
         DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
+    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
   }
 
   // Cleanup
@@ -175,7 +175,7 @@ void receive_process() {
   munmap(shared_buffer, sizeof(SharedBuffer));
   close(shm_fd);
   cleanup_resources();
-  VLOG(1) << "Server: Exiting.";
+  VLOG(1) << "Receiver: Exiting.";
 }
 
 void send_process() {
@@ -209,19 +209,19 @@ void send_process() {
   }
 
   // Perform warm-up runs
-  VLOG(1) << "Client: Performing warm-up runs...";
+  VLOG(1) << "Sender: Performing warm-up runs...";
   for (int warmup = 0; warmup < 3; ++warmup) {
     std::vector<char> data(BUFFER_SIZE, 'W'); // 'W' for warmup
     send_data(shared_buffer, sem_writer, sem_reader, data);
-    VLOG(1) << "Client: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/3 completed";
     usleep(100000); // 100ms delay between warmup runs
   }
-  VLOG(1) << "Client: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
-    VLOG(1) << "Client: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
             << NUM_ITERATIONS;
 
     std::vector<char> data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
@@ -254,7 +254,7 @@ void send_process() {
   if (average_duration > 0) {
     double bandwidth_gibps =
         DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
+    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
   }
 
   // Cleanup
@@ -262,7 +262,7 @@ void send_process() {
   sem_close(sem_reader);
   munmap(shared_buffer, sizeof(SharedBuffer));
   close(shm_fd);
-  VLOG(1) << "Client: Exiting.";
+  VLOG(1) << "Sender: Exiting.";
 }
 
 int main() {
