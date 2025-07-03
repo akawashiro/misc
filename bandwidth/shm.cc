@@ -35,6 +35,51 @@ void cleanup_resources() {
   sem_unlink(SEM_READER_NAME.c_str());
 }
 
+size_t client_send_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
+                        sem_t *sem_reader, const std::vector<char> &send_data) {
+  size_t total_sent = 0;
+
+  while (total_sent < DATA_SIZE) {
+    // Wait for permission to write
+    sem_wait(sem_writer);
+
+    size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
+    shared_buffer->data_size = bytes_to_send;
+    memcpy(shared_buffer->data, send_data.data(), bytes_to_send);
+    total_sent += bytes_to_send;
+
+    if (total_sent >= DATA_SIZE) {
+      shared_buffer->transfer_complete = true;
+    }
+
+    // Signal reader that data is ready
+    sem_post(sem_reader);
+  }
+
+  return total_sent;
+}
+
+size_t server_receive_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
+                           sem_t *sem_reader) {
+  size_t total_received = 0;
+
+  while (total_received < DATA_SIZE) {
+    // Wait for writer to signal data is ready
+    sem_wait(sem_reader);
+
+    if (shared_buffer->transfer_complete) {
+      break;
+    }
+
+    total_received += shared_buffer->data_size;
+
+    // Signal writer that data has been read
+    sem_post(sem_writer);
+  }
+
+  return total_received;
+}
+
 void server_process() {
   // Clean up any existing resources
   cleanup_resources();
@@ -79,23 +124,10 @@ void server_process() {
   // Perform warm-up runs
   VLOG(1) << "Server: Performing warm-up runs...";
   for (int warmup = 0; warmup < 3; ++warmup) {
-    size_t total_received = 0;
     shared_buffer->transfer_complete = false;
 
     sem_post(sem_writer);
-    while (total_received < DATA_SIZE) {
-      // Wait for writer to signal data is ready
-      sem_wait(sem_reader);
-
-      if (shared_buffer->transfer_complete) {
-        break;
-      }
-
-      total_received += shared_buffer->data_size;
-
-      // Signal writer that data has been read
-      sem_post(sem_writer);
-    }
+    server_receive_data(shared_buffer, sem_writer, sem_reader);
     VLOG(1) << "Server: Warm-up " << warmup + 1 << "/3 completed";
   }
   VLOG(1) << "Server: Warm-up complete. Starting measurements...";
@@ -106,25 +138,12 @@ void server_process() {
     VLOG(1) << "Server: Starting iteration " << iteration + 1 << "/"
             << NUM_ITERATIONS;
 
-    size_t total_received = 0;
     shared_buffer->transfer_complete = false;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Receive data until DATA_SIZE is reached
-    while (total_received < DATA_SIZE) {
-      // Wait for writer to signal data is ready
-      sem_wait(sem_reader);
-
-      if (shared_buffer->transfer_complete) {
-        break;
-      }
-
-      total_received += shared_buffer->data_size;
-
-      // Signal writer that data has been read
-      sem_post(sem_writer);
-    }
+    server_receive_data(shared_buffer, sem_writer, sem_reader);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -192,24 +211,7 @@ void client_process() {
   VLOG(1) << "Client: Performing warm-up runs...";
   for (int warmup = 0; warmup < 3; ++warmup) {
     std::vector<char> send_data(BUFFER_SIZE, 'W'); // 'W' for warmup
-    size_t total_sent = 0;
-
-    while (total_sent < DATA_SIZE) {
-      // Wait for permission to write
-      sem_wait(sem_writer);
-
-      size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
-      shared_buffer->data_size = bytes_to_send;
-      memcpy(shared_buffer->data, send_data.data(), bytes_to_send);
-      total_sent += bytes_to_send;
-
-      if (total_sent >= DATA_SIZE) {
-        shared_buffer->transfer_complete = true;
-      }
-
-      // Signal reader that data is ready
-      sem_post(sem_reader);
-    }
+    client_send_data(shared_buffer, sem_writer, sem_reader, send_data);
     VLOG(1) << "Client: Warm-up " << warmup + 1 << "/3 completed";
     usleep(100000); // 100ms delay between warmup runs
   }
@@ -222,27 +224,11 @@ void client_process() {
             << NUM_ITERATIONS;
 
     std::vector<char> send_data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
-    size_t total_sent = 0;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until DATA_SIZE is reached
-    while (total_sent < DATA_SIZE) {
-      // Wait for permission to write
-      sem_wait(sem_writer);
-
-      size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
-      shared_buffer->data_size = bytes_to_send;
-      memcpy(shared_buffer->data, send_data.data(), bytes_to_send);
-      total_sent += bytes_to_send;
-
-      if (total_sent >= DATA_SIZE) {
-        shared_buffer->transfer_complete = true;
-      }
-
-      // Signal reader that data is ready
-      sem_post(sem_reader);
-    }
+    client_send_data(shared_buffer, sem_writer, sem_reader, send_data);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
