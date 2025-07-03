@@ -8,3 +8,5 @@ set -eux -o pipefail
 # ./build/udp
 ./build/uds
 ./build/tcp
+./build/pipe
+./build/shm
