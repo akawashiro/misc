@@ -19,9 +19,9 @@
 const std::string SHM_NAME = "/shm_bandwidth_test";
 const std::string SEM_WRITER_NAME = "/sem_writer_bandwidth";
 const std::string SEM_READER_NAME = "/sem_reader_bandwidth";
-const size_t DATA_SIZE = 128 * 1024 * 1024; // 128 MiB
-const size_t BUFFER_SIZE = 64 * 1024;       // 64KB buffer for shared memory
-const int NUM_ITERATIONS = 10;              // Number of measurement iterations
+constexpr size_t DATA_SIZE = 128 * (1 << 20);
+constexpr size_t BUFFER_SIZE = (1 << 20);
+constexpr int NUM_ITERATIONS = 10;
 
 struct SharedBuffer {
   size_t data_size;
@@ -36,7 +36,7 @@ void cleanup_resources() {
 }
 
 size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
-                        sem_t *sem_reader, const std::vector<char> &data) {
+                 sem_t *sem_reader, const std::vector<char> &data) {
   size_t total_sent = 0;
 
   while (total_sent < DATA_SIZE) {
@@ -60,7 +60,7 @@ size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
 }
 
 size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
-                           sem_t *sem_reader) {
+                    sem_t *sem_reader) {
   size_t total_received = 0;
 
   while (total_received < DATA_SIZE) {
@@ -234,6 +234,7 @@ void send_process() {
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
+    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
 
     // Small delay between iterations
     if (iteration < NUM_ITERATIONS - 1) {
