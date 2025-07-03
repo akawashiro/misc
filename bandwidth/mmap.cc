@@ -1,13 +1,13 @@
 #include <algorithm> // For std::min
 #include <chrono>
 #include <cstring>
-#include <fcntl.h>      // For open
+#include <fcntl.h> // For open
 #include <numeric>
 #include <string>
-#include <sys/mman.h>   // For mmap, munmap
-#include <sys/stat.h>   // For fstat
-#include <sys/wait.h>   // For wait
-#include <unistd.h>     // For fork, close, ftruncate
+#include <sys/mman.h> // For mmap, munmap
+#include <sys/stat.h> // For fstat
+#include <sys/wait.h> // For wait
+#include <unistd.h>   // For fork, close, ftruncate
 #include <vector>
 
 #include "absl/log/globals.h"
@@ -45,8 +45,8 @@ void writer_process() {
   }
 
   // Map the file into memory
-  void* mapped_region = mmap(nullptr, total_size, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, 0);
+  void *mapped_region =
+      mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
     perror("writer: mmap");
     close(fd);
@@ -54,8 +54,8 @@ void writer_process() {
   }
 
   // Set up pointers
-  char* data_region = static_cast<char*>(mapped_region);
-  sync_data* sync = reinterpret_cast<sync_data*>(data_region + DATA_SIZE);
+  char *data_region = static_cast<char *>(mapped_region);
+  sync_data *sync = reinterpret_cast<sync_data *>(data_region + DATA_SIZE);
 
   // Initialize sync structure
   sync->writer_ready = false;
@@ -169,8 +169,8 @@ void reader_process() {
   size_t total_size = file_stat.st_size;
 
   // Map the file into memory
-  void* mapped_region = mmap(nullptr, total_size, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, 0);
+  void *mapped_region =
+      mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
     perror("reader: mmap");
     close(fd);
@@ -178,8 +178,8 @@ void reader_process() {
   }
 
   // Set up pointers
-  char* data_region = static_cast<char*>(mapped_region);
-  sync_data* sync = reinterpret_cast<sync_data*>(data_region + DATA_SIZE);
+  char *data_region = static_cast<char *>(mapped_region);
+  sync_data *sync = reinterpret_cast<sync_data *>(data_region + DATA_SIZE);
 
   // Perform warm-up runs
   VLOG(1) << "Reader: Performing warm-up runs...";
@@ -197,7 +197,8 @@ void reader_process() {
       while (sync->bytes_written <= last_read && sync->writer_ready) {
         usleep(1); // Wait for more data
       }
-      if (!sync->writer_ready) break; // Writer finished this iteration
+      if (!sync->writer_ready)
+        break; // Writer finished this iteration
       last_read = sync->bytes_written;
     }
 
@@ -225,7 +226,8 @@ void reader_process() {
       while (sync->bytes_written <= last_read && sync->writer_ready) {
         usleep(1); // Wait for more data
       }
-      if (!sync->writer_ready) break; // Writer finished this iteration
+      if (!sync->writer_ready)
+        break; // Writer finished this iteration
       last_read = sync->bytes_written;
     }
 
@@ -278,11 +280,11 @@ int main() {
   } else {
     // Parent process (reader)
     reader_process();
-    
+
     // Wait for child process to complete
     int status;
     wait(&status);
-    
+
     // Clean up the temporary file
     unlink(MMAP_FILE_PATH.c_str());
   }

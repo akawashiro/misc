@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "absl/flags/parse.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
@@ -81,6 +82,7 @@ void server_process() {
     size_t total_received = 0;
     shared_buffer->transfer_complete = false;
 
+    sem_post(sem_writer);
     while (total_received < DATA_SIZE) {
       // Wait for writer to signal data is ready
       sem_wait(sem_reader);
@@ -278,6 +280,7 @@ void client_process() {
 
 int main() {
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
+  absl::SetGlobalVLogLevel(1);
   absl::InitializeLog();
 
   pid_t pid = fork();

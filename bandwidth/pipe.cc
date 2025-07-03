@@ -24,7 +24,8 @@ void writer_process(int write_fd) {
     while (total_sent < DATA_SIZE) {
       size_t bytes_to_send =
           std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      ssize_t bytes_written = write(write_fd, send_buffer.data(), bytes_to_send);
+      ssize_t bytes_written =
+          write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
         perror("writer: write during warmup");
         break;
@@ -49,7 +50,8 @@ void writer_process(int write_fd) {
     while (total_sent < DATA_SIZE) {
       size_t bytes_to_send =
           std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      ssize_t bytes_written = write(write_fd, send_buffer.data(), bytes_to_send);
+      ssize_t bytes_written =
+          write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
         perror("writer: write");
         break;
@@ -189,7 +191,7 @@ int main() {
     // Parent process (reader)
     close(write_fd); // Close unused write end
     reader_process(read_fd);
-    
+
     // Wait for child process to complete
     int status;
     wait(&status);

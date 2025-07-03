@@ -31,5 +31,6 @@ target_link_libraries(
   absl::base
   absl::synchronization
   absl::log_initialize
+  absl::flags_parse
   rt
   pthread)
