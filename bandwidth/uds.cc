@@ -13,10 +13,10 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
+#include "common.h"
+
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
-const size_t DATA_SIZE = 128 * 1024 * 1024; // 128 MiB
-const int BUFFER_SIZE = 4096;               // 4KB buffer for send/recv
-const int NUM_ITERATIONS = 10;              // Number of measurement iterations
+constexpr int BUFFER_SIZE = 4096;
 
 void server_process() {
   int listen_fd, conn_fd;
@@ -53,38 +53,11 @@ void server_process() {
 
   VLOG(1) << "Server: Waiting for client connection on " << SOCKET_PATH;
 
-  // Perform warm-up runs
-  VLOG(1) << "Server: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
-    conn_fd = accept(listen_fd, NULL, NULL);
-    if (conn_fd == -1) {
-      perror("server: accept during warmup");
-      close(listen_fd);
-      return;
-    }
-
-    std::vector<char> recv_buffer(BUFFER_SIZE);
-    size_t total_received = 0;
-    while (total_received < DATA_SIZE) {
-      ssize_t bytes_received =
-          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
-      if (bytes_received == -1) {
-        perror("server: recv during warmup");
-        break;
-      }
-      if (bytes_received == 0) {
-        break;
-      }
-      total_received += bytes_received;
-    }
-    close(conn_fd);
-    VLOG(1) << "Server: Warm-up " << warmup + 1 << "/3 completed";
-  }
-  VLOG(1) << "Server: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
+  std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
+       ++iteration) {
     // Accept a client connection for each iteration
     conn_fd = accept(listen_fd, NULL, NULL);
     if (conn_fd == -1) {
@@ -96,7 +69,7 @@ void server_process() {
     VLOG(1) << "Server: Client connected. Receiving data... (Iteration "
             << iteration + 1 << "/" << NUM_ITERATIONS << ")";
 
-    std::vector<char> recv_buffer(BUFFER_SIZE);
+    std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -113,88 +86,33 @@ void server_process() {
         break;
       }
       total_received += bytes_received;
+      memcpy(read_data.data() + total_received - bytes_received,
+             recv_buffer.data(), bytes_received);
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
-
-    VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
-
-    // Close connection for this iteration
+    verifyDataReceived(read_data);
+    if (NUM_WARMUPS <= iteration) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
+    }
     close(conn_fd);
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations);
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Server";
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
-  }
-
-  // Close sockets and remove the socket file
   close(listen_fd);
   remove(SOCKET_PATH.c_str());
-  VLOG(1) << "Server: Exiting.";
 }
 
 void client_process() {
-  // Perform warm-up runs
-  VLOG(1) << "Client: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
-    int sock_fd;
-    struct sockaddr_un addr;
-
-    sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock_fd == -1) {
-      perror("client: socket during warmup");
-      return;
-    }
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
-
-    while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-      if (errno == ENOENT) {
-        sleep(1);
-      } else {
-        perror("client: connect during warmup");
-        close(sock_fd);
-        return;
-      }
-    }
-
-    std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
-    size_t total_sent = 0;
-    while (total_sent < DATA_SIZE) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
-      if (bytes_sent == -1) {
-        perror("client: send during warmup");
-        break;
-      }
-      total_sent += bytes_sent;
-    }
-    close(sock_fd);
-    VLOG(1) << "Client: Warm-up " << warmup + 1 << "/3 completed";
-    usleep(100000); // 100ms delay between warmup runs
-  }
-  VLOG(1) << "Client: Warm-up complete. Starting measurements...";
-
+  std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
+       ++iteration) {
     int sock_fd;
     struct sockaddr_un addr;
 
@@ -228,7 +146,6 @@ void client_process() {
 
     VLOG(1) << "Client: Connected to server. Sending data...";
 
-    std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -236,7 +153,8 @@ void client_process() {
     while (total_sent < DATA_SIZE) {
       size_t bytes_to_send =
           std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      ssize_t bytes_sent =
+          send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
         perror("client: send");
         break;
@@ -245,10 +163,10 @@ void client_process() {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
-
-    // Close the socket
+    if (NUM_WARMUPS <= iteration) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+    }
     close(sock_fd);
 
     // Small delay between iterations to allow server to reset
@@ -257,23 +175,8 @@ void client_process() {
     }
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
-
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
-  }
-
-  VLOG(1) << "Client: Exiting.";
+  double bandwidth = calculateBandwidth(durations);
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Client";
 }
 
 int main() {
