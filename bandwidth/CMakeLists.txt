@@ -3,34 +3,22 @@ project(bandwidth LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(abseil-cpp)
 
+set(COMMON_ABSL_LIBS absl::log absl::base absl::synchronization
+                     absl::log_initialize)
+
 add_executable(memcpy memcpy.cc)
-target_link_libraries(memcpy absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(memcpy ${COMMON_ABSL_LIBS})
 add_executable(memcpy_mt memcpy_mt.cc)
-target_link_libraries(memcpy_mt absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(memcpy_mt ${COMMON_ABSL_LIBS})
 add_executable(udp udp.cc)
-target_link_libraries(udp absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(udp ${COMMON_ABSL_LIBS})
 add_executable(uds uds.cc)
-target_link_libraries(uds absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(uds ${COMMON_ABSL_LIBS})
 add_executable(tcp tcp.cc)
-target_link_libraries(tcp absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(tcp ${COMMON_ABSL_LIBS})
 add_executable(pipe pipe.cc)
-target_link_libraries(pipe absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(pipe ${COMMON_ABSL_LIBS})
 add_executable(mmap mmap.cc)
-target_link_libraries(mmap absl::log absl::base absl::synchronization
-                      absl::log_initialize)
+target_link_libraries(mmap ${COMMON_ABSL_LIBS})
 add_executable(shm shm.cc)
-target_link_libraries(
-  shm
-  absl::log
-  absl::base
-  absl::synchronization
-  absl::log_initialize
-  absl::flags_parse
-  rt
-  pthread)
+target_link_libraries(shm ${COMMON_ABSL_LIBS} rt pthread)
