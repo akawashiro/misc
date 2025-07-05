@@ -56,11 +56,7 @@ void server_process() {
        ++iteration) {
     // Accept a client connection for each iteration
     conn_fd = accept(listen_fd, NULL, NULL);
-    if (conn_fd == -1) {
-      perror("server: accept");
-      close(listen_fd);
-      return;
-    }
+    CHECK(conn_fd != -1) << "Failed to accept connection";
 
     VLOG(1) << "Server: Client connected. Receiving data... (Iteration "
             << iteration + 1 << "/" << NUM_ITERATIONS << ")";
@@ -69,14 +65,10 @@ void server_process() {
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Receive data until DATA_SIZE is reached
     while (total_received < DATA_SIZE) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
-      if (bytes_received == -1) {
-        perror("server: recv");
-        break;
-      }
+      CHECK(bytes_received >= 0) << "Failed to receive data";
       if (bytes_received == 0) {
         VLOG(1) << "Server: Client disconnected prematurely.";
         break;
@@ -112,19 +104,13 @@ void client_process() {
     int sock_fd;
     struct sockaddr_un addr;
 
-    // Create a Unix domain stream socket
     sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock_fd == -1) {
-      perror("client: socket");
-      return;
-    }
+    CHECK(sock_fd != -1) << "Failed to create socket";
 
-    // Configure the socket address
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    // Connect to the server
     VLOG(1) << "Client: Connecting to server on " << SOCKET_PATH
             << " (Iteration " << iteration + 1 << "/" << NUM_ITERATIONS << ")";
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
@@ -160,12 +146,13 @@ void client_process() {
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
+      VLOG(1) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
     }
     close(sock_fd);
 
     // Small delay between iterations to allow server to reset
     if (iteration < NUM_ITERATIONS - 1) {
-      usleep(100000); // 100ms delay
+      usleep(100000);
     }
   }
 
@@ -178,17 +165,11 @@ int main() {
   absl::InitializeLog();
 
   pid_t pid = fork();
-
-  if (pid == -1) {
-    perror("fork");
-    return 1;
-  }
+  CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    // Child process (client)
     client_process();
   } else {
-    // Parent process (server)
     server_process();
   }
 
