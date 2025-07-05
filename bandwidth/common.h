@@ -1,6 +1,6 @@
 #include <vector>
 
-constexpr uint64_t DATA_SIZE = 128 * (1 << 20);
+constexpr uint64_t DATA_SIZE = 1 * (1 << 30);
 constexpr uint64_t CHECKSUM_SIZE = 128;
 constexpr uint64_t CONTEXT_SIZE = DATA_SIZE - CHECKSUM_SIZE;
 static_assert(DATA_SIZE > CHECKSUM_SIZE,

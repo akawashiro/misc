@@ -1,14 +1,12 @@
-#include <algorithm>
-#include <chrono>
-#include <cstdio>
-#include <cstring>
-#include <numeric>
-#include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <unistd.h>
+
+#include <string>
 #include <vector>
 
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/log/check.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
@@ -35,14 +33,14 @@ void server_process() {
 
   // Bind the socket to the specified path
   if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-    perror("server: bind");
+    LOG(ERROR) << "Failed to bind socket to " << SOCKET_PATH;
     close(listen_fd);
     return;
   }
 
   // Listen for incoming connections
   if (listen(listen_fd, 5) == -1) {
-    perror("server: listen");
+    LOG(ERROR) << "Failed to listen on socket " << SOCKET_PATH;
     close(listen_fd);
     return;
   }
@@ -120,7 +118,8 @@ void client_process() {
             << "Client: Server socket not found, retrying in 1 second...";
         sleep(1);
       } else {
-        perror("client: connect");
+        LOG(ERROR) << "Client: Failed to connect to server socket: "
+                   << strerror(errno);
         close(sock_fd);
         return;
       }
@@ -136,7 +135,7 @@ void client_process() {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        perror("client: send");
+        LOG(ERROR) << "Client: Failed to send data: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
@@ -160,7 +159,19 @@ void client_process() {
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Client";
 }
 
-int main() {
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+int main(int argc, char *argv[]) {
+  absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
+  absl::ParseCommandLine(argc, argv);
+
+  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  if (vlog.has_value()) {
+    int v = *vlog;
+    absl::SetGlobalVLogLevel(v);
+  }
+
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
 
