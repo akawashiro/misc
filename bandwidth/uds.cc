@@ -17,7 +17,7 @@
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t BUFFER_SIZE = (1 << 20);
 
-void server_process() {
+void receive_process() {
   int listen_fd, conn_fd;
   struct sockaddr_un addr;
 
@@ -45,7 +45,7 @@ void server_process() {
     return;
   }
 
-  VLOG(1) << "Server: Waiting for client connection on " << SOCKET_PATH;
+  VLOG(1) << "Receive: Waiting for client connection on " << SOCKET_PATH;
 
   std::vector<double> durations;
   std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
@@ -55,7 +55,7 @@ void server_process() {
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
-    VLOG(1) << "Server: Client connected. iteration: " << iteration;
+    VLOG(1) << "Receive: Client connected.";
     VLOG(1) << "Reader: Begin receiving data.";
     std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
@@ -66,7 +66,7 @@ void server_process() {
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       CHECK(bytes_received >= 0) << "Failed to receive data";
       if (bytes_received == 0) {
-        VLOG(1) << "Server: Client disconnected prematurely.";
+        VLOG(1) << "Receive: Client disconnected prematurely.";
         break;
       }
       total_received += bytes_received;
@@ -82,12 +82,12 @@ void server_process() {
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Receive: Time taken: " << elapsed_time.count() << " seconds.";
     }
   }
 
   double bandwidth = calculateBandwidth(durations);
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Server";
+  LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 
   close(listen_fd);
   remove(SOCKET_PATH.c_str());
@@ -109,21 +109,21 @@ void send_process() {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    VLOG(1) << "Sender: Connecting to reader on " << SOCKET_PATH;
+    VLOG(1) << "Send: Connecting to reader on " << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT) {
         LOG(ERROR)
-            << "Sender: Server socket not found, retrying in 1 second...";
+            << "Send: Receive socket not found, retrying in 1 second...";
         sleep(1);
       } else {
-        LOG(ERROR) << "Sender: Failed to connect to server socket: "
+        LOG(ERROR) << "Send: Failed to connect to server socket: "
                    << strerror(errno);
         close(sock_fd);
         return;
       }
     }
 
-    VLOG(1) << "Sender: Begin data transfer.";
+    VLOG(1) << "Send: Begin data transfer.";
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -132,28 +132,30 @@ void send_process() {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        LOG(ERROR) << "Sender: Failed to send data: " << strerror(errno);
+        LOG(ERROR) << "Send: Failed to send data: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    VLOG(1) << "Sender: Finish data transfer";
+    VLOG(1) << "Send: Finish data transfer";
 
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Send: Time taken: " << elapsed_time.count() << " seconds.";
     }
     close(sock_fd);
 
-    // Small delay between iterations to allow server to reset
+    // Caution: We need this sleep to ensure the server has time to reset.
+    // Otherwise, the bandwidth of send will be siginificantly lower than the
+    // receive.
     sleep(1);
   }
 
   double bandwidth = calculateBandwidth(durations);
-  LOG(INFO) << " Sender bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
+  LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
@@ -178,7 +180,7 @@ int main(int argc, char *argv[]) {
   if (pid == 0) {
     send_process();
   } else {
-    server_process();
+    receive_process();
   }
 
   return 0;
