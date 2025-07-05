@@ -2,6 +2,9 @@
 #include <thread>
 #include <vector>
 
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
+#include "absl/flags/flag.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
@@ -46,9 +49,22 @@ void memcpyInMultiThread(uint64_t n_threads) {
             << " GiByte/sec. Threads: " << n_threads;
 }
 
-int main() {
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+int main(int argc, char *argv[]) {
+  absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
+  absl::ParseCommandLine(argc, argv);
+
+  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  if (vlog.has_value()) {
+    int v = *vlog;
+    absl::SetGlobalVLogLevel(v);
+  }
+
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
+
   VLOG(1) << "Starting multi-threaded memcpy bandwidth test...";
   for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
     memcpyInMultiThread(n_threads);
