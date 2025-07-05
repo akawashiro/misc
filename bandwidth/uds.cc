@@ -56,9 +56,9 @@ void server_process() {
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
-    VLOG(1) << "Server: Client connected. Receiving data... (Iteration "
-            << iteration + 1 << "/" << NUM_ITERATIONS << ")";
+    VLOG(1) << "Server: Client connected. iteration: " << iteration;
 
+    VLOG(1) << "Reader: Begin receiving data.";
     std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -77,6 +77,8 @@ void server_process() {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    VLOG(1) << "Reader: Finished receiving data.";
+
     verifyDataReceived(read_data);
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -109,24 +111,22 @@ void client_process() {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    VLOG(1) << "Client: Connecting to server on " << SOCKET_PATH
-            << " (Iteration " << iteration + 1 << "/" << NUM_ITERATIONS << ")";
+    VLOG(1) << "Writer: Connecting to reader on " << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT) {
         // Server socket not found, wait and retry
         LOG(ERROR)
-            << "Client: Server socket not found, retrying in 1 second...";
+            << "Writer: Server socket not found, retrying in 1 second...";
         sleep(1);
       } else {
-        LOG(ERROR) << "Client: Failed to connect to server socket: "
+        LOG(ERROR) << "Writer: Failed to connect to server socket: "
                    << strerror(errno);
         close(sock_fd);
         return;
       }
     }
 
-    VLOG(1) << "Client: Connected to server. Sending data...";
-
+    VLOG(1) << "Writer: Begin data transfer.";
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -135,17 +135,19 @@ void client_process() {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        LOG(ERROR) << "Client: Failed to send data: " << strerror(errno);
+        LOG(ERROR) << "Writer: Failed to send data: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    VLOG(1) << "Writer: Finish data transfer";
+
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Writer: Time taken: " << elapsed_time.count() << " seconds.";
     }
     close(sock_fd);
 

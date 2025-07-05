@@ -13,11 +13,11 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
+#include "common.h"
+
 const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
-const size_t DATA_SIZE = 128 * 1024 * 1024;  // 128 MiB
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
-const int NUM_ITERATIONS = 10;               // Number of measurement iterations
 
 void server_process() {
   int listen_fd, conn_fd;
@@ -163,6 +163,7 @@ void server_process() {
 void client_process() {
   // Perform warm-up runs
   VLOG(1) << "Client: Performing warm-up runs...";
+
   for (int warmup = 0; warmup < 3; ++warmup) {
     int sock_fd;
     struct sockaddr_in server_addr;
@@ -202,6 +203,7 @@ void client_process() {
   }
   VLOG(1) << "Client: Warm-up complete. Starting measurements...";
 
+  std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
@@ -240,7 +242,9 @@ void client_process() {
     while (total_sent < DATA_SIZE) {
       size_t bytes_to_send =
           std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      ssize_t bytes_sent =
+          send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
         perror("client: send");
         break;
