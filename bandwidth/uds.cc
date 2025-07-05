@@ -52,12 +52,10 @@ void server_process() {
 
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
-    // Accept a client connection for each iteration
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
     VLOG(1) << "Server: Client connected. iteration: " << iteration;
-
     VLOG(1) << "Reader: Begin receiving data.";
     std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
@@ -77,6 +75,7 @@ void server_process() {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    close(conn_fd);
     VLOG(1) << "Reader: Finished receiving data.";
 
     verifyDataReceived(read_data);
@@ -85,7 +84,6 @@ void server_process() {
       durations.push_back(elapsed_time.count());
       VLOG(1) << "Server: Time taken: " << elapsed_time.count() << " seconds.";
     }
-    close(conn_fd);
   }
 
   double bandwidth = calculateBandwidth(durations);
@@ -95,7 +93,7 @@ void server_process() {
   remove(SOCKET_PATH.c_str());
 }
 
-void client_process() {
+void send_process() {
   std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
@@ -111,22 +109,21 @@ void client_process() {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    VLOG(1) << "Writer: Connecting to reader on " << SOCKET_PATH;
+    VLOG(1) << "Sender: Connecting to reader on " << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT) {
-        // Server socket not found, wait and retry
         LOG(ERROR)
-            << "Writer: Server socket not found, retrying in 1 second...";
+            << "Sender: Server socket not found, retrying in 1 second...";
         sleep(1);
       } else {
-        LOG(ERROR) << "Writer: Failed to connect to server socket: "
+        LOG(ERROR) << "Sender: Failed to connect to server socket: "
                    << strerror(errno);
         close(sock_fd);
         return;
       }
     }
 
-    VLOG(1) << "Writer: Begin data transfer.";
+    VLOG(1) << "Sender: Begin data transfer.";
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -135,30 +132,28 @@ void client_process() {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        LOG(ERROR) << "Writer: Failed to send data: " << strerror(errno);
+        LOG(ERROR) << "Sender: Failed to send data: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    VLOG(1) << "Writer: Finish data transfer";
+    VLOG(1) << "Sender: Finish data transfer";
 
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Writer: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
     }
     close(sock_fd);
 
     // Small delay between iterations to allow server to reset
-    if (iteration < NUM_ITERATIONS - 1) {
-      usleep(100000);
-    }
+    sleep(1);
   }
 
   double bandwidth = calculateBandwidth(durations);
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Client";
+  LOG(INFO) << " Sender bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
@@ -181,7 +176,7 @@ int main(int argc, char *argv[]) {
   CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    client_process();
+    send_process();
   } else {
     server_process();
   }
