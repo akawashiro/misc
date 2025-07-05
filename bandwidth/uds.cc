@@ -16,7 +16,7 @@
 #include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
-constexpr size_t BUFFER_SIZE = (1 << 20);
+constexpr size_t BUFFER_SIZE = (1 << 10);
 
 std::string ReceivePrefix(int iteration) {
   return absl::StrCat("Receive (iteration ", iteration, "): ");
