@@ -1,6 +1,6 @@
-#include <algorithm> // For std::min
+#include <algorithm>
 #include <chrono>
-#include <cstdio> // For remove()
+#include <cstdio>
 #include <cstring>
 #include <numeric>
 #include <string>
@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
@@ -16,20 +17,15 @@
 #include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
-constexpr int BUFFER_SIZE = 4096;
+constexpr size_t BUFFER_SIZE = (1 << 20);
 
 void server_process() {
   int listen_fd, conn_fd;
   struct sockaddr_un addr;
 
-  // Create a Unix domain stream socket
   listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (listen_fd == -1) {
-    perror("server: socket");
-    return;
-  }
+  CHECK(listen_fd != -1) << "Failed to create socket";
 
-  // Remove the socket file if it already exists (from previous runs)
   remove(SOCKET_PATH.c_str());
 
   // Configure the socket address
@@ -149,10 +145,8 @@ void client_process() {
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Send data until DATA_SIZE is reached
     while (total_sent < DATA_SIZE) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
+      size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
