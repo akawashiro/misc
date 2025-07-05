@@ -16,6 +16,7 @@ std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data) {
 }
 
 std::vector<uint8_t> generateDataToSend() {
+  VLOG(1) << "Generating data to send...";
   std::random_device seed_gen;
   std::mt19937 engine(seed_gen());
   std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
@@ -29,10 +30,14 @@ std::vector<uint8_t> generateDataToSend() {
   for (; i < CONTEXT_SIZE; ++i) {
     data[i] = static_cast<uint8_t>(dist(engine) & 0xFF);
   }
+  VLOG(1) << "Context data generated. Size: " << CONTEXT_SIZE
+          << " bytes. Filling checksum...";
   const std::vector<uint8_t> checksum = calcChecksum(data);
   for (size_t j = 0; j < CHECKSUM_SIZE; ++j) {
     data[CONTEXT_SIZE + j] = checksum[j];
   }
+  VLOG(1) << "Data generation complete. Data size: " << static_cast<double>(data.size()) / (1 << 30)
+          << " GiByte, Checksum size: " << CHECKSUM_SIZE << " bytes.";
 
   return data;
 }

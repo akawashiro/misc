@@ -1,8 +1,11 @@
 #include <algorithm>
 #include <chrono>
-#include <cstring>
+#include <optional>
 #include <vector>
 
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
+#include "absl/flags/flag.h"
 #include "absl/log/check.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
@@ -10,13 +13,26 @@
 
 #include "common.h"
 
-int main() {
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+int main(int argc, char *argv[]) {
+  absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
+  absl::ParseCommandLine(argc, argv);
+
+  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  if (vlog.has_value()) {
+    int v = *vlog;
+    absl::SetGlobalVLogLevel(v);
+  }
+
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
 
   std::vector<uint8_t> src = generateDataToSend();
   std::vector<uint8_t> dst(DATA_SIZE, 0);
   std::vector<double> durations;
+
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
     std::fill(dst.begin(), dst.end(), 0);
