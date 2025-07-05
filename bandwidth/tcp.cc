@@ -242,7 +242,8 @@ void client_process() {
     while (total_sent < DATA_SIZE) {
       size_t bytes_to_send =
           std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
-      // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send,
+      // 0);
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {

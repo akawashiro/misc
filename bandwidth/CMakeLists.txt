@@ -4,7 +4,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(abseil-cpp)
 
 set(BANDWIDTH_LIBS absl::log absl::base absl::synchronization
-                     absl::log_initialize absl::flags absl::flags_parse)
+                   absl::log_initialize absl::flags absl::flags_parse)
 
 add_library(common common.cc)
 target_link_libraries(common ${BANDWIDTH_LIBS})
