@@ -12,16 +12,21 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
+#include "absl/strings/str_cat.h"
 #include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t BUFFER_SIZE = (1 << 20);
 
-void receive_process() {
-  // Of course, there are two processes in this benchmark, so we need a barrier
-  // for 2.
-  ProcessBarrier barrier(2);
+std::string ReceivePrefix(int iteration) {
+  return absl::StrCat("Receive (iteration ", iteration, "): ");
+}
 
+std::string SendPrefix(int iteration) {
+  return absl::StrCat("Send (iteration ", iteration, "): ");
+}
+
+void receive_process() {
   int listen_fd, conn_fd;
   struct sockaddr_un addr;
 
@@ -43,7 +48,7 @@ void receive_process() {
   }
 
   // Listen for incoming connections
-  if (listen(listen_fd, 5) == -1) {
+  if (listen(listen_fd, 0) == -1) {
     LOG(ERROR) << "Failed to listen on socket " << SOCKET_PATH;
     close(listen_fd);
     return;
@@ -56,12 +61,11 @@ void receive_process() {
 
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
-    barrier.wait();
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
     VLOG(1) << "Receive: Client connected.";
-    VLOG(1) << "Reader: Begin receiving data.";
+    VLOG(1) << "Receive: Begin receiving data.";
     std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -80,8 +84,7 @@ void receive_process() {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    close(conn_fd);
-    VLOG(1) << "Reader: Finished receiving data.";
+    VLOG(1) << "Receive: Finished receiving data.";
 
     verifyDataReceived(read_data);
     if (NUM_WARMUPS <= iteration) {
@@ -89,6 +92,7 @@ void receive_process() {
       durations.push_back(elapsed_time.count());
       VLOG(1) << "Receive: Time taken: " << elapsed_time.count() << " seconds.";
     }
+    close(conn_fd);
   }
 
   double bandwidth = calculateBandwidth(durations);
@@ -103,13 +107,8 @@ void send_process() {
   std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
-  // Of course, there are two processes in this benchmark, so we need a barrier
-  // for 2.
-  ProcessBarrier barrier(2);
-
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
-    barrier.wait();
     int sock_fd;
     struct sockaddr_un addr;
 
@@ -161,7 +160,7 @@ void send_process() {
     // Caution: We need this sleep to ensure the server has time to reset.
     // Otherwise, the bandwidth of send will be siginificantly lower than the
     // receive.
-    sleep(1);
+    // sleep(1);
   }
 
   double bandwidth = calculateBandwidth(durations);
