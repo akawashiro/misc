@@ -18,6 +18,10 @@ const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t BUFFER_SIZE = (1 << 20);
 
 void receive_process() {
+  // Of course, there are two processes in this benchmark, so we need a barrier
+  // for 2.
+  ProcessBarrier barrier(2);
+
   int listen_fd, conn_fd;
   struct sockaddr_un addr;
 
@@ -52,6 +56,7 @@ void receive_process() {
 
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
+    barrier.wait();
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
@@ -87,7 +92,8 @@ void receive_process() {
   }
 
   double bandwidth = calculateBandwidth(durations);
-  LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
+  LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30)
+            << " GiByte/sec.";
 
   close(listen_fd);
   remove(SOCKET_PATH.c_str());
@@ -97,8 +103,13 @@ void send_process() {
   std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
+  // Of course, there are two processes in this benchmark, so we need a barrier
+  // for 2.
+  ProcessBarrier barrier(2);
+
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
+    barrier.wait();
     int sock_fd;
     struct sockaddr_un addr;
 
@@ -112,8 +123,7 @@ void send_process() {
     VLOG(1) << "Send: Connecting to reader on " << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT) {
-        LOG(ERROR)
-            << "Send: Receive socket not found, retrying in 1 second...";
+        LOG(ERROR) << "Send: Receive socket not found, retrying in 1 second...";
         sleep(1);
       } else {
         LOG(ERROR) << "Send: Failed to connect to server socket: "

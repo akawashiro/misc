@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
-#include <iostream>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
@@ -84,6 +83,9 @@ ProcessBarrier::ProcessBarrier(int total_processes, const std::string &shm_name,
       barrier_sem_(nullptr), barrier_data_(nullptr), shm_fd_(-1),
       owner_(false) // Initially assume not the owner
 {
+  VLOG(1) << "Process " << getpid()
+          << ": Initializing ProcessBarrier with total_processes: "
+          << total_processes;
   // 1. Create or open shared memory segment
   // O_CREAT: Create if it doesn't exist.
   // O_RDWR: Read/write access.
@@ -158,9 +160,8 @@ ProcessBarrier::ProcessBarrier(int total_processes, const std::string &shm_name,
     // initialize barrier_data.
     barrier_data_->count = 0;
     barrier_data_->num_processes = total_processes;
-    std::cout << "Process " << getpid()
-              << ": Initialized shared memory and mutex semaphore."
-              << std::endl;
+    VLOG(1) << "Process " << getpid()
+            << ": Initialized shared memory and mutex semaphore." << std::endl;
   }
 
   // 3. Open or create barrier semaphore (for waiting on all processes)
@@ -189,36 +190,35 @@ ProcessBarrier::ProcessBarrier(int total_processes, const std::string &shm_name,
     }
   } else {
     // This process exclusively created the barrier semaphore.
-    std::cout << "Process " << getpid() << ": Initialized barrier semaphore."
-              << std::endl;
+    VLOG(1) << "Process " << getpid() << ": Initialized barrier semaphore."
+            << std::endl;
   }
 
-  std::cout << "Process " << getpid() << ": Barrier initialized for "
-            << barrier_data_->num_processes << " processes." << std::endl;
+  VLOG(1) << "Process " << getpid() << ": Barrier initialized";
 }
 
 ProcessBarrier::~ProcessBarrier() {
   // Close semaphores
   if (mutex_sem_ != nullptr) {
     if (sem_close(mutex_sem_) == -1) {
-      std::cerr << "Process " << getpid()
-                << ": Error closing mutex semaphore: " << strerror(errno)
-                << std::endl;
+      VLOG(1) << "Process " << getpid()
+              << ": Error closing mutex semaphore: " << strerror(errno)
+              << std::endl;
     }
   }
   if (barrier_sem_ != nullptr) {
     if (sem_close(barrier_sem_) == -1) {
-      std::cerr << "Process " << getpid()
-                << ": Error closing barrier semaphore: " << strerror(errno)
-                << std::endl;
+      VLOG(1) << "Process " << getpid()
+              << ": Error closing barrier semaphore: " << strerror(errno)
+              << std::endl;
     }
   }
   // Unmap shared memory
   if (barrier_data_ != nullptr) {
     if (munmap(barrier_data_, sizeof(BarrierData)) == -1) {
-      std::cerr << "Process " << getpid()
-                << ": Error unmapping shared memory: " << strerror(errno)
-                << std::endl;
+      VLOG(1) << "Process " << getpid()
+              << ": Error unmapping shared memory: " << strerror(errno)
+              << std::endl;
     }
   }
   // Close shared memory file descriptor
@@ -238,15 +238,15 @@ void ProcessBarrier::wait() {
   }
 
   barrier_data_->count++;
-  std::cout << "Process " << getpid()
-            << ": Reached barrier. Count: " << barrier_data_->count << "/"
-            << barrier_data_->num_processes << std::endl;
+  VLOG(1) << "Process " << getpid()
+          << ": Reached barrier. Count: " << barrier_data_->count << "/"
+          << barrier_data_->num_processes << std::endl;
 
   if (barrier_data_->count == barrier_data_->num_processes) {
     // All processes have arrived. Signal all waiting processes.
-    std::cout << "Process " << getpid()
-              << ": All processes reached barrier. Releasing others."
-              << std::endl;
+    VLOG(1) << "Process " << getpid()
+            << ": All processes reached barrier. Releasing others."
+            << std::endl;
     for (int i = 0; i < barrier_data_->num_processes; ++i) {
       if (sem_post(barrier_sem_) == -1) {
         // Critical error: try to release mutex before throwing to prevent
@@ -272,7 +272,7 @@ void ProcessBarrier::wait() {
     throw std::runtime_error("sem_wait (barrier) failed: " +
                              std::string(strerror(errno)));
   }
-  std::cout << "Process " << getpid() << ": Passed barrier." << std::endl;
+  VLOG(1) << "Process " << getpid() << ": Passed barrier." << std::endl;
 }
 
 void ProcessBarrier::unlink_all() {
@@ -282,20 +282,20 @@ void ProcessBarrier::unlink_all() {
   // ENOENT means the resource doesn't exist, which is fine if it was already
   // unlinked.
   if (sem_unlink(mutex_sem_name_.c_str()) == -1 && errno != ENOENT) {
-    std::cerr << "Process " << getpid()
-              << ": Error unlinking mutex semaphore: " << strerror(errno)
-              << std::endl;
+    VLOG(1) << "Process " << getpid()
+            << ": Error unlinking mutex semaphore: " << strerror(errno)
+            << std::endl;
   }
   if (sem_unlink(barrier_sem_name_.c_str()) == -1 && errno != ENOENT) {
-    std::cerr << "Process " << getpid()
-              << ": Error unlinking barrier semaphore: " << strerror(errno)
-              << std::endl;
+    VLOG(1) << "Process " << getpid()
+            << ": Error unlinking barrier semaphore: " << strerror(errno)
+            << std::endl;
   }
   if (shm_unlink(shm_name_.c_str()) == -1 && errno != ENOENT) {
-    std::cerr << "Process " << getpid()
-              << ": Error unlinking shared memory: " << strerror(errno)
-              << std::endl;
-  }
-  std::cout << "Process " << getpid() << ": Unlinked all shared resources."
+    VLOG(1) << "Process " << getpid()
+            << ": Error unlinking shared memory: " << strerror(errno)
             << std::endl;
+  }
+  VLOG(1) << "Process " << getpid() << ": Unlinked all shared resources."
+          << std::endl;
 }
