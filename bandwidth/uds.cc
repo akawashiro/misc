@@ -27,40 +27,41 @@ std::string SendPrefix(int iteration) {
 }
 
 void receive_process() {
-  int listen_fd, conn_fd;
-  struct sockaddr_un addr;
-
-  listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-  CHECK(listen_fd != -1) << "Failed to create socket";
-
-  remove(SOCKET_PATH.c_str());
-
-  // Configure the socket address
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
-
-  // Bind the socket to the specified path
-  if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-    LOG(ERROR) << "Failed to bind socket to " << SOCKET_PATH;
-    close(listen_fd);
-    return;
-  }
-
-  // Listen for incoming connections
-  if (listen(listen_fd, 0) == -1) {
-    LOG(ERROR) << "Failed to listen on socket " << SOCKET_PATH;
-    close(listen_fd);
-    return;
-  }
-
-  VLOG(1) << ReceivePrefix(0) << "Waiting for client connection on " << SOCKET_PATH;
-
   std::vector<double> durations;
   std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
 
   for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
        ++iteration) {
+    int listen_fd, conn_fd;
+    struct sockaddr_un addr;
+
+    listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    CHECK(listen_fd != -1) << "Failed to create socket";
+
+    remove(SOCKET_PATH.c_str());
+
+    // Configure the socket address
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
+
+    // Bind the socket to the specified path
+    if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+      LOG(ERROR) << "Failed to bind socket to " << SOCKET_PATH;
+      close(listen_fd);
+      return;
+    }
+
+    // Listen for incoming connections
+    if (listen(listen_fd, 0) == -1) {
+      LOG(ERROR) << "Failed to listen on socket " << SOCKET_PATH;
+      close(listen_fd);
+      return;
+    }
+
+    VLOG(1) << ReceivePrefix(iteration) << "Waiting for client connection on "
+            << SOCKET_PATH;
+
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
@@ -75,7 +76,8 @@ void receive_process() {
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       CHECK(bytes_received >= 0) << "Failed to receive data";
       if (bytes_received == 0) {
-        VLOG(1) << ReceivePrefix(iteration) << "Client disconnected prematurely.";
+        VLOG(1) << ReceivePrefix(iteration)
+                << "Client disconnected prematurely.";
         break;
       }
       total_received += bytes_received;
@@ -84,23 +86,23 @@ void receive_process() {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    close(conn_fd);
+    close(listen_fd);
+    remove(SOCKET_PATH.c_str());
     VLOG(1) << ReceivePrefix(iteration) << "Finished receiving data.";
 
     verifyDataReceived(read_data);
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << ReceivePrefix(iteration) << "Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << ReceivePrefix(iteration)
+              << "Time taken: " << elapsed_time.count() << " seconds.";
     }
-    close(conn_fd);
   }
 
   double bandwidth = calculateBandwidth(durations);
   LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec.";
-
-  close(listen_fd);
-  remove(SOCKET_PATH.c_str());
 }
 
 void send_process() {
@@ -119,13 +121,15 @@ void send_process() {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    VLOG(1) << SendPrefix(iteration) << "Connecting to reader on " << SOCKET_PATH;
+    VLOG(1) << SendPrefix(iteration) << "Connecting to reader on "
+            << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-      if (errno == ENOENT) {
-        LOG(ERROR) << SendPrefix(iteration) << "Receive socket not found, retrying in 1 second...";
+      if (errno == ENOENT || errno == ECONNREFUSED) {
+        LOG(ERROR) << SendPrefix(iteration) << "Connection failed: "
+                   << strerror(errno) << ". Retrying...";
         sleep(1);
       } else {
-        LOG(ERROR) << SendPrefix(iteration) << "Failed to connect to server socket: "
+        LOG(ERROR) << SendPrefix(iteration) << "Unexpected error: "
                    << strerror(errno);
         close(sock_fd);
         return;
@@ -153,7 +157,8 @@ void send_process() {
     if (NUM_WARMUPS <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count()
+              << " seconds.";
     }
     close(sock_fd);
 
