@@ -16,7 +16,7 @@
 #include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
-constexpr size_t BUFFER_SIZE = (1 << 10);
+constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
 
 std::string ReceivePrefix(int iteration) {
   return absl::StrCat("Receive (iteration ", iteration, "): ");
@@ -26,7 +26,7 @@ std::string SendPrefix(int iteration) {
   return absl::StrCat("Send (iteration ", iteration, "): ");
 }
 
-void receive_process() {
+void receive_process(uint64_t buffer_size) {
   std::vector<double> durations;
   std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
 
@@ -67,13 +67,13 @@ void receive_process() {
 
     VLOG(1) << ReceivePrefix(iteration) << "Client connected.";
     VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
-    std::vector<uint8_t> recv_buffer(BUFFER_SIZE);
+    std::vector<uint8_t> recv_buffer(buffer_size);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while (total_received < DATA_SIZE) {
       ssize_t bytes_received =
-          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
+          recv(conn_fd, recv_buffer.data(), buffer_size, 0);
       CHECK(bytes_received >= 0) << "Failed to receive data";
       if (bytes_received == 0) {
         VLOG(1) << ReceivePrefix(iteration)
@@ -105,7 +105,7 @@ void receive_process() {
             << " GiByte/sec.";
 }
 
-void send_process() {
+void send_process(uint64_t buffer_size) {
   std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
@@ -125,12 +125,13 @@ void send_process() {
             << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT || errno == ECONNREFUSED) {
-        LOG(ERROR) << SendPrefix(iteration) << "Connection failed: "
-                   << strerror(errno) << ". Retrying...";
+        LOG(ERROR) << SendPrefix(iteration)
+                   << "Connection failed: " << strerror(errno)
+                   << ". Retrying...";
         sleep(1);
       } else {
-        LOG(ERROR) << SendPrefix(iteration) << "Unexpected error: "
-                   << strerror(errno);
+        LOG(ERROR) << SendPrefix(iteration)
+                   << "Unexpected error: " << strerror(errno);
         close(sock_fd);
         return;
       }
@@ -141,7 +142,7 @@ void send_process() {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while (total_sent < DATA_SIZE) {
-      size_t bytes_to_send = std::min(BUFFER_SIZE, DATA_SIZE - total_sent);
+      size_t bytes_to_send = std::min(buffer_size, DATA_SIZE - total_sent);
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
@@ -161,11 +162,6 @@ void send_process() {
               << " seconds.";
     }
     close(sock_fd);
-
-    // Caution: We need this sleep to ensure the server has time to reset.
-    // Otherwise, the bandwidth of send will be siginificantly lower than the
-    // receive.
-    // sleep(1);
   }
 
   double bandwidth = calculateBandwidth(durations);
@@ -174,6 +170,8 @@ void send_process() {
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
+ABSL_FLAG(int, buffer_size, DEFAULT_BUFFER_SIZE,
+          "Size of the buffer used for sending and receiving data.");
 
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
@@ -184,6 +182,7 @@ int main(int argc, char *argv[]) {
     int v = *vlog;
     absl::SetGlobalVLogLevel(v);
   }
+  int buffer_size = absl::GetFlag(FLAGS_buffer_size);
 
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
@@ -192,9 +191,9 @@ int main(int argc, char *argv[]) {
   CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    send_process();
+    send_process(buffer_size);
   } else {
-    receive_process();
+    receive_process(buffer_size);
   }
 
   return 0;
