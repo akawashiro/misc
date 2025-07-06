@@ -6,6 +6,7 @@
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/strings/str_cat.h"
 
 std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data,
                                   uint64_t data_size) {
@@ -80,4 +81,12 @@ double calculateBandwidth(std::vector<double> durations, int num_iterations,
                             filtered_durations.size();
   double bandwidth = data_size / average_duration;
   return bandwidth;
+}
+
+std::string ReceivePrefix(int iteration) {
+  return absl::StrCat("Receive (iteration ", iteration, "): ");
+}
+
+std::string SendPrefix(int iteration) {
+  return absl::StrCat("Send (iteration ", iteration, "): ");
 }

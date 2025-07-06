@@ -145,8 +145,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+    VLOG(1) << ReceivePrefix(iteration + 1) << "Starting iteration...";
 
     shared_buffer->transfer_complete = false;
 
@@ -221,8 +220,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+    VLOG(1) << SendPrefix(iteration + 1) << "Starting iteration...";
 
     std::vector<char> data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
 

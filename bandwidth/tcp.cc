@@ -114,10 +114,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       return;
     }
 
-    VLOG(1) << "Receiver: Sender connected from "
+    VLOG(1) << ReceivePrefix(iteration + 1) << "Sender connected from "
             << inet_ntoa(send_addr.sin_addr) << ":" << ntohs(send_addr.sin_port)
-            << ". Receiving data... (Iteration " << iteration + 1 << "/"
-            << num_iterations << ")";
+            << ". Receiving data...";
 
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
@@ -226,16 +225,16 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
     receive_addr.sin_port = htons(PORT);
 
     // Connect to the receiver
-    VLOG(1) << "Sender: Connecting to receiver at " << LOOPBACK_IP << ":"
-            << PORT << " (Iteration " << iteration + 1 << "/" << num_iterations
-            << ")";
+    VLOG(1) << SendPrefix(iteration + 1) << "Connecting to receiver at "
+            << LOOPBACK_IP << ":" << PORT;
     while (connect(sock_fd, (struct sockaddr *)&receive_addr,
                    sizeof(receive_addr)) == -1) {
       LOG(ERROR) << "send: connect (retrying in 1 second): " << strerror(errno);
       sleep(1); // Wait a bit if receiver isn't ready yet
     }
 
-    VLOG(1) << "Sender: Connected to receiver. Sending data...";
+    VLOG(1) << SendPrefix(iteration + 1)
+            << "Connected to receiver. Sending data...";
 
     std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
     size_t total_sent = 0;

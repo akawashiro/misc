@@ -1,5 +1,7 @@
 # Important
 
-Run the following scripts after you finished a task.
-- ./build.sh
-- ./format.sh
+- Run the following scripts after you finished a task.
+  - ./build.sh
+  - ./format.sh
+- Header files should be minimal, only include what is necessary.
+- Use const or constexpr where possible.

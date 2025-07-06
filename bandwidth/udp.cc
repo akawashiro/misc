@@ -119,8 +119,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
-      LOG(INFO) << "[Receiver] Iteration " << iteration + 1 << "/"
-                << num_iterations << " started...";
+      LOG(INFO) << ReceivePrefix(iteration + 1) << "Iteration started...";
 
       // Receive data until total size is reached
       while (total_bytes_received < data_size) {
@@ -136,7 +135,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
       std::chrono::duration<double> elapsed = end_time - start_time;
       durations.push_back(elapsed.count());
 
-      LOG(INFO) << "[Receiver] Iteration " << iteration + 1 << " completed in "
+      LOG(INFO) << ReceivePrefix(iteration + 1) << "Iteration completed in "
                 << elapsed.count() << " seconds";
     }
   }
@@ -199,8 +198,7 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
   VLOG(1) << "[Sender] Warm-up complete. Starting measurements...";
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    LOG(INFO) << "[Sender] Starting iteration " << iteration + 1 << "/"
-              << num_iterations;
+    LOG(INFO) << SendPrefix(iteration + 1) << "Starting iteration...";
 
     // First packet marked with 'S' to signal start
     std::vector<char> start_buffer(CHUNK_SIZE, 'S');
