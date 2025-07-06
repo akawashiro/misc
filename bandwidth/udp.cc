@@ -23,13 +23,13 @@
 ABSL_FLAG(int, num_iterations, 10,
           "Number of measurement iterations (minimum 3)");
 ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
+ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
+          "Size of data to transfer in bytes");
 
 // --- Common Settings ---
 constexpr int PORT = 12345;
 constexpr const char *HOST = "127.0.0.1";
-constexpr size_t CHUNK_SIZE = 8192;                        // 8 KB
-constexpr uint64_t TOTAL_DATA_SIZE = 128ULL * 1024 * 1024; // 128 MiB
-constexpr uint64_t NUM_PACKETS = TOTAL_DATA_SIZE / CHUNK_SIZE;
+constexpr size_t CHUNK_SIZE = 8192; // 8 KB
 
 // --- Error Handling Function ---
 void die(const char *message) {
@@ -38,7 +38,8 @@ void die(const char *message) {
 }
 
 // --- Receiver (Child Process) Operations ---
-void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
+void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
+                  uint64_t data_size) {
   int sockfd;
   struct sockaddr_in serv_addr, cli_addr;
   socklen_t cli_len = sizeof(cli_addr);
@@ -86,7 +87,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
 
     if (buffer[0] == 'W') { // 'W' for warmup
       total_bytes_received += bytes_received;
-      while (total_bytes_received < TOTAL_DATA_SIZE) {
+      while (total_bytes_received < data_size) {
         bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
@@ -122,7 +123,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
                 << num_iterations << " started...";
 
       // Receive data until total size is reached
-      while (total_bytes_received < TOTAL_DATA_SIZE) {
+      while (total_bytes_received < data_size) {
         bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
@@ -140,7 +141,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations);
+  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double gibytes_per_second = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << gibytes_per_second << " GiByte/sec";
@@ -149,7 +150,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
 }
 
 // --- Sender (Parent Process) Operations ---
-void run_sender(int num_warmups, int num_iterations) {
+void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
   int sockfd;
   struct sockaddr_in serv_addr;
 
@@ -177,8 +178,9 @@ void run_sender(int num_warmups, int num_iterations) {
     }
 
     // Send remaining packets
+    uint64_t num_packets = data_size / CHUNK_SIZE;
     std::vector<char> buffer(CHUNK_SIZE, 'w');
-    for (uint64_t i = 1; i < NUM_PACKETS; ++i) {
+    for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
@@ -206,8 +208,9 @@ void run_sender(int num_warmups, int num_iterations) {
     }
 
     // Send remaining packets
+    uint64_t num_packets = data_size / CHUNK_SIZE;
     std::vector<char> buffer(CHUNK_SIZE, 'D');
-    for (uint64_t i = 1; i < NUM_PACKETS; ++i) {
+    for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
@@ -238,10 +241,18 @@ int main(int argc, char *argv[]) {
   // Get values from command line flags
   int num_iterations = absl::GetFlag(FLAGS_num_iterations);
   int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+  uint64_t data_size = absl::GetFlag(FLAGS_data_size);
 
   // Validate num_iterations
   if (num_iterations < 3) {
     LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
+
+  // Validate data_size
+  if (data_size <= CHECKSUM_SIZE) {
+    LOG(ERROR) << "data_size must be larger than CHECKSUM_SIZE ("
+               << CHECKSUM_SIZE << "), got: " << data_size;
     return 1;
   }
 
@@ -271,8 +282,8 @@ int main(int argc, char *argv[]) {
     // --- Child Process (Receiver) ---
     close(pipefd[0]); // Close read end of pipe (not used by child)
     run_receiver(
-        pipefd[1], num_warmups,
-        num_iterations); // Execute receiver process (pass write end of pipe)
+        pipefd[1], num_warmups, num_iterations,
+        data_size); // Execute receiver process (pass write end of pipe)
     exit(0);
 
   } else {
@@ -291,7 +302,8 @@ int main(int argc, char *argv[]) {
       LOG(INFO) << "[Main] Receiver is ready. Starting transmission.";
     }
 
-    run_sender(num_warmups, num_iterations); // Execute sender process
+    run_sender(num_warmups, num_iterations,
+               data_size); // Execute sender process
 
     // Wait for child process to terminate (prevent zombie processes)
     wait(NULL);

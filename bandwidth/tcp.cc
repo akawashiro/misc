@@ -22,12 +22,14 @@
 ABSL_FLAG(int, num_iterations, 10,
           "Number of measurement iterations (minimum 3)");
 ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
+ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
+          "Size of data to transfer in bytes");
 
 const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
 
-void server_process(int num_warmups, int num_iterations) {
+void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
   int listen_fd, conn_fd;
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_len = sizeof(client_addr);
@@ -83,7 +85,7 @@ void server_process(int num_warmups, int num_iterations) {
 
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
-    while (total_received < DATA_SIZE) {
+    while (total_received < data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
@@ -121,8 +123,8 @@ void server_process(int num_warmups, int num_iterations) {
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Receive data until DATA_SIZE is reached
-    while (total_received < DATA_SIZE) {
+    // Receive data until data_size is reached
+    while (total_received < data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
@@ -148,8 +150,9 @@ void server_process(int num_warmups, int num_iterations) {
     close(conn_fd);
   }
 
-  double bandwidth_gibps = calculateBandwidth(durations, num_iterations) /
-                           (1024.0 * 1024.0 * 1024.0);
+  double bandwidth_gibps =
+      calculateBandwidth(durations, num_iterations, data_size) /
+      (1024.0 * 1024.0 * 1024.0);
 
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
 
@@ -158,7 +161,7 @@ void server_process(int num_warmups, int num_iterations) {
   VLOG(1) << "Server: Exiting.";
 }
 
-void client_process(int num_warmups, int num_iterations) {
+void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Perform warm-up runs
   VLOG(1) << "Client: Performing warm-up runs...";
 
@@ -184,9 +187,9 @@ void client_process(int num_warmups, int num_iterations) {
 
     std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
     size_t total_sent = 0;
-    while (total_sent < DATA_SIZE) {
+    while (total_sent < data_size) {
       size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
+          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
       ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
       if (bytes_sent == -1) {
         perror("client: send during warmup");
@@ -202,7 +205,7 @@ void client_process(int num_warmups, int num_iterations) {
   }
   VLOG(1) << "Client: Warm-up complete. Starting measurements...";
 
-  std::vector<uint8_t> data_to_send = generateDataToSend();
+  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
@@ -237,10 +240,10 @@ void client_process(int num_warmups, int num_iterations) {
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Send data until DATA_SIZE is reached
-    while (total_sent < DATA_SIZE) {
+    // Send data until data_size is reached
+    while (total_sent < data_size) {
       size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, DATA_SIZE - total_sent);
+          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
       // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send,
       // 0);
       ssize_t bytes_sent =
@@ -270,8 +273,9 @@ void client_process(int num_warmups, int num_iterations) {
     }
   }
 
-  double bandwidth_gibps = calculateBandwidth(durations, num_iterations) /
-                           (1024.0 * 1024.0 * 1024.0);
+  double bandwidth_gibps =
+      calculateBandwidth(durations, num_iterations, data_size) /
+      (1024.0 * 1024.0 * 1024.0);
 
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
 
@@ -288,10 +292,18 @@ int main(int argc, char *argv[]) {
   // Get values from command line flags
   int num_iterations = absl::GetFlag(FLAGS_num_iterations);
   int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+  uint64_t data_size = absl::GetFlag(FLAGS_data_size);
 
   // Validate num_iterations
   if (num_iterations < 3) {
     LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
+
+  // Validate data_size
+  if (data_size <= CHECKSUM_SIZE) {
+    LOG(ERROR) << "data_size must be larger than CHECKSUM_SIZE ("
+               << CHECKSUM_SIZE << "), got: " << data_size;
     return 1;
   }
 
@@ -313,10 +325,10 @@ int main(int argc, char *argv[]) {
 
   if (pid == 0) {
     // Child process (client)
-    client_process(num_warmups, num_iterations);
+    client_process(num_warmups, num_iterations, data_size);
   } else {
     // Parent process (server)
-    server_process(num_warmups, num_iterations);
+    server_process(num_warmups, num_iterations, data_size);
   }
 
   return 0;

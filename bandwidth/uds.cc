@@ -15,6 +15,9 @@
 #include "absl/strings/str_cat.h"
 #include "common.h"
 
+ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
+          "Size of data to transfer in bytes");
+
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
 
@@ -26,10 +29,10 @@ std::string SendPrefix(int iteration) {
   return absl::StrCat("Send (iteration ", iteration, "): ");
 }
 
-void receive_process(uint64_t buffer_size, int num_warmups,
-                     int num_iterations) {
+void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
+                     uint64_t data_size) {
   std::vector<double> durations;
-  std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
+  std::vector<uint8_t> read_data(data_size, 0x00);
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
@@ -72,7 +75,7 @@ void receive_process(uint64_t buffer_size, int num_warmups,
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    while (total_received < DATA_SIZE) {
+    while (total_received < data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), buffer_size, 0);
       CHECK(bytes_received >= 0) << "Failed to receive data";
@@ -92,7 +95,7 @@ void receive_process(uint64_t buffer_size, int num_warmups,
     remove(SOCKET_PATH.c_str());
     VLOG(1) << ReceivePrefix(iteration) << "Finished receiving data.";
 
-    verifyDataReceived(read_data);
+    verifyDataReceived(read_data, data_size);
     if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
@@ -101,13 +104,14 @@ void receive_process(uint64_t buffer_size, int num_warmups,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations);
+  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec.";
 }
 
-void send_process(uint64_t buffer_size, int num_warmups, int num_iterations) {
-  std::vector<uint8_t> data_to_send = generateDataToSend();
+void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
+                  uint64_t data_size) {
+  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -142,8 +146,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations) {
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    while (total_sent < DATA_SIZE) {
-      size_t bytes_to_send = std::min(buffer_size, DATA_SIZE - total_sent);
+    while (total_sent < data_size) {
+      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
@@ -165,7 +169,7 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations) {
     close(sock_fd);
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations);
+  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
@@ -184,10 +188,18 @@ int main(int argc, char *argv[]) {
   // Get values from command line flags
   int num_iterations = absl::GetFlag(FLAGS_num_iterations);
   int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+  uint64_t data_size = absl::GetFlag(FLAGS_data_size);
 
   // Validate num_iterations
   if (num_iterations < 3) {
     LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
+
+  // Validate data_size
+  if (data_size <= CHECKSUM_SIZE) {
+    LOG(ERROR) << "data_size must be larger than CHECKSUM_SIZE ("
+               << CHECKSUM_SIZE << "), got: " << data_size;
     return 1;
   }
 
@@ -205,9 +217,9 @@ int main(int argc, char *argv[]) {
   CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    send_process(buffer_size, num_warmups, num_iterations);
+    send_process(buffer_size, num_warmups, num_iterations, data_size);
   } else {
-    receive_process(buffer_size, num_warmups, num_iterations);
+    receive_process(buffer_size, num_warmups, num_iterations, data_size);
   }
 
   return 0;
