@@ -30,7 +30,8 @@ struct sync_data {
   volatile int current_iteration;
 };
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void send_process(int num_warmups, int num_iterations, uint64_t data_size,
+                  uint64_t buffer_size) {
   // Create and open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fd == -1) {
@@ -79,8 +80,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     // Write data in chunks
-    for (size_t offset = 0; offset < data_size; offset += BUFFER_SIZE) {
-      size_t chunk_size = std::min((size_t)BUFFER_SIZE, data_size - offset);
+    for (size_t offset = 0; offset < data_size; offset += buffer_size) {
+      size_t chunk_size = std::min(buffer_size, data_size - offset);
       memset(data_region + offset, 'W', chunk_size); // 'W' for warmup
       sync->bytes_written = offset + chunk_size;
     }
@@ -110,8 +111,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Write data in chunks
-    for (size_t offset = 0; offset < data_size; offset += BUFFER_SIZE) {
-      size_t chunk_size = std::min((size_t)BUFFER_SIZE, data_size - offset);
+    for (size_t offset = 0; offset < data_size; offset += buffer_size) {
+      size_t chunk_size = std::min(buffer_size, data_size - offset);
       memset(data_region + offset, 'A', chunk_size); // Fill with 'A'
       sync->bytes_written = offset + chunk_size;
     }
@@ -244,7 +245,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
 } // namespace
 
-int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                       uint64_t buffer_size) {
   // Remove the file if it exists from a previous run
   unlink(MMAP_FILE_PATH.c_str());
 
@@ -257,7 +259,7 @@ int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size) 
 
   if (pid == 0) {
     // Child process (sender)
-    send_process(num_warmups, num_iterations, data_size);
+    send_process(num_warmups, num_iterations, data_size, buffer_size);
   } else {
     // Parent process (receiver)
     receive_process(num_warmups, num_iterations, data_size);

@@ -20,7 +20,7 @@
 // --- Common Settings ---
 constexpr int PORT = 12345;
 constexpr const char *HOST = "127.0.0.1";
-constexpr size_t CHUNK_SIZE = 8192; // 8 KB
+// CHUNK_SIZE is now passed as a parameter (buffer_size)
 
 // --- Error Handling Function ---
 void die(const char *message) {
@@ -30,7 +30,7 @@ void die(const char *message) {
 
 // --- Receiver (Child Process) Operations ---
 void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
-                  uint64_t data_size) {
+                  uint64_t data_size, uint64_t buffer_size) {
   int sockfd;
   struct sockaddr_in serv_addr, cli_addr;
   socklen_t cli_len = sizeof(cli_addr);
@@ -61,7 +61,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
   LOG(INFO) << "[Receiver] Waiting for data... (Port: " << PORT << ")";
 
-  std::vector<char> buffer(CHUNK_SIZE);
+  std::vector<char> buffer(buffer_size);
 
   // Perform warm-up runs
   VLOG(1) << "[Receiver] Performing warm-up runs...";
@@ -70,7 +70,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     ssize_t bytes_received;
 
     // Wait for warmup start signal from sender
-    bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+    bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received < 0) {
       die("Receiver: recvfrom() failed on warmup start");
@@ -79,7 +79,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     if (buffer[0] == 'W') { // 'W' for warmup
       total_bytes_received += bytes_received;
       while (total_bytes_received < data_size) {
-        bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+        bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
           total_bytes_received += bytes_received;
@@ -98,7 +98,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     ssize_t bytes_received;
 
     // Wait for iteration start signal from sender
-    bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+    bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received < 0) {
       die("Receiver: recvfrom() failed on iteration start");
@@ -114,7 +114,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
       // Receive data until total size is reached
       while (total_bytes_received < data_size) {
-        bytes_received = recvfrom(sockfd, buffer.data(), CHUNK_SIZE, 0,
+        bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
           total_bytes_received += bytes_received;
@@ -140,7 +140,8 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 }
 
 // --- Sender (Parent Process) Operations ---
-void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
+void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
+                uint64_t buffer_size) {
   int sockfd;
   struct sockaddr_in serv_addr;
 
@@ -161,21 +162,21 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
   VLOG(1) << "[Sender] Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     // First packet marked with 'W' to signal warmup
-    std::vector<char> warmup_buffer(CHUNK_SIZE, 'W');
-    if (sendto(sockfd, warmup_buffer.data(), CHUNK_SIZE, 0,
+    std::vector<char> warmup_buffer(buffer_size, 'W');
+    if (sendto(sockfd, warmup_buffer.data(), buffer_size, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       LOG(ERROR) << "Sender: sendto() error on warmup signal: "
                  << strerror(errno);
     }
 
     // Send remaining packets
-    uint64_t num_packets = data_size / CHUNK_SIZE;
-    std::vector<char> buffer(CHUNK_SIZE, 'w');
+    uint64_t num_packets = data_size / buffer_size;
+    std::vector<char> buffer(buffer_size, 'w');
     for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-      if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
+      if (sendto(sockfd, buffer.data(), buffer_size, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
         LOG(ERROR) << "Sender: sendto() error during warmup: "
@@ -192,21 +193,21 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
     LOG(INFO) << SendPrefix(iteration + 1) << "Starting iteration...";
 
     // First packet marked with 'S' to signal start
-    std::vector<char> start_buffer(CHUNK_SIZE, 'S');
-    if (sendto(sockfd, start_buffer.data(), CHUNK_SIZE, 0,
+    std::vector<char> start_buffer(buffer_size, 'S');
+    if (sendto(sockfd, start_buffer.data(), buffer_size, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       LOG(ERROR) << "Sender: sendto() error on start signal: "
                  << strerror(errno);
     }
 
     // Send remaining packets
-    uint64_t num_packets = data_size / CHUNK_SIZE;
-    std::vector<char> buffer(CHUNK_SIZE, 'D');
+    uint64_t num_packets = data_size / buffer_size;
+    std::vector<char> buffer(buffer_size, 'D');
     for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-      if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
+      if (sendto(sockfd, buffer.data(), buffer_size, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
         LOG(ERROR) << "Sender: sendto() error: " << strerror(errno);
@@ -223,7 +224,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
   close(sockfd);
 }
 
-int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                      uint64_t buffer_size) {
   // Pipe for parent-child synchronization
   int pipefd[2];
   if (pipe(pipefd) == -1) {
@@ -241,8 +243,8 @@ int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
     // --- Child Process (Receiver) ---
     close(pipefd[0]); // Close read end of pipe (not used by child)
     run_receiver(
-        pipefd[1], num_warmups, num_iterations,
-        data_size); // Execute receiver process (pass write end of pipe)
+        pipefd[1], num_warmups, num_iterations, data_size,
+        buffer_size); // Execute receiver process (pass write end of pipe)
     exit(0);
 
   } else {
@@ -261,8 +263,8 @@ int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
       LOG(INFO) << "[Main] Receiver is ready. Starting transmission.";
     }
 
-    run_sender(num_warmups, num_iterations,
-               data_size); // Execute sender process
+    run_sender(num_warmups, num_iterations, data_size,
+               buffer_size); // Execute sender process
 
     // Wait for child process to terminate (prevent zombie processes)
     wait(NULL);

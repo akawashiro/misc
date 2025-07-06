@@ -1,14 +1,14 @@
 #include "uds_benchmark.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <chrono>
-#include <cstring>
-#include <string>
 #include <vector>
-#include <algorithm>
 
 #include "absl/log/check.h"
 #include "absl/log/globals.h"
@@ -164,9 +164,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
   LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
-int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
-  uint64_t buffer_size = DEFAULT_BUFFER_SIZE;
-
+int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                      uint64_t buffer_size) {
   pid_t pid = fork();
   CHECK(pid != -1) << "Failed to fork process";
 
@@ -174,7 +173,7 @@ int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
     send_process(buffer_size, num_warmups, num_iterations, data_size);
   } else {
     receive_process(buffer_size, num_warmups, num_iterations, data_size);
-    
+
     // Wait for child process to complete
     int status;
     wait(&status);

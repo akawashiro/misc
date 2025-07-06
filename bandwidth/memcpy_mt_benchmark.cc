@@ -1,9 +1,9 @@
 #include "memcpy_mt_benchmark.h"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <vector>
-#include <algorithm>
 
 #include "absl/log/globals.h"
 #include "absl/log/log.h"
@@ -49,11 +49,12 @@ void memcpyInMultiThread(uint64_t n_threads, int num_warmups,
             << " GiByte/sec. Threads: " << n_threads;
 }
 
-int run_memcpy_mt_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_memcpy_mt_benchmark(int num_iterations, int num_warmups,
+                            uint64_t data_size) {
   VLOG(1) << "Starting multi-threaded memcpy bandwidth test...";
   for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
     memcpyInMultiThread(n_threads, num_warmups, num_iterations, data_size);
   }
-  
+
   return 0;
 }

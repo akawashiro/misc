@@ -11,21 +11,32 @@
 #include "common.h"
 #include "memcpy_benchmark.h"
 #include "memcpy_mt_benchmark.h"
+#include "mmap_benchmark.h"
+#include "pipe_benchmark.h"
+#include "shm_benchmark.h"
 #include "tcp_benchmark.h"
 #include "udp_benchmark.h"
 #include "uds_benchmark.h"
-#include "pipe_benchmark.h"
-#include "mmap_benchmark.h"
-#include "shm_benchmark.h"
 
-ABSL_FLAG(std::string, type, "", "Benchmark type to run (memcpy, memcpy_mt, tcp, udp, uds, pipe, mmap, shm)");
-ABSL_FLAG(int, num_iterations, 10, "Number of measurement iterations (minimum 3)");
+ABSL_FLAG(std::string, type, "",
+          "Benchmark type to run (memcpy, memcpy_mt, tcp, udp, uds, pipe, "
+          "mmap, shm)");
+ABSL_FLAG(int, num_iterations, 10,
+          "Number of measurement iterations (minimum 3)");
 ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
-ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20), "Size of data to transfer in bytes");
-ABSL_FLAG(std::optional<int>, vlog, std::nullopt, "Show VLOG messages lower than this level.");
+ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
+          "Size of data to transfer in bytes");
+ABSL_FLAG(std::optional<uint64_t>, buffer_size, std::nullopt,
+          "Buffer size for I/O operations in bytes (default: 1 MiByte, not "
+          "applicable to memcpy benchmarks)");
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+constexpr uint64_t DEFAULT_BUFFER_SIZE = 1 << 20; // 1 MiByte
 
 int main(int argc, char *argv[]) {
-  absl::SetProgramUsageMessage("Bandwidth benchmark tool. Use --type to specify benchmark type.");
+  absl::SetProgramUsageMessage(
+      "Bandwidth benchmark tool. Use --type to specify benchmark type.");
   absl::ParseCommandLine(argc, argv);
 
   // Get values from command line flags
@@ -33,10 +44,35 @@ int main(int argc, char *argv[]) {
   int num_iterations = absl::GetFlag(FLAGS_num_iterations);
   int num_warmups = absl::GetFlag(FLAGS_num_warmups);
   uint64_t data_size = absl::GetFlag(FLAGS_data_size);
+  std::optional<uint64_t> buffer_size_opt = absl::GetFlag(FLAGS_buffer_size);
 
   // Validate type
   if (type.empty()) {
-    LOG(ERROR) << "Must specify --type. Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, mmap, shm";
+    LOG(ERROR) << "Must specify --type. Available types: memcpy, memcpy_mt, "
+                  "tcp, udp, uds, pipe, mmap, shm";
+    return 1;
+  }
+
+  // Check if buffer_size is specified for incompatible benchmark types
+  if ((type == "memcpy" || type == "memcpy_mt") &&
+      buffer_size_opt.has_value()) {
+    LOG(ERROR) << "Buffer size option is not applicable to " << type
+               << " benchmark type";
+    return 1;
+  }
+
+  // Get buffer size (use default if not specified)
+  uint64_t buffer_size = buffer_size_opt.value_or(DEFAULT_BUFFER_SIZE);
+
+  // Validate buffer_size
+  if (buffer_size == 0) {
+    LOG(ERROR) << "buffer_size must be greater than 0, got: " << buffer_size;
+    return 1;
+  }
+
+  if (buffer_size > data_size) {
+    LOG(ERROR) << "buffer_size (" << buffer_size
+               << ") cannot be larger than data_size (" << data_size << ")";
     return 1;
   }
 
@@ -69,20 +105,27 @@ int main(int argc, char *argv[]) {
   } else if (type == "memcpy_mt") {
     result = run_memcpy_mt_benchmark(num_iterations, num_warmups, data_size);
   } else if (type == "tcp") {
-    result = run_tcp_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_tcp_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "udp") {
-    result = run_udp_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_udp_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "uds") {
-    result = run_uds_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_uds_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "pipe") {
-    result = run_pipe_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_pipe_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "mmap") {
-    result = run_mmap_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_mmap_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "shm") {
-    result = run_shm_benchmark(num_iterations, num_warmups, data_size);
+    result =
+        run_shm_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else {
-    LOG(ERROR) << "Unknown benchmark type: " << type 
-               << ". Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, mmap, shm";
+    LOG(ERROR) << "Unknown benchmark type: " << type
+               << ". Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, "
+                  "mmap, shm";
     return 1;
   }
 

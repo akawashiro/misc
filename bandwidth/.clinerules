@@ -5,3 +5,5 @@
   - ./format.sh
 - Header files should be minimal, only include what is necessary.
 - Use const or constexpr where possible.
+- Do not leave comments on deleted code.
+- Stop writing comments right side of include for example "#include <algorithm> // for std::sort"

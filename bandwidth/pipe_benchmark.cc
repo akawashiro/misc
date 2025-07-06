@@ -14,18 +14,17 @@
 
 #include "common.h"
 
-const int BUFFER_SIZE = 4096; // 4KB buffer for read/write
+// BUFFER_SIZE is now passed as a parameter
 
 void send_process(int write_fd, int num_warmups, int num_iterations,
-                  uint64_t data_size) {
+                  uint64_t data_size, uint64_t buffer_size) {
   // Perform warm-up runs
   VLOG(1) << "Sender: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
+    std::vector<char> send_buffer(buffer_size, 'W'); // 'W' for warmup
     size_t total_sent = 0;
     while (total_sent < data_size) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
+      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
@@ -45,14 +44,13 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
     VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
-    std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
+    std::vector<char> send_buffer(buffer_size, 'A'); // Fill buffer with 'A'
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Write data until data_size is reached
     while (total_sent < data_size) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
+      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
@@ -80,14 +78,14 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
 }
 
 void receive_process(int read_fd, int num_warmups, int num_iterations,
-                     uint64_t data_size) {
+                     uint64_t data_size, uint64_t buffer_size) {
   // Perform warm-up runs
   VLOG(1) << "Receiver: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    std::vector<char> recv_buffer(BUFFER_SIZE);
+    std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
     while (total_received < data_size) {
-      ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
+      ssize_t bytes_read = read(read_fd, recv_buffer.data(), buffer_size);
       if (bytes_read == -1) {
         LOG(ERROR) << "receive: read during warmup: " << strerror(errno);
         break;
@@ -108,13 +106,13 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
     VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
-    std::vector<char> recv_buffer(BUFFER_SIZE);
+    std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Read data until data_size is reached
     while (total_received < data_size) {
-      ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
+      ssize_t bytes_read = read(read_fd, recv_buffer.data(), buffer_size);
       if (bytes_read == -1) {
         LOG(ERROR) << "receive: read: " << strerror(errno);
         break;
@@ -143,7 +141,8 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
   VLOG(1) << "Receiver: Exiting.";
 }
 
-int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                       uint64_t buffer_size) {
   // Create a pipe
   int pipe_fds[2];
   if (pipe(pipe_fds) == -1) {
@@ -166,11 +165,12 @@ int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size) 
   if (pid == 0) {
     // Child process (sender)
     close(read_fd); // Close unused read end
-    send_process(write_fd, num_warmups, num_iterations, data_size);
+    send_process(write_fd, num_warmups, num_iterations, data_size, buffer_size);
   } else {
     // Parent process (receiver)
     close(write_fd); // Close unused write end
-    receive_process(read_fd, num_warmups, num_iterations, data_size);
+    receive_process(read_fd, num_warmups, num_iterations, data_size,
+                    buffer_size);
 
     // Wait for child process to complete
     int status;

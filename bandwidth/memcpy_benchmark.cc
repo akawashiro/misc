@@ -9,12 +9,14 @@
 
 #include "common.h"
 
-int run_memcpy_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_memcpy_benchmark(int num_iterations, int num_warmups,
+                         uint64_t data_size) {
   std::vector<uint8_t> src = generateDataToSend(data_size);
   std::vector<uint8_t> dst(data_size, 0);
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_warmups + num_iterations; ++iteration) {
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
     std::fill(dst.begin(), dst.end(), 0);
     const auto start = std::chrono::high_resolution_clock::now();
     std::memcpy(dst.data(), src.data(), data_size);
@@ -31,6 +33,6 @@ int run_memcpy_benchmark(int num_iterations, int num_warmups, uint64_t data_size
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec";
-  
+
   return 0;
 }

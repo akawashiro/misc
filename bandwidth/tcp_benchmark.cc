@@ -19,9 +19,10 @@
 namespace {
 const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
-const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
+// BUFFER_SIZE is now passed as a parameter
 
-void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
+                     uint64_t buffer_size) {
   int listen_fd, conn_fd;
   struct sockaddr_in receive_addr, send_addr;
   socklen_t send_len = sizeof(send_addr);
@@ -75,11 +76,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       return;
     }
 
-    std::vector<char> recv_buffer(BUFFER_SIZE);
+    std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
     while (total_received < data_size) {
       ssize_t bytes_received =
-          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
+          recv(conn_fd, recv_buffer.data(), buffer_size, 0);
       if (bytes_received == -1) {
         LOG(ERROR) << "receive: recv during warmup: " << strerror(errno);
         break;
@@ -110,14 +111,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
             << inet_ntoa(send_addr.sin_addr) << ":" << ntohs(send_addr.sin_port)
             << ". Receiving data...";
 
-    std::vector<char> recv_buffer(BUFFER_SIZE);
+    std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Receive data until data_size is reached
     while (total_received < data_size) {
       ssize_t bytes_received =
-          recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
+          recv(conn_fd, recv_buffer.data(), buffer_size, 0);
       if (bytes_received == -1) {
         LOG(ERROR) << "receive: recv: " << strerror(errno);
         break;
@@ -152,7 +153,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   VLOG(1) << "Receiver: Exiting.";
 }
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void send_process(int num_warmups, int num_iterations, uint64_t data_size,
+                  uint64_t buffer_size) {
   // Perform warm-up runs
   VLOG(1) << "Sender: Performing warm-up runs...";
 
@@ -176,11 +178,10 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
       sleep(1);
     }
 
-    std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
+    std::vector<char> send_buffer(buffer_size, 'W'); // 'W' for warmup
     size_t total_sent = 0;
     while (total_sent < data_size) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
+      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
       if (bytes_sent == -1) {
         LOG(ERROR) << "send: send during warmup: " << strerror(errno);
@@ -228,14 +229,13 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
     VLOG(1) << SendPrefix(iteration + 1)
             << "Connected to receiver. Sending data...";
 
-    std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
+    std::vector<char> send_buffer(buffer_size, 'B'); // Fill buffer with 'B'
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until data_size is reached
     while (total_sent < data_size) {
-      size_t bytes_to_send =
-          std::min((size_t)BUFFER_SIZE, data_size - total_sent);
+      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send,
       // 0);
       ssize_t bytes_sent =
@@ -276,7 +276,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
 } // namespace
 
-int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                      uint64_t buffer_size) {
   pid_t pid = fork();
 
   if (pid == -1) {
@@ -286,10 +287,10 @@ int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
 
   if (pid == 0) {
     // Child process (sender)
-    send_process(num_warmups, num_iterations, data_size);
+    send_process(num_warmups, num_iterations, data_size, buffer_size);
   } else {
     // Parent process (receiver)
-    receive_process(num_warmups, num_iterations, data_size);
+    receive_process(num_warmups, num_iterations, data_size, buffer_size);
   }
 
   return 0;

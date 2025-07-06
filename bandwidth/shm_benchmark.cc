@@ -169,7 +169,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   VLOG(1) << "Receiver: Exiting.";
 }
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void send_process(int num_warmups, int num_iterations, uint64_t data_size,
+                  uint64_t buffer_size) {
   // Give receiver time to initialize
   usleep(100000); // 100ms
 
@@ -248,7 +249,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
 } // namespace
 
-int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                      uint64_t buffer_size) {
   pid_t pid = fork();
 
   if (pid == -1) {
@@ -257,7 +259,7 @@ int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
   }
 
   if (pid == 0) {
-    send_process(num_warmups, num_iterations, data_size);
+    send_process(num_warmups, num_iterations, data_size, buffer_size);
   } else {
     receive_process(num_warmups, num_iterations, data_size);
 
