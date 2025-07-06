@@ -32,12 +32,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     socklen_t send_len = sizeof(send_addr);
 
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     if (is_warmup) {
-      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
-              << num_warmups;
+      VLOG(1) << "Receiver: Warm-up " << iteration << "/" << num_warmups;
     }
 
     // Create a TCP socket for each iteration
@@ -77,8 +74,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
       return;
     }
 
-    VLOG(1) << ReceivePrefix(display_iteration) << "Listening on "
-            << LOOPBACK_IP << ":" << PORT;
+    VLOG(1) << ReceivePrefix(iteration) << "Listening on " << LOOPBACK_IP << ":"
+            << PORT;
 
     // Accept a sender connection for this iteration
     conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
@@ -89,7 +86,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     if (!is_warmup) {
-      VLOG(1) << ReceivePrefix(display_iteration) << "Sender connected from "
+      VLOG(1) << ReceivePrefix(iteration) << "Sender connected from "
               << inet_ntoa(send_addr.sin_addr) << ":"
               << ntohs(send_addr.sin_port) << ". Receiving data...";
     }
@@ -132,11 +129,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
     // Verify received data (always, even during warmup)
     if (!verifyDataReceived(received_data, data_size)) {
-      LOG(ERROR) << ReceivePrefix(display_iteration)
-                 << "Data verification failed!";
+      LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
-      VLOG(1) << ReceivePrefix(display_iteration)
-              << "Data verification passed.";
+      VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
 
     // Close connection and listening socket for this iteration
@@ -161,13 +156,11 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     if (is_warmup) {
-      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+      VLOG(1) << "Sender: Warm-up " << iteration << "/" << num_warmups;
     } else {
-      VLOG(1) << SendPrefix(display_iteration) << "Connecting to receiver at "
+      VLOG(1) << SendPrefix(iteration) << "Connecting to receiver at "
               << LOOPBACK_IP << ":" << PORT;
     }
 
@@ -198,7 +191,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     if (!is_warmup) {
-      VLOG(1) << SendPrefix(display_iteration)
+      VLOG(1) << SendPrefix(iteration)
               << "Connected to receiver. Sending data...";
     }
 

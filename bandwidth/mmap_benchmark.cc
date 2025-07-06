@@ -74,13 +74,11 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     if (is_warmup) {
-      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+      VLOG(1) << "Sender: Warm-up " << iteration << "/" << num_warmups;
     } else {
-      VLOG(1) << "Sender: Starting iteration " << display_iteration << "/"
+      VLOG(1) << "Sender: Starting iteration " << iteration << "/"
               << num_iterations;
     }
 
@@ -166,14 +164,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     if (is_warmup) {
-      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
-              << num_warmups;
+      VLOG(1) << "Receiver: Warm-up " << iteration << "/" << num_warmups;
     } else {
-      VLOG(1) << "Receiver: Starting iteration " << display_iteration << "/"
+      VLOG(1) << "Receiver: Starting iteration " << iteration << "/"
               << num_iterations;
     }
 
@@ -211,11 +206,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
         reinterpret_cast<uint8_t *>(data_region),
         reinterpret_cast<uint8_t *>(data_region) + data_size);
     if (!verifyDataReceived(received_data, data_size)) {
-      LOG(ERROR) << ReceivePrefix(display_iteration)
-                 << "Data verification failed!";
+      LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
-      VLOG(1) << ReceivePrefix(display_iteration)
-              << "Data verification passed.";
+      VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
   }
 

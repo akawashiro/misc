@@ -63,8 +63,6 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
       exit(1);
     }
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     uint64_t total_bytes_received = 0;
     ssize_t bytes_received;
@@ -92,10 +90,9 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
       if (is_warmup) {
-        VLOG(1) << "[Receiver] Warm-up " << display_iteration << "/"
-                << num_warmups;
+        VLOG(1) << "[Receiver] Warm-up " << iteration << "/" << num_warmups;
       } else {
-        LOG(INFO) << ReceivePrefix(display_iteration) << "Iteration started...";
+        LOG(INFO) << ReceivePrefix(iteration) << "Iteration started...";
       }
 
       // Receive data until total size is reached
@@ -116,17 +113,15 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
         std::chrono::duration<double> elapsed = end_time - start_time;
         durations.push_back(elapsed.count());
 
-        LOG(INFO) << ReceivePrefix(display_iteration)
-                  << "Iteration completed in " << elapsed.count() << " seconds";
+        LOG(INFO) << ReceivePrefix(iteration) << "Iteration completed in "
+                  << elapsed.count() << " seconds";
       }
 
       // Verify received data (always, even during warmup)
       if (!verifyDataReceived(received_data, data_size)) {
-        LOG(ERROR) << ReceivePrefix(display_iteration)
-                   << "Data verification failed!";
+        LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
       } else {
-        VLOG(1) << ReceivePrefix(display_iteration)
-                << "Data verification passed.";
+        VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
       }
     }
 
@@ -167,13 +162,11 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
       exit(1);
     }
     bool is_warmup = iteration < num_warmups;
-    int display_iteration =
-        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
     if (is_warmup) {
-      VLOG(1) << "[Sender] Warm-up " << display_iteration << "/" << num_warmups;
+      VLOG(1) << "[Sender] Warm-up " << iteration << "/" << num_warmups;
     } else {
-      LOG(INFO) << SendPrefix(display_iteration) << "Starting iteration...";
+      LOG(INFO) << SendPrefix(iteration) << "Starting iteration...";
     }
 
     // First packet marked with signal character
