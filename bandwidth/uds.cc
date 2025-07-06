@@ -63,13 +63,13 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       return;
     }
 
-    VLOG(1) << ReceivePrefix(iteration) << "Waiting for client connection on "
+    VLOG(1) << ReceivePrefix(iteration) << "Waiting for sender connection on "
             << SOCKET_PATH;
 
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
-    VLOG(1) << ReceivePrefix(iteration) << "Client connected.";
+    VLOG(1) << ReceivePrefix(iteration) << "Sender connected.";
     VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
     std::vector<uint8_t> recv_buffer(buffer_size);
     size_t total_received = 0;
@@ -81,7 +81,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       CHECK(bytes_received >= 0) << "Failed to receive data";
       if (bytes_received == 0) {
         VLOG(1) << ReceivePrefix(iteration)
-                << "Client disconnected prematurely.";
+                << "Sender disconnected prematurely.";
         break;
       }
       total_received += bytes_received;
@@ -126,7 +126,7 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    VLOG(1) << SendPrefix(iteration) << "Connecting to reader on "
+    VLOG(1) << SendPrefix(iteration) << "Connecting to receiver on "
             << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT || errno == ECONNREFUSED) {

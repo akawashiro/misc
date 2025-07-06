@@ -49,7 +49,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     die("Receiver: socket() failed");
   }
 
-  // Set server address information
+  // Set receive address information
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -159,7 +159,7 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
     die("Sender: socket() failed");
   }
 
-  // Set destination (server) address information
+  // Set destination (receive) address information
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(PORT);

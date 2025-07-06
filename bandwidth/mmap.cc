@@ -31,25 +31,25 @@ const int BUFFER_SIZE = 4096; // 4KB buffer for read/write
 
 // Structure for synchronization between processes
 struct sync_data {
-  volatile bool writer_ready;
-  volatile bool reader_ready;
+  volatile bool sender_ready;
+  volatile bool receiver_ready;
   volatile size_t bytes_written;
-  volatile bool writer_done;
+  volatile bool sender_done;
   volatile int current_iteration;
 };
 
-void writer_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Create and open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fd == -1) {
-    perror("writer: open");
+    perror("send: open");
     return;
   }
 
   // Size the file to accommodate data and sync structure
   size_t total_size = data_size + sizeof(sync_data);
   if (ftruncate(fd, total_size) == -1) {
-    perror("writer: ftruncate");
+    perror("send: ftruncate");
     close(fd);
     return;
   }
@@ -58,7 +58,7 @@ void writer_process(int num_warmups, int num_iterations, uint64_t data_size) {
   void *mapped_region =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
-    perror("writer: mmap");
+    perror("send: mmap");
     close(fd);
     return;
   }
@@ -68,21 +68,21 @@ void writer_process(int num_warmups, int num_iterations, uint64_t data_size) {
   sync_data *sync = reinterpret_cast<sync_data *>(data_region + data_size);
 
   // Initialize sync structure
-  sync->writer_ready = false;
-  sync->reader_ready = false;
+  sync->sender_ready = false;
+  sync->receiver_ready = false;
   sync->bytes_written = 0;
-  sync->writer_done = false;
+  sync->sender_done = false;
   sync->current_iteration = -1;
 
   // Perform warm-up runs
-  VLOG(1) << "Writer: Performing warm-up runs...";
+  VLOG(1) << "Sender: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     sync->current_iteration = warmup;
     sync->bytes_written = 0;
-    sync->writer_ready = true;
+    sync->sender_ready = true;
 
-    // Wait for reader to be ready
-    while (!sync->reader_ready) {
+    // Wait for receiver to be ready
+    while (!sync->receiver_ready) {
       usleep(1); // Small delay to avoid busy waiting
     }
 
@@ -93,25 +93,25 @@ void writer_process(int num_warmups, int num_iterations, uint64_t data_size) {
       sync->bytes_written = offset + chunk_size;
     }
 
-    sync->writer_ready = false;
-    sync->reader_ready = false;
-    VLOG(1) << "Writer: Warm-up " << warmup + 1 << "/" << num_warmups
+    sync->sender_ready = false;
+    sync->receiver_ready = false;
+    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
   }
-  VLOG(1) << "Writer: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Writer: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
     sync->current_iteration = iteration;
     sync->bytes_written = 0;
-    sync->writer_ready = true;
+    sync->sender_ready = true;
 
-    // Wait for reader to be ready
-    while (!sync->reader_ready) {
+    // Wait for receiver to be ready
+    while (!sync->receiver_ready) {
       usleep(1);
     }
 
@@ -128,40 +128,40 @@ void writer_process(int num_warmups, int num_iterations, uint64_t data_size) {
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Writer: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
 
-    sync->writer_ready = false;
-    sync->reader_ready = false;
+    sync->sender_ready = false;
+    sync->receiver_ready = false;
   }
 
-  sync->writer_done = true;
+  sync->sender_done = true;
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Writer";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
 
   // Clean up
   munmap(mapped_region, total_size);
   close(fd);
-  VLOG(1) << "Writer: Exiting.";
+  VLOG(1) << "Sender: Exiting.";
 }
 
-void reader_process(int num_warmups, int num_iterations, uint64_t data_size) {
-  // Give writer time to create the file
+void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
+  // Give sender time to create the file
   usleep(100000); // 100ms
 
   // Open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_RDWR);
   if (fd == -1) {
-    perror("reader: open");
+    perror("receive: open");
     return;
   }
 
   // Get file size
   struct stat file_stat;
   if (fstat(fd, &file_stat) == -1) {
-    perror("reader: fstat");
+    perror("receive: fstat");
     close(fd);
     return;
   }
@@ -172,7 +172,7 @@ void reader_process(int num_warmups, int num_iterations, uint64_t data_size) {
   void *mapped_region =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
-    perror("reader: mmap");
+    perror("receive: mmap");
     close(fd);
     return;
   }
@@ -182,53 +182,53 @@ void reader_process(int num_warmups, int num_iterations, uint64_t data_size) {
   sync_data *sync = reinterpret_cast<sync_data *>(data_region + data_size);
 
   // Perform warm-up runs
-  VLOG(1) << "Reader: Performing warm-up runs...";
+  VLOG(1) << "Receiver: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    // Wait for writer to be ready
-    while (!sync->writer_ready || sync->current_iteration != warmup) {
+    // Wait for sender to be ready
+    while (!sync->sender_ready || sync->current_iteration != warmup) {
       usleep(1);
     }
 
-    sync->reader_ready = true;
+    sync->receiver_ready = true;
 
-    // Read data by waiting for writer to complete each chunk
+    // Read data by waiting for sender to complete each chunk
     size_t last_read = 0;
     while (last_read < data_size) {
-      while (sync->bytes_written <= last_read && sync->writer_ready) {
+      while (sync->bytes_written <= last_read && sync->sender_ready) {
         usleep(1); // Wait for more data
       }
-      if (!sync->writer_ready)
-        break; // Writer finished this iteration
+      if (!sync->sender_ready)
+        break; // Sender finished this iteration
       last_read = sync->bytes_written;
     }
 
-    VLOG(1) << "Reader: Warm-up " << warmup + 1 << "/" << num_warmups
+    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
   }
-  VLOG(1) << "Reader: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Reader: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
-    // Wait for writer to be ready
-    while (!sync->writer_ready || sync->current_iteration != iteration) {
+    // Wait for sender to be ready
+    while (!sync->sender_ready || sync->current_iteration != iteration) {
       usleep(1);
     }
 
-    sync->reader_ready = true;
+    sync->receiver_ready = true;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Read data by waiting for writer to complete each chunk
+    // Read data by waiting for sender to complete each chunk
     size_t last_read = 0;
     while (last_read < data_size) {
-      while (sync->bytes_written <= last_read && sync->writer_ready) {
+      while (sync->bytes_written <= last_read && sync->sender_ready) {
         usleep(1); // Wait for more data
       }
-      if (!sync->writer_ready)
-        break; // Writer finished this iteration
+      if (!sync->sender_ready)
+        break; // Sender finished this iteration
       last_read = sync->bytes_written;
     }
 
@@ -236,18 +236,18 @@ void reader_process(int num_warmups, int num_iterations, uint64_t data_size) {
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Reader: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Reader";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
 
   // Clean up
   munmap(mapped_region, total_size);
   close(fd);
-  VLOG(1) << "Reader: Exiting.";
+  VLOG(1) << "Receiver: Exiting.";
 }
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
@@ -295,11 +295,11 @@ int main(int argc, char *argv[]) {
   }
 
   if (pid == 0) {
-    // Child process (writer)
-    writer_process(num_warmups, num_iterations, data_size);
+    // Child process (sender)
+    send_process(num_warmups, num_iterations, data_size);
   } else {
-    // Parent process (reader)
-    reader_process(num_warmups, num_iterations, data_size);
+    // Parent process (receiver)
+    receive_process(num_warmups, num_iterations, data_size);
 
     // Wait for child process to complete
     int status;

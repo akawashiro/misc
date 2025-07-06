@@ -29,15 +29,15 @@ const int PORT = 12345; // Port number for TCP communication
 const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 const int BUFFER_SIZE = 4096;                // 4KB buffer for send/recv
 
-void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   int listen_fd, conn_fd;
-  struct sockaddr_in server_addr, client_addr;
-  socklen_t client_len = sizeof(client_addr);
+  struct sockaddr_in receive_addr, send_addr;
+  socklen_t send_len = sizeof(send_addr);
 
   // Create a TCP socket
   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_fd == -1) {
-    perror("server: socket");
+    perror("receive: socket");
     return;
   }
 
@@ -45,40 +45,40 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
   int optval = 1;
   if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
                  sizeof(optval)) == -1) {
-    perror("server: setsockopt SO_REUSEADDR");
+    perror("receive: setsockopt SO_REUSEADDR");
     close(listen_fd);
     return;
   }
 
-  // Configure server address
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-  server_addr.sin_port = htons(PORT);
+  // Configure receive address
+  memset(&receive_addr, 0, sizeof(receive_addr));
+  receive_addr.sin_family = AF_INET;
+  receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+  receive_addr.sin_port = htons(PORT);
 
   // Bind the socket to the specified IP address and port
-  if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) ==
+  if (bind(listen_fd, (struct sockaddr *)&receive_addr, sizeof(receive_addr)) ==
       -1) {
-    perror("server: bind");
+    perror("receive: bind");
     close(listen_fd);
     return;
   }
 
   // Listen for incoming connections
   if (listen(listen_fd, 5) == -1) {
-    perror("server: listen");
+    perror("receive: listen");
     close(listen_fd);
     return;
   }
 
-  VLOG(1) << "Server: Listening on " << LOOPBACK_IP << ":" << PORT;
+  VLOG(1) << "Receiver: Listening on " << LOOPBACK_IP << ":" << PORT;
 
   // Perform warm-up runs
-  VLOG(1) << "Server: Performing warm-up runs...";
+  VLOG(1) << "Receiver: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+    conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
-      perror("server: accept during warmup");
+      perror("receive: accept during warmup");
       close(listen_fd);
       return;
     }
@@ -89,7 +89,7 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
-        perror("server: recv during warmup");
+        perror("receive: recv during warmup");
         break;
       }
       if (bytes_received == 0) {
@@ -98,26 +98,26 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
       total_received += bytes_received;
     }
     close(conn_fd);
-    VLOG(1) << "Server: Warm-up " << warmup + 1 << "/" << num_warmups
+    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
   }
-  VLOG(1) << "Server: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    // Accept a client connection for each iteration
-    conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+    // Accept a sender connection for each iteration
+    conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
-      perror("server: accept");
+      perror("receive: accept");
       close(listen_fd);
       return;
     }
 
-    VLOG(1) << "Server: Client connected from "
-            << inet_ntoa(client_addr.sin_addr) << ":"
-            << ntohs(client_addr.sin_port) << ". Receiving data... (Iteration "
-            << iteration + 1 << "/" << num_iterations << ")";
+    VLOG(1) << "Receiver: Sender connected from "
+            << inet_ntoa(send_addr.sin_addr) << ":" << ntohs(send_addr.sin_port)
+            << ". Receiving data... (Iteration " << iteration + 1 << "/"
+            << num_iterations << ")";
 
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
@@ -128,11 +128,11 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
-        perror("server: recv");
+        perror("receive: recv");
         break;
       }
       if (bytes_received == 0) {
-        LOG(INFO) << "Server: Client disconnected prematurely.";
+        LOG(INFO) << "Receiver: Sender disconnected prematurely.";
         break;
       }
       total_received += bytes_received;
@@ -142,7 +142,7 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Server: Received "
+    VLOG(1) << "Receiver: Received "
             << total_received / (1024.0 * 1024.0 * 1024.0) << " GiB of data in "
             << elapsed_time.count() << " seconds.";
 
@@ -154,34 +154,34 @@ void server_process(int num_warmups, int num_iterations, uint64_t data_size) {
       calculateBandwidth(durations, num_iterations, data_size) /
       (1024.0 * 1024.0 * 1024.0);
 
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Server";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
 
   // Close sockets
   close(listen_fd);
-  VLOG(1) << "Server: Exiting.";
+  VLOG(1) << "Receiver: Exiting.";
 }
 
-void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Perform warm-up runs
-  VLOG(1) << "Client: Performing warm-up runs...";
+  VLOG(1) << "Sender: Performing warm-up runs...";
 
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     int sock_fd;
-    struct sockaddr_in server_addr;
+    struct sockaddr_in receive_addr;
 
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_fd == -1) {
-      perror("client: socket during warmup");
+      perror("send: socket during warmup");
       return;
     }
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-    server_addr.sin_port = htons(PORT);
+    memset(&receive_addr, 0, sizeof(receive_addr));
+    receive_addr.sin_family = AF_INET;
+    receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+    receive_addr.sin_port = htons(PORT);
 
-    while (connect(sock_fd, (struct sockaddr *)&server_addr,
-                   sizeof(server_addr)) == -1) {
+    while (connect(sock_fd, (struct sockaddr *)&receive_addr,
+                   sizeof(receive_addr)) == -1) {
       sleep(1);
     }
 
@@ -192,49 +192,50 @@ void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
           std::min((size_t)BUFFER_SIZE, data_size - total_sent);
       ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
       if (bytes_sent == -1) {
-        perror("client: send during warmup");
+        perror("send: send during warmup");
         break;
       }
       total_sent += bytes_sent;
     }
     shutdown(sock_fd, SHUT_WR);
     close(sock_fd);
-    VLOG(1) << "Client: Warm-up " << warmup + 1 << "/" << num_warmups
+    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
     usleep(100000); // 100ms delay between warmup runs
   }
-  VLOG(1) << "Client: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
 
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
     int sock_fd;
-    struct sockaddr_in server_addr;
+    struct sockaddr_in receive_addr;
 
     // Create a TCP socket
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_fd == -1) {
-      perror("client: socket");
+      perror("send: socket");
       return;
     }
 
-    // Configure server address to connect to
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-    server_addr.sin_port = htons(PORT);
+    // Configure receive address to connect to
+    memset(&receive_addr, 0, sizeof(receive_addr));
+    receive_addr.sin_family = AF_INET;
+    receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+    receive_addr.sin_port = htons(PORT);
 
-    // Connect to the server
-    VLOG(1) << "Client: Connecting to server at " << LOOPBACK_IP << ":" << PORT
-            << " (Iteration " << iteration + 1 << "/" << num_iterations << ")";
-    while (connect(sock_fd, (struct sockaddr *)&server_addr,
-                   sizeof(server_addr)) == -1) {
-      perror("client: connect (retrying in 1 second)");
-      sleep(1); // Wait a bit if server isn't ready yet
+    // Connect to the receiver
+    VLOG(1) << "Sender: Connecting to receiver at " << LOOPBACK_IP << ":"
+            << PORT << " (Iteration " << iteration + 1 << "/" << num_iterations
+            << ")";
+    while (connect(sock_fd, (struct sockaddr *)&receive_addr,
+                   sizeof(receive_addr)) == -1) {
+      perror("send: connect (retrying in 1 second)");
+      sleep(1); // Wait a bit if receiver isn't ready yet
     }
 
-    VLOG(1) << "Client: Connected to server. Sending data...";
+    VLOG(1) << "Sender: Connected to receiver. Sending data...";
 
     std::vector<char> send_buffer(BUFFER_SIZE, 'B'); // Fill buffer with 'B'
     size_t total_sent = 0;
@@ -249,7 +250,7 @@ void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        perror("client: send");
+        perror("send: send");
         break;
       }
       total_sent += bytes_sent;
@@ -262,12 +263,12 @@ void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Client: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
 
     // Close the socket
     close(sock_fd);
 
-    // Small delay between iterations to allow server to reset
+    // Small delay between iterations to allow receiver to reset
     if (iteration < num_iterations - 1) {
       usleep(100000); // 100ms delay
     }
@@ -277,9 +278,9 @@ void client_process(int num_warmups, int num_iterations, uint64_t data_size) {
       calculateBandwidth(durations, num_iterations, data_size) /
       (1024.0 * 1024.0 * 1024.0);
 
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Client";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
 
-  VLOG(1) << "Client: Exiting.";
+  VLOG(1) << "Sender: Exiting.";
 }
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
@@ -324,11 +325,11 @@ int main(int argc, char *argv[]) {
   }
 
   if (pid == 0) {
-    // Child process (client)
-    client_process(num_warmups, num_iterations, data_size);
+    // Child process (sender)
+    send_process(num_warmups, num_iterations, data_size);
   } else {
-    // Parent process (server)
-    server_process(num_warmups, num_iterations, data_size);
+    // Parent process (receiver)
+    receive_process(num_warmups, num_iterations, data_size);
   }
 
   return 0;

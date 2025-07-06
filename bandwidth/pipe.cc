@@ -25,10 +25,10 @@ ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
 
 const int BUFFER_SIZE = 4096; // 4KB buffer for read/write
 
-void writer_process(int write_fd, int num_warmups, int num_iterations,
-                    uint64_t data_size) {
+void send_process(int write_fd, int num_warmups, int num_iterations,
+                  uint64_t data_size) {
   // Perform warm-up runs
-  VLOG(1) << "Writer: Performing warm-up runs...";
+  VLOG(1) << "Sender: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
     size_t total_sent = 0;
@@ -38,20 +38,20 @@ void writer_process(int write_fd, int num_warmups, int num_iterations,
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
-        perror("writer: write during warmup");
+        perror("send: write during warmup");
         break;
       }
       total_sent += bytes_written;
     }
-    VLOG(1) << "Writer: Warm-up " << warmup + 1 << "/" << num_warmups
+    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
   }
-  VLOG(1) << "Writer: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Writer: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
     std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
@@ -65,7 +65,7 @@ void writer_process(int write_fd, int num_warmups, int num_iterations,
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
-        perror("writer: write");
+        perror("send: write");
         break;
       }
       total_sent += bytes_written;
@@ -75,46 +75,46 @@ void writer_process(int write_fd, int num_warmups, int num_iterations,
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Writer: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Writer";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
 
   // Close the write end of the pipe
   close(write_fd);
-  VLOG(1) << "Writer: Exiting.";
+  VLOG(1) << "Sender: Exiting.";
 }
 
-void reader_process(int read_fd, int num_warmups, int num_iterations,
-                    uint64_t data_size) {
+void receive_process(int read_fd, int num_warmups, int num_iterations,
+                     uint64_t data_size) {
   // Perform warm-up runs
-  VLOG(1) << "Reader: Performing warm-up runs...";
+  VLOG(1) << "Receiver: Performing warm-up runs...";
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
     while (total_received < data_size) {
       ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
       if (bytes_read == -1) {
-        perror("reader: read during warmup");
+        perror("receive: read during warmup");
         break;
       }
       if (bytes_read == 0) {
-        break; // End of file (writer closed the pipe)
+        break; // End of file (sender closed the pipe)
       }
       total_received += bytes_read;
     }
-    VLOG(1) << "Reader: Warm-up " << warmup + 1 << "/" << num_warmups
+    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
             << " completed";
   }
-  VLOG(1) << "Reader: Warm-up complete. Starting measurements...";
+  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Reader: Starting iteration " << iteration + 1 << "/"
+    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
             << num_iterations;
 
     std::vector<char> recv_buffer(BUFFER_SIZE);
@@ -125,11 +125,11 @@ void reader_process(int read_fd, int num_warmups, int num_iterations,
     while (total_received < data_size) {
       ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
       if (bytes_read == -1) {
-        perror("reader: read");
+        perror("receive: read");
         break;
       }
       if (bytes_read == 0) {
-        VLOG(1) << "Reader: Writer closed the pipe prematurely.";
+        VLOG(1) << "Receiver: Sender closed the pipe prematurely.";
         break;
       }
       total_received += bytes_read;
@@ -139,17 +139,17 @@ void reader_process(int read_fd, int num_warmups, int num_iterations,
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Reader: Time taken: " << elapsed_time.count() << " seconds.";
+    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Reader";
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
 
   // Close the read end of the pipe
   close(read_fd);
-  VLOG(1) << "Reader: Exiting.";
+  VLOG(1) << "Receiver: Exiting.";
 }
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
@@ -206,13 +206,13 @@ int main(int argc, char *argv[]) {
   }
 
   if (pid == 0) {
-    // Child process (writer)
+    // Child process (sender)
     close(read_fd); // Close unused read end
-    writer_process(write_fd, num_warmups, num_iterations, data_size);
+    send_process(write_fd, num_warmups, num_iterations, data_size);
   } else {
-    // Parent process (reader)
+    // Parent process (receiver)
     close(write_fd); // Close unused write end
-    reader_process(read_fd, num_warmups, num_iterations, data_size);
+    receive_process(read_fd, num_warmups, num_iterations, data_size);
 
     // Wait for child process to complete
     int status;
