@@ -67,37 +67,20 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
   sync->sender_done = false;
   sync->current_iteration = -1;
 
-  // Perform warm-up runs
-  VLOG(1) << "Sender: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    sync->current_iteration = warmup;
-    sync->bytes_written = 0;
-    sync->sender_ready = true;
-
-    // Wait for receiver to be ready
-    while (!sync->receiver_ready) {
-      usleep(1); // Small delay to avoid busy waiting
-    }
-
-    // Write data in chunks
-    for (size_t offset = 0; offset < data_size; offset += buffer_size) {
-      size_t chunk_size = std::min(buffer_size, data_size - offset);
-      memset(data_region + offset, 'W', chunk_size); // 'W' for warmup
-      sync->bytes_written = offset + chunk_size;
-    }
-
-    sync->sender_ready = false;
-    sync->receiver_ready = false;
-    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+    } else {
+      VLOG(1) << "Sender: Starting iteration " << display_iteration << "/"
+              << num_iterations;
+    }
 
     sync->current_iteration = iteration;
     sync->bytes_written = 0;
@@ -113,15 +96,18 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     // Write data in chunks
     for (size_t offset = 0; offset < data_size; offset += buffer_size) {
       size_t chunk_size = std::min(buffer_size, data_size - offset);
-      memset(data_region + offset, 'A', chunk_size); // Fill with 'A'
+      char fill_char = is_warmup ? 'W' : 'A';
+      memset(data_region + offset, fill_char, chunk_size);
       sync->bytes_written = offset + chunk_size;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    }
 
     sync->sender_ready = false;
     sync->receiver_ready = false;
@@ -174,37 +160,21 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   char *data_region = static_cast<char *>(mapped_region);
   sync_data *sync = reinterpret_cast<sync_data *>(data_region + data_size);
 
-  // Perform warm-up runs
-  VLOG(1) << "Receiver: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    // Wait for sender to be ready
-    while (!sync->sender_ready || sync->current_iteration != warmup) {
-      usleep(1);
-    }
-
-    sync->receiver_ready = true;
-
-    // Read data by waiting for sender to complete each chunk
-    size_t last_read = 0;
-    while (last_read < data_size) {
-      while (sync->bytes_written <= last_read && sync->sender_ready) {
-        usleep(1); // Wait for more data
-      }
-      if (!sync->sender_ready)
-        break; // Sender finished this iteration
-      last_read = sync->bytes_written;
-    }
-
-    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
+              << num_warmups;
+    } else {
+      VLOG(1) << "Receiver: Starting iteration " << display_iteration << "/"
+              << num_iterations;
+    }
 
     // Wait for sender to be ready
     while (!sync->sender_ready || sync->current_iteration != iteration) {
@@ -226,10 +196,13 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
+              << " seconds.";
+    }
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);

@@ -123,22 +123,20 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
   VLOG(1) << "Receiver: Shared memory and semaphores initialized";
 
-  // Perform warm-up runs
-  VLOG(1) << "Receiver: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    shared_buffer->transfer_complete = false;
-
-    sem_post(sem_sender);
-    receive_data(shared_buffer, sem_sender, sem_receiver, data_size);
-    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << ReceivePrefix(iteration + 1) << "Starting iteration...";
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
+              << num_warmups;
+    } else {
+      VLOG(1) << ReceivePrefix(display_iteration) << "Starting iteration...";
+    }
 
     shared_buffer->transfer_complete = false;
 
@@ -149,10 +147,13 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     receive_data(shared_buffer, sem_sender, sem_receiver, data_size);
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
+              << " seconds.";
+    }
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
@@ -200,23 +201,22 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     return;
   }
 
-  // Perform warm-up runs
-  VLOG(1) << "Sender: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    std::vector<char> data(BUFFER_SIZE, 'W'); // 'W' for warmup
-    send_data(shared_buffer, sem_sender, sem_receiver, data, data_size);
-    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-    usleep(100000); // 100ms delay between warmup runs
-  }
-  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << SendPrefix(iteration + 1) << "Starting iteration...";
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
-    std::vector<char> data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
+    if (is_warmup) {
+      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+    } else {
+      VLOG(1) << SendPrefix(display_iteration) << "Starting iteration...";
+    }
+
+    char fill_char = is_warmup ? 'W' : 'A';
+    std::vector<char> data(BUFFER_SIZE, fill_char);
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -224,12 +224,15 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     send_data(shared_buffer, sem_sender, sem_receiver, data, data_size);
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
-    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    }
 
     // Small delay between iterations
-    if (iteration < num_iterations - 1) {
+    if (iteration < num_warmups + num_iterations - 1) {
       usleep(100000); // 100ms delay
     }
   }

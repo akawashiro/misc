@@ -18,33 +18,23 @@
 
 void send_process(int write_fd, int num_warmups, int num_iterations,
                   uint64_t data_size, uint64_t buffer_size) {
-  // Perform warm-up runs
-  VLOG(1) << "Sender: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    std::vector<char> send_buffer(buffer_size, 'W'); // 'W' for warmup
-    size_t total_sent = 0;
-    while (total_sent < data_size) {
-      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
-      ssize_t bytes_written =
-          write(write_fd, send_buffer.data(), bytes_to_send);
-      if (bytes_written == -1) {
-        LOG(ERROR) << "send: write during warmup: " << strerror(errno);
-        break;
-      }
-      total_sent += bytes_written;
-    }
-    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
 
-    std::vector<char> send_buffer(buffer_size, 'A'); // Fill buffer with 'A'
+    if (is_warmup) {
+      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+    } else {
+      VLOG(1) << "Sender: Starting iteration " << display_iteration << "/"
+              << num_iterations;
+    }
+
+    char fill_char = is_warmup ? 'W' : 'A';
+    std::vector<char> send_buffer(buffer_size, fill_char);
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -61,10 +51,12 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    }
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
@@ -79,32 +71,21 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
 
 void receive_process(int read_fd, int num_warmups, int num_iterations,
                      uint64_t data_size, uint64_t buffer_size) {
-  // Perform warm-up runs
-  VLOG(1) << "Receiver: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    std::vector<char> recv_buffer(buffer_size);
-    size_t total_received = 0;
-    while (total_received < data_size) {
-      ssize_t bytes_read = read(read_fd, recv_buffer.data(), buffer_size);
-      if (bytes_read == -1) {
-        LOG(ERROR) << "receive: read during warmup: " << strerror(errno);
-        break;
-      }
-      if (bytes_read == 0) {
-        break; // End of file (sender closed the pipe)
-      }
-      total_received += bytes_read;
-    }
-    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
-            << num_iterations;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
+              << num_warmups;
+    } else {
+      VLOG(1) << "Receiver: Starting iteration " << display_iteration << "/"
+              << num_iterations;
+    }
 
     std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
@@ -118,17 +99,22 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
         break;
       }
       if (bytes_read == 0) {
-        VLOG(1) << "Receiver: Sender closed the pipe prematurely.";
+        if (!is_warmup) {
+          VLOG(1) << "Receiver: Sender closed the pipe prematurely.";
+        }
         break;
       }
       total_received += bytes_read;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
+              << " seconds.";
+    }
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);

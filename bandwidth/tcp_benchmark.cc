@@ -66,39 +66,19 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
   VLOG(1) << "Receiver: Listening on " << LOOPBACK_IP << ":" << PORT;
 
-  // Perform warm-up runs
-  VLOG(1) << "Receiver: Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
-    if (conn_fd == -1) {
-      LOG(ERROR) << "receive: accept during warmup: " << strerror(errno);
-      close(listen_fd);
-      return;
-    }
-
-    std::vector<char> recv_buffer(buffer_size);
-    size_t total_received = 0;
-    while (total_received < data_size) {
-      ssize_t bytes_received =
-          recv(conn_fd, recv_buffer.data(), buffer_size, 0);
-      if (bytes_received == -1) {
-        LOG(ERROR) << "receive: recv during warmup: " << strerror(errno);
-        break;
-      }
-      if (bytes_received == 0) {
-        break;
-      }
-      total_received += bytes_received;
-    }
-    close(conn_fd);
-    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-  }
-  VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Receiver: Warm-up " << display_iteration << "/"
+              << num_warmups;
+    }
+
     // Accept a sender connection for each iteration
     conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
@@ -107,9 +87,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
       return;
     }
 
-    VLOG(1) << ReceivePrefix(iteration + 1) << "Sender connected from "
-            << inet_ntoa(send_addr.sin_addr) << ":" << ntohs(send_addr.sin_port)
-            << ". Receiving data...";
+    if (!is_warmup) {
+      VLOG(1) << ReceivePrefix(display_iteration) << "Sender connected from "
+              << inet_ntoa(send_addr.sin_addr) << ":"
+              << ntohs(send_addr.sin_port) << ". Receiving data...";
+    }
 
     std::vector<char> recv_buffer(buffer_size);
     size_t total_received = 0;
@@ -124,19 +106,23 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
         break;
       }
       if (bytes_received == 0) {
-        LOG(INFO) << "Receiver: Sender disconnected prematurely.";
+        if (!is_warmup) {
+          LOG(INFO) << "Receiver: Sender disconnected prematurely.";
+        }
         break;
       }
       total_received += bytes_received;
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Receiver: Received "
-            << total_received / (1024.0 * 1024.0 * 1024.0) << " GiB of data in "
-            << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Receiver: Received "
+              << total_received / (1024.0 * 1024.0 * 1024.0)
+              << " GiB of data in " << elapsed_time.count() << " seconds.";
+    }
 
     // Close connection for this iteration
     close(conn_fd);
@@ -155,52 +141,22 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
-  // Perform warm-up runs
-  VLOG(1) << "Sender: Performing warm-up runs...";
-
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    int sock_fd;
-    struct sockaddr_in receive_addr;
-
-    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_fd == -1) {
-      LOG(ERROR) << "send: socket during warmup: " << strerror(errno);
-      return;
-    }
-
-    memset(&receive_addr, 0, sizeof(receive_addr));
-    receive_addr.sin_family = AF_INET;
-    receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-    receive_addr.sin_port = htons(PORT);
-
-    while (connect(sock_fd, (struct sockaddr *)&receive_addr,
-                   sizeof(receive_addr)) == -1) {
-      sleep(1);
-    }
-
-    std::vector<char> send_buffer(buffer_size, 'W'); // 'W' for warmup
-    size_t total_sent = 0;
-    while (total_sent < data_size) {
-      size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
-      ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
-      if (bytes_sent == -1) {
-        LOG(ERROR) << "send: send during warmup: " << strerror(errno);
-        break;
-      }
-      total_sent += bytes_sent;
-    }
-    shutdown(sock_fd, SHUT_WR);
-    close(sock_fd);
-    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-    usleep(100000); // 100ms delay between warmup runs
-  }
-  VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
-
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "Sender: Warm-up " << display_iteration << "/" << num_warmups;
+    } else {
+      VLOG(1) << SendPrefix(display_iteration) << "Connecting to receiver at "
+              << LOOPBACK_IP << ":" << PORT;
+    }
+
     int sock_fd;
     struct sockaddr_in receive_addr;
 
@@ -218,28 +174,35 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     receive_addr.sin_port = htons(PORT);
 
     // Connect to the receiver
-    VLOG(1) << SendPrefix(iteration + 1) << "Connecting to receiver at "
-            << LOOPBACK_IP << ":" << PORT;
     while (connect(sock_fd, (struct sockaddr *)&receive_addr,
                    sizeof(receive_addr)) == -1) {
-      LOG(ERROR) << "send: connect (retrying in 1 second): " << strerror(errno);
+      if (!is_warmup) {
+        LOG(ERROR) << "send: connect (retrying in 1 second): "
+                   << strerror(errno);
+      }
       sleep(1); // Wait a bit if receiver isn't ready yet
     }
 
-    VLOG(1) << SendPrefix(iteration + 1)
-            << "Connected to receiver. Sending data...";
+    if (!is_warmup) {
+      VLOG(1) << SendPrefix(display_iteration)
+              << "Connected to receiver. Sending data...";
+    }
 
-    std::vector<char> send_buffer(buffer_size, 'B'); // Fill buffer with 'B'
+    char fill_char = is_warmup ? 'W' : 'B';
+    std::vector<char> send_buffer(buffer_size, fill_char);
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until data_size is reached
     while (total_sent < data_size) {
       size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
-      // ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send,
-      // 0);
-      ssize_t bytes_sent =
-          send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
+      ssize_t bytes_sent;
+      if (is_warmup) {
+        bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
+      } else {
+        bytes_sent =
+            send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
+      }
       if (bytes_sent == -1) {
         LOG(ERROR) << "send: send: " << strerror(errno);
         break;
@@ -251,16 +214,18 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     shutdown(sock_fd, SHUT_WR);
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-    durations.push_back(elapsed_time.count());
 
-    VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    if (!is_warmup) {
+      std::chrono::duration<double> elapsed_time = end_time - start_time;
+      durations.push_back(elapsed_time.count());
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+    }
 
     // Close the socket
     close(sock_fd);
 
     // Small delay between iterations to allow receiver to reset
-    if (iteration < num_iterations - 1) {
+    if (iteration < num_warmups + num_iterations - 1) {
       usleep(100000); // 100ms delay
     }
   }

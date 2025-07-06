@@ -63,54 +63,37 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
   std::vector<char> buffer(buffer_size);
 
-  // Perform warm-up runs
-  VLOG(1) << "[Receiver] Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    uint64_t total_bytes_received = 0;
-    ssize_t bytes_received;
-
-    // Wait for warmup start signal from sender
-    bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
-                              (struct sockaddr *)&cli_addr, &cli_len);
-    if (bytes_received < 0) {
-      die("Receiver: recvfrom() failed on warmup start");
-    }
-
-    if (buffer[0] == 'W') { // 'W' for warmup
-      total_bytes_received += bytes_received;
-      while (total_bytes_received < data_size) {
-        bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
-                                  (struct sockaddr *)&cli_addr, &cli_len);
-        if (bytes_received > 0) {
-          total_bytes_received += bytes_received;
-        }
-      }
-      VLOG(1) << "[Receiver] Warm-up " << warmup + 1 << "/" << num_warmups
-              << " completed";
-    }
-  }
-  VLOG(1) << "[Receiver] Warm-up complete. Starting measurements...";
-
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
     uint64_t total_bytes_received = 0;
     ssize_t bytes_received;
 
-    // Wait for iteration start signal from sender
+    // Wait for start signal from sender
     bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received < 0) {
-      die("Receiver: recvfrom() failed on iteration start");
+      die("Receiver: recvfrom() failed on start");
     }
 
-    // Check if this is a start signal (first packet should contain 'S')
-    if (buffer[0] == 'S') {
+    // Check signal type
+    char expected_signal = is_warmup ? 'W' : 'S';
+    if (buffer[0] == expected_signal) {
       total_bytes_received += bytes_received;
 
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
-      LOG(INFO) << ReceivePrefix(iteration + 1) << "Iteration started...";
+      if (is_warmup) {
+        VLOG(1) << "[Receiver] Warm-up " << display_iteration << "/"
+                << num_warmups;
+      } else {
+        LOG(INFO) << ReceivePrefix(display_iteration) << "Iteration started...";
+      }
 
       // Receive data until total size is reached
       while (total_bytes_received < data_size) {
@@ -123,11 +106,13 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
       // End measurement
       auto end_time = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = end_time - start_time;
-      durations.push_back(elapsed.count());
 
-      LOG(INFO) << ReceivePrefix(iteration + 1) << "Iteration completed in "
-                << elapsed.count() << " seconds";
+      if (!is_warmup) {
+        std::chrono::duration<double> elapsed = end_time - start_time;
+        durations.push_back(elapsed.count());
+        LOG(INFO) << ReceivePrefix(display_iteration)
+                  << "Iteration completed in " << elapsed.count() << " seconds";
+      }
     }
   }
 
@@ -158,51 +143,30 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
     die("Sender: inet_aton() failed");
   }
 
-  // Perform warm-up runs
-  VLOG(1) << "[Sender] Performing warm-up runs...";
-  for (int warmup = 0; warmup < num_warmups; ++warmup) {
-    // First packet marked with 'W' to signal warmup
-    std::vector<char> warmup_buffer(buffer_size, 'W');
-    if (sendto(sockfd, warmup_buffer.data(), buffer_size, 0,
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
+       ++iteration) {
+    bool is_warmup = iteration < num_warmups;
+    int display_iteration =
+        is_warmup ? iteration + 1 : iteration - num_warmups + 1;
+
+    if (is_warmup) {
+      VLOG(1) << "[Sender] Warm-up " << display_iteration << "/" << num_warmups;
+    } else {
+      LOG(INFO) << SendPrefix(display_iteration) << "Starting iteration...";
+    }
+
+    // First packet marked with signal character
+    char signal_char = is_warmup ? 'W' : 'S';
+    std::vector<char> signal_buffer(buffer_size, signal_char);
+    if (sendto(sockfd, signal_buffer.data(), buffer_size, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      LOG(ERROR) << "Sender: sendto() error on warmup signal: "
-                 << strerror(errno);
+      LOG(ERROR) << "Sender: sendto() error on signal: " << strerror(errno);
     }
 
     // Send remaining packets
     uint64_t num_packets = data_size / buffer_size;
-    std::vector<char> buffer(buffer_size, 'w');
-    for (uint64_t i = 1; i < num_packets; ++i) {
-      if (i % 10 == 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-      if (sendto(sockfd, buffer.data(), buffer_size, 0,
-                 (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        // Display error but continue
-        LOG(ERROR) << "Sender: sendto() error during warmup: "
-                   << strerror(errno);
-      }
-    }
-    VLOG(1) << "[Sender] Warm-up " << warmup + 1 << "/" << num_warmups
-            << " completed";
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-  VLOG(1) << "[Sender] Warm-up complete. Starting measurements...";
-
-  for (int iteration = 0; iteration < num_iterations; ++iteration) {
-    LOG(INFO) << SendPrefix(iteration + 1) << "Starting iteration...";
-
-    // First packet marked with 'S' to signal start
-    std::vector<char> start_buffer(buffer_size, 'S');
-    if (sendto(sockfd, start_buffer.data(), buffer_size, 0,
-               (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      LOG(ERROR) << "Sender: sendto() error on start signal: "
-                 << strerror(errno);
-    }
-
-    // Send remaining packets
-    uint64_t num_packets = data_size / buffer_size;
-    std::vector<char> buffer(buffer_size, 'D');
+    char data_char = is_warmup ? 'w' : 'D';
+    std::vector<char> buffer(buffer_size, data_char);
     for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -215,7 +179,7 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     // Small delay between iterations
-    if (iteration < num_iterations - 1) {
+    if (iteration < num_warmups + num_iterations - 1) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
