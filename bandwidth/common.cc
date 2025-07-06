@@ -10,6 +10,9 @@
 
 std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data,
                                   uint64_t data_size) {
+  CHECK(data_size > CHECKSUM_SIZE)
+      << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
+      << CHECKSUM_SIZE << ")";
   uint64_t context_size = data_size - CHECKSUM_SIZE;
   std::vector<uint8_t> checksum(CHECKSUM_SIZE, 0);
   for (size_t i = 0; i < context_size; ++i) {
@@ -19,6 +22,9 @@ std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data,
 }
 
 std::vector<uint8_t> generateDataToSend(uint64_t data_size) {
+  CHECK(data_size > CHECKSUM_SIZE)
+      << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
+      << CHECKSUM_SIZE << ")";
   uint64_t context_size = data_size - CHECKSUM_SIZE;
   VLOG(1) << "Generating data to send...";
   std::random_device seed_gen;
@@ -48,6 +54,9 @@ std::vector<uint8_t> generateDataToSend(uint64_t data_size) {
 }
 
 bool verifyDataReceived(const std::vector<uint8_t> &data, uint64_t data_size) {
+  CHECK(data_size > CHECKSUM_SIZE)
+      << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
+      << CHECKSUM_SIZE << ")";
   uint64_t context_size = data_size - CHECKSUM_SIZE;
   if (data.size() != data_size) {
     LOG(ERROR) << "Data size mismatch: expected " << data_size << ", got "
