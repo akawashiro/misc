@@ -93,7 +93,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
               << ntohs(send_addr.sin_port) << ". Receiving data...";
     }
 
-    std::vector<char> recv_buffer(buffer_size);
+    std::vector<uint8_t> recv_buffer(buffer_size);
+    std::vector<uint8_t> received_data;
+    if (!is_warmup) {
+      received_data.reserve(data_size);
+    }
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -112,6 +116,10 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
         break;
       }
       total_received += bytes_received;
+      if (!is_warmup) {
+        received_data.insert(received_data.end(), recv_buffer.begin(),
+                             recv_buffer.begin() + bytes_received);
+      }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -119,6 +127,16 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
+
+      // Verify received data
+      if (!verifyDataReceived(received_data, data_size)) {
+        LOG(ERROR) << ReceivePrefix(display_iteration)
+                   << "Data verification failed!";
+      } else {
+        VLOG(1) << ReceivePrefix(display_iteration)
+                << "Data verification passed.";
+      }
+
       VLOG(1) << "Receiver: Received "
               << total_received / (1024.0 * 1024.0 * 1024.0)
               << " GiB of data in " << elapsed_time.count() << " seconds.";

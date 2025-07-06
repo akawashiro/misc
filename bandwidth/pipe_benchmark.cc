@@ -18,6 +18,8 @@
 
 void send_process(int write_fd, int num_warmups, int num_iterations,
                   uint64_t data_size, uint64_t buffer_size) {
+  // Generate data to send once
+  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -33,16 +35,20 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
               << num_iterations;
     }
 
-    char fill_char = is_warmup ? 'W' : 'A';
-    std::vector<char> send_buffer(buffer_size, fill_char);
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Write data until data_size is reached
     while (total_sent < data_size) {
       size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
-      ssize_t bytes_written =
-          write(write_fd, send_buffer.data(), bytes_to_send);
+      ssize_t bytes_written;
+      if (is_warmup) {
+        std::vector<uint8_t> warmup_buffer(bytes_to_send, 'W');
+        bytes_written = write(write_fd, warmup_buffer.data(), bytes_to_send);
+      } else {
+        bytes_written =
+            write(write_fd, data_to_send.data() + total_sent, bytes_to_send);
+      }
       if (bytes_written == -1) {
         LOG(ERROR) << "send: write: " << strerror(errno);
         break;
@@ -87,7 +93,11 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
               << num_iterations;
     }
 
-    std::vector<char> recv_buffer(buffer_size);
+    std::vector<uint8_t> recv_buffer(buffer_size);
+    std::vector<uint8_t> received_data;
+    if (!is_warmup) {
+      received_data.reserve(data_size);
+    }
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -105,6 +115,10 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
         break;
       }
       total_received += bytes_read;
+      if (!is_warmup) {
+        received_data.insert(received_data.end(), recv_buffer.begin(),
+                             recv_buffer.begin() + bytes_read);
+      }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -112,6 +126,16 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
+
+      // Verify received data
+      if (!verifyDataReceived(received_data, data_size)) {
+        LOG(ERROR) << ReceivePrefix(display_iteration)
+                   << "Data verification failed!";
+      } else {
+        VLOG(1) << ReceivePrefix(display_iteration)
+                << "Data verification passed.";
+      }
+
       VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
               << " seconds.";
     }

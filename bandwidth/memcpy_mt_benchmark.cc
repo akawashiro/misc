@@ -29,8 +29,8 @@ void memcpyInMultiThread(uint64_t n_threads, int num_warmups,
 
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<std::thread> threads;
-    for (uint64_t i = 0; i < n_threads; ++i) {
-      threads.emplace_back(copy_chunk, i);
+    for (uint64_t j = 0; j < n_threads; ++j) {
+      threads.emplace_back(copy_chunk, j);
     }
     for (auto &t : threads) {
       t.join();
@@ -41,6 +41,15 @@ void memcpyInMultiThread(uint64_t n_threads, int num_warmups,
       const double duration =
           std::chrono::duration<double>(end - start).count();
       durations.push_back(duration);
+
+      // Verify copied data
+      if (!verifyDataReceived(dst, data_size)) {
+        LOG(ERROR) << "Data verification failed for iteration "
+                   << (i - num_warmups + 1);
+      } else {
+        VLOG(1) << "Data verification passed for iteration "
+                << (i - num_warmups + 1);
+      }
     }
   }
 

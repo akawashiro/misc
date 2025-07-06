@@ -37,8 +37,7 @@ void cleanup_resources() {
 }
 
 size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
-                 sem_t *sem_receiver, const std::vector<char> &data,
-                 uint64_t data_size) {
+                 sem_t *sem_receiver, const uint8_t *data, uint64_t data_size) {
   size_t total_sent = 0;
 
   while (total_sent < data_size) {
@@ -47,7 +46,7 @@ size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
 
     size_t bytes_to_send = std::min(BUFFER_SIZE, data_size - total_sent);
     shared_buffer->data_size = bytes_to_send;
-    memcpy(shared_buffer->data, data.data(), bytes_to_send);
+    memcpy(shared_buffer->data, data + total_sent, bytes_to_send);
     total_sent += bytes_to_send;
 
     if (total_sent >= data_size) {
@@ -62,7 +61,8 @@ size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
 }
 
 size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
-                    sem_t *sem_receiver, uint64_t data_size) {
+                    sem_t *sem_receiver, std::vector<uint8_t> *received_data,
+                    uint64_t data_size) {
   size_t total_received = 0;
 
   while (total_received < data_size) {
@@ -73,6 +73,12 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
       break;
     }
 
+    if (received_data) {
+      received_data->insert(received_data->end(),
+                            reinterpret_cast<uint8_t *>(shared_buffer->data),
+                            reinterpret_cast<uint8_t *>(shared_buffer->data) +
+                                shared_buffer->data_size);
+    }
     total_received += shared_buffer->data_size;
 
     // Signal sender that data has been read
@@ -139,18 +145,33 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     shared_buffer->transfer_complete = false;
+    std::vector<uint8_t> received_data;
+    if (!is_warmup) {
+      received_data.reserve(data_size);
+    }
 
     sem_post(sem_sender);
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Receive data until data_size is reached
-    receive_data(shared_buffer, sem_sender, sem_receiver, data_size);
+    receive_data(shared_buffer, sem_sender, sem_receiver,
+                 is_warmup ? nullptr : &received_data, data_size);
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
+
+      // Verify received data
+      if (!verifyDataReceived(received_data, data_size)) {
+        LOG(ERROR) << ReceivePrefix(display_iteration)
+                   << "Data verification failed!";
+      } else {
+        VLOG(1) << ReceivePrefix(display_iteration)
+                << "Data verification passed.";
+      }
+
       VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
               << " seconds.";
     }
@@ -201,6 +222,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     return;
   }
 
+  // Generate data to send once
+  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -215,13 +238,17 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
       VLOG(1) << SendPrefix(display_iteration) << "Starting iteration...";
     }
 
-    char fill_char = is_warmup ? 'W' : 'A';
-    std::vector<char> data(BUFFER_SIZE, fill_char);
-
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until data_size is reached
-    send_data(shared_buffer, sem_sender, sem_receiver, data, data_size);
+    if (is_warmup) {
+      std::vector<uint8_t> warmup_data(data_size, 'W');
+      send_data(shared_buffer, sem_sender, sem_receiver, warmup_data.data(),
+                data_size);
+    } else {
+      send_data(shared_buffer, sem_sender, sem_receiver, data_to_send.data(),
+                data_size);
+    }
 
     auto end_time = std::chrono::high_resolution_clock::now();
 

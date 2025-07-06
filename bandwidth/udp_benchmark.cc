@@ -61,8 +61,7 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
   LOG(INFO) << "[Receiver] Waiting for data... (Port: " << PORT << ")";
 
-  std::vector<char> buffer(buffer_size);
-
+  std::vector<uint8_t> buffer(buffer_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -73,6 +72,10 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
     uint64_t total_bytes_received = 0;
     ssize_t bytes_received;
+    std::vector<uint8_t> received_data;
+    if (!is_warmup) {
+      received_data.reserve(data_size);
+    }
 
     // Wait for start signal from sender
     bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
@@ -85,6 +88,10 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     char expected_signal = is_warmup ? 'W' : 'S';
     if (buffer[0] == expected_signal) {
       total_bytes_received += bytes_received;
+      if (!is_warmup) {
+        received_data.insert(received_data.end(), buffer.begin(),
+                             buffer.begin() + bytes_received);
+      }
 
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
@@ -101,6 +108,10 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
           total_bytes_received += bytes_received;
+          if (!is_warmup) {
+            received_data.insert(received_data.end(), buffer.begin(),
+                                 buffer.begin() + bytes_received);
+          }
         }
       }
 
@@ -110,6 +121,16 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
       if (!is_warmup) {
         std::chrono::duration<double> elapsed = end_time - start_time;
         durations.push_back(elapsed.count());
+
+        // Verify received data
+        if (!verifyDataReceived(received_data, data_size)) {
+          LOG(ERROR) << ReceivePrefix(display_iteration)
+                     << "Data verification failed!";
+        } else {
+          VLOG(1) << ReceivePrefix(display_iteration)
+                  << "Data verification passed.";
+        }
+
         LOG(INFO) << ReceivePrefix(display_iteration)
                   << "Iteration completed in " << elapsed.count() << " seconds";
       }
@@ -143,6 +164,9 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
     die("Sender: inet_aton() failed");
   }
 
+  // Generate data to send once
+  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     bool is_warmup = iteration < num_warmups;
@@ -157,21 +181,22 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
 
     // First packet marked with signal character
     char signal_char = is_warmup ? 'W' : 'S';
-    std::vector<char> signal_buffer(buffer_size, signal_char);
+    std::vector<uint8_t> signal_buffer(buffer_size, signal_char);
     if (sendto(sockfd, signal_buffer.data(), buffer_size, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       LOG(ERROR) << "Sender: sendto() error on signal: " << strerror(errno);
     }
 
-    // Send remaining packets
+    // Send remaining packets using generated data
     uint64_t num_packets = data_size / buffer_size;
-    char data_char = is_warmup ? 'w' : 'D';
-    std::vector<char> buffer(buffer_size, data_char);
     for (uint64_t i = 1; i < num_packets; ++i) {
       if (i % 10 == 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-      if (sendto(sockfd, buffer.data(), buffer_size, 0,
+      size_t offset = i * buffer_size;
+      const uint8_t *data_ptr =
+          is_warmup ? signal_buffer.data() : data_to_send.data() + offset;
+      if (sendto(sockfd, data_ptr, buffer_size, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
         LOG(ERROR) << "Sender: sendto() error: " << strerror(errno);
