@@ -11,7 +11,9 @@
 #include <unistd.h>
 #include <vector>
 
+#include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
@@ -266,9 +268,23 @@ void send_process() {
   VLOG(1) << "Sender: Exiting.";
 }
 
-int main() {
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+int main(int argc, char *argv[]) {
+  absl::SetProgramUsageMessage("Shared Memory Bandwidth Benchmark");
+  absl::ParseCommandLine(argc, argv);
+
+  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  if (vlog.has_value()) {
+    int v = *vlog;
+    absl::SetGlobalVLogLevel(v);
+  } else {
+    // Default to level 1 for backward compatibility
+    absl::SetGlobalVLogLevel(1);
+  }
+
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
-  absl::SetGlobalVLogLevel(1);
   absl::InitializeLog();
 
   pid_t pid = fork();

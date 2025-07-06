@@ -2,11 +2,15 @@
 #include <chrono>
 #include <cstring>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <sys/wait.h> // For wait
 #include <unistd.h>   // For pipe, fork, close
 #include <vector>
 
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
@@ -160,7 +164,19 @@ void reader_process(int read_fd) {
   VLOG(1) << "Reader: Exiting.";
 }
 
-int main() {
+ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
+          "Show VLOG messages lower than this level.");
+
+int main(int argc, char *argv[]) {
+  absl::SetProgramUsageMessage("Pipe Bandwidth Benchmark");
+  absl::ParseCommandLine(argc, argv);
+
+  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  if (vlog.has_value()) {
+    int v = *vlog;
+    absl::SetGlobalVLogLevel(v);
+  }
+
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
 

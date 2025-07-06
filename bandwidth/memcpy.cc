@@ -17,7 +17,7 @@ ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
 
 int main(int argc, char *argv[]) {
-  absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
+  absl::SetProgramUsageMessage("memcpy");
   absl::ParseCommandLine(argc, argv);
 
   std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
