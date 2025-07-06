@@ -22,12 +22,6 @@ constexpr int PORT = 12345;
 constexpr const char *HOST = "127.0.0.1";
 // CHUNK_SIZE is now passed as a parameter (buffer_size)
 
-// --- Error Handling Function ---
-void die(const char *message) {
-  LOG(ERROR) << message << ": " << strerror(errno);
-  exit(1);
-}
-
 // --- Receiver (Child Process) Operations ---
 void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
                   uint64_t data_size, uint64_t buffer_size) {
@@ -37,7 +31,8 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
   // Create UDP socket
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    die("Receiver: socket() failed");
+    LOG(ERROR) << "Receiver: socket() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   // Set receive address information
@@ -49,13 +44,15 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
   // Bind address to socket
   if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
     close(pipe_write_fd); // Close pipe before exiting
-    die("Receiver: bind() failed");
+    LOG(ERROR) << "Receiver: bind() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   // Notify parent process that receiver is ready
   char signal_char = 'R'; // 'R' for Ready
   if (write(pipe_write_fd, &signal_char, 1) != 1) {
-    die("Receiver: pipe write failed");
+    LOG(ERROR) << "Receiver: pipe write failed" << ": " << strerror(errno);
+    exit(1);
   }
   close(pipe_write_fd); // Close pipe after notification
 
@@ -81,7 +78,9 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     bytes_received = recvfrom(sockfd, buffer.data(), buffer_size, 0,
                               (struct sockaddr *)&cli_addr, &cli_len);
     if (bytes_received < 0) {
-      die("Receiver: recvfrom() failed on start");
+      LOG(ERROR) << "Receiver: recvfrom() failed on start" << ": "
+                 << strerror(errno);
+      exit(1);
     }
 
     // Check signal type
@@ -149,7 +148,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
 
   // Create UDP socket
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    die("Sender: socket() failed");
+    LOG(ERROR) << "Sender: socket() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   // Set destination (receive) address information
@@ -157,7 +157,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(PORT);
   if (inet_aton(HOST, &serv_addr.sin_addr) == 0) {
-    die("Sender: inet_aton() failed");
+    LOG(ERROR) << "Sender: inet_aton() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   // Generate data to send once
@@ -218,14 +219,16 @@ int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
   // Pipe for parent-child synchronization
   int pipefd[2];
   if (pipe(pipefd) == -1) {
-    die("pipe() failed");
+    LOG(ERROR) << "pipe() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   // Fork the process
   pid_t pid = fork();
 
   if (pid < 0) {
-    die("fork() failed");
+    LOG(ERROR) << "fork() failed" << ": " << strerror(errno);
+    exit(1);
   }
 
   if (pid == 0) {
@@ -244,7 +247,9 @@ int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
     char signal_buffer;
     LOG(INFO) << "[Main] Waiting for receiver process to be ready...";
     if (read(pipefd[0], &signal_buffer, 1) != 1) {
-      die("Main: pipe read failed. Receiver may have failed to start.");
+      LOG(ERROR) << "Main: pipe read failed. Receiver may have failed to start."
+                 << ": " << strerror(errno);
+      exit(1);
     }
     close(pipefd[0]); // Read complete
 
