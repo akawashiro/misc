@@ -1,22 +1,21 @@
+#include "uds_benchmark.h"
+
 #include <sys/socket.h>
 #include <sys/un.h>
-
+#include <sys/wait.h>
+#include <unistd.h>
+#include <chrono>
+#include <cstring>
 #include <string>
 #include <vector>
+#include <algorithm>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "absl/flags/usage.h"
 #include "absl/log/check.h"
 #include "absl/log/globals.h"
-#include "absl/log/initialize.h"
 #include "absl/log/log.h"
-
 #include "absl/strings/str_cat.h"
-#include "common.h"
 
-ABSL_FLAG(uint64_t, data_size, 128 * (1 << 20),
-          "Size of data to transfer in bytes");
+#include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
@@ -165,45 +164,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
   LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
-ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
-          "Show VLOG messages lower than this level.");
-ABSL_FLAG(int, buffer_size, DEFAULT_BUFFER_SIZE,
-          "Size of the buffer used for sending and receiving data.");
-ABSL_FLAG(int, num_iterations, 10,
-          "Number of measurement iterations (minimum 3)");
-ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
-
-int main(int argc, char *argv[]) {
-  absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
-  absl::ParseCommandLine(argc, argv);
-
-  // Get values from command line flags
-  int num_iterations = absl::GetFlag(FLAGS_num_iterations);
-  int num_warmups = absl::GetFlag(FLAGS_num_warmups);
-  uint64_t data_size = absl::GetFlag(FLAGS_data_size);
-
-  // Validate num_iterations
-  if (num_iterations < 3) {
-    LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
-    return 1;
-  }
-
-  // Validate data_size
-  if (data_size <= CHECKSUM_SIZE) {
-    LOG(ERROR) << "data_size must be larger than CHECKSUM_SIZE ("
-               << CHECKSUM_SIZE << "), got: " << data_size;
-    return 1;
-  }
-
-  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
-  if (vlog.has_value()) {
-    int v = *vlog;
-    absl::SetGlobalVLogLevel(v);
-  }
-  int buffer_size = absl::GetFlag(FLAGS_buffer_size);
-
-  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
-  absl::InitializeLog();
+int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size) {
+  uint64_t buffer_size = DEFAULT_BUFFER_SIZE;
 
   pid_t pid = fork();
   CHECK(pid != -1) << "Failed to fork process";
@@ -212,6 +174,10 @@ int main(int argc, char *argv[]) {
     send_process(buffer_size, num_warmups, num_iterations, data_size);
   } else {
     receive_process(buffer_size, num_warmups, num_iterations, data_size);
+    
+    // Wait for child process to complete
+    int status;
+    wait(&status);
   }
 
   return 0;
