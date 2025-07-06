@@ -95,9 +95,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
     std::vector<uint8_t> recv_buffer(buffer_size);
     std::vector<uint8_t> received_data;
-    if (!is_warmup) {
-      received_data.reserve(data_size);
-    }
+    received_data.reserve(data_size);
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -116,10 +114,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
         break;
       }
       total_received += bytes_received;
-      if (!is_warmup) {
-        received_data.insert(received_data.end(), recv_buffer.begin(),
-                             recv_buffer.begin() + bytes_received);
-      }
+      received_data.insert(received_data.end(), recv_buffer.begin(),
+                           recv_buffer.begin() + bytes_received);
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -128,18 +124,18 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
 
-      // Verify received data
-      if (!verifyDataReceived(received_data, data_size)) {
-        LOG(ERROR) << ReceivePrefix(display_iteration)
-                   << "Data verification failed!";
-      } else {
-        VLOG(1) << ReceivePrefix(display_iteration)
-                << "Data verification passed.";
-      }
-
       VLOG(1) << "Receiver: Received "
               << total_received / (1024.0 * 1024.0 * 1024.0)
               << " GiB of data in " << elapsed_time.count() << " seconds.";
+    }
+
+    // Verify received data (always, even during warmup)
+    if (!verifyDataReceived(received_data, data_size)) {
+      LOG(ERROR) << ReceivePrefix(display_iteration)
+                 << "Data verification failed!";
+    } else {
+      VLOG(1) << ReceivePrefix(display_iteration)
+              << "Data verification passed.";
     }
 
     // Close connection for this iteration
@@ -206,21 +202,14 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
               << "Connected to receiver. Sending data...";
     }
 
-    char fill_char = is_warmup ? 'W' : 'B';
-    std::vector<char> send_buffer(buffer_size, fill_char);
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Send data until data_size is reached
     while (total_sent < data_size) {
       size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
-      ssize_t bytes_sent;
-      if (is_warmup) {
-        bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
-      } else {
-        bytes_sent =
-            send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
-      }
+      ssize_t bytes_sent =
+          send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
         LOG(ERROR) << "send: send: " << strerror(errno);
         break;

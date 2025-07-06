@@ -95,14 +95,10 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Write data in chunks
+    // Write data in chunks (always use generated data)
     for (size_t offset = 0; offset < data_size; offset += buffer_size) {
       size_t chunk_size = std::min(buffer_size, data_size - offset);
-      if (is_warmup) {
-        memset(data_region + offset, 'W', chunk_size);
-      } else {
-        memcpy(data_region + offset, data_to_send.data() + offset, chunk_size);
-      }
+      memcpy(data_region + offset, data_to_send.data() + offset, chunk_size);
       sync->bytes_written = offset + chunk_size;
     }
 
@@ -206,20 +202,20 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
 
-      // Verify received data
-      std::vector<uint8_t> received_data(
-          reinterpret_cast<uint8_t *>(data_region),
-          reinterpret_cast<uint8_t *>(data_region) + data_size);
-      if (!verifyDataReceived(received_data, data_size)) {
-        LOG(ERROR) << ReceivePrefix(display_iteration)
-                   << "Data verification failed!";
-      } else {
-        VLOG(1) << ReceivePrefix(display_iteration)
-                << "Data verification passed.";
-      }
-
       VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
               << " seconds.";
+    }
+
+    // Verify received data (always, even during warmup)
+    std::vector<uint8_t> received_data(
+        reinterpret_cast<uint8_t *>(data_region),
+        reinterpret_cast<uint8_t *>(data_region) + data_size);
+    if (!verifyDataReceived(received_data, data_size)) {
+      LOG(ERROR) << ReceivePrefix(display_iteration)
+                 << "Data verification failed!";
+    } else {
+      VLOG(1) << ReceivePrefix(display_iteration)
+              << "Data verification passed.";
     }
   }
 

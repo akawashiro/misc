@@ -88,10 +88,8 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
     char expected_signal = is_warmup ? 'W' : 'S';
     if (buffer[0] == expected_signal) {
       total_bytes_received += bytes_received;
-      if (!is_warmup) {
-        received_data.insert(received_data.end(), buffer.begin(),
-                             buffer.begin() + bytes_received);
-      }
+      received_data.insert(received_data.end(), buffer.begin(),
+                           buffer.begin() + bytes_received);
 
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
@@ -108,10 +106,8 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
                                   (struct sockaddr *)&cli_addr, &cli_len);
         if (bytes_received > 0) {
           total_bytes_received += bytes_received;
-          if (!is_warmup) {
-            received_data.insert(received_data.end(), buffer.begin(),
-                                 buffer.begin() + bytes_received);
-          }
+          received_data.insert(received_data.end(), buffer.begin(),
+                               buffer.begin() + bytes_received);
         }
       }
 
@@ -122,17 +118,17 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
         std::chrono::duration<double> elapsed = end_time - start_time;
         durations.push_back(elapsed.count());
 
-        // Verify received data
-        if (!verifyDataReceived(received_data, data_size)) {
-          LOG(ERROR) << ReceivePrefix(display_iteration)
-                     << "Data verification failed!";
-        } else {
-          VLOG(1) << ReceivePrefix(display_iteration)
-                  << "Data verification passed.";
-        }
-
         LOG(INFO) << ReceivePrefix(display_iteration)
                   << "Iteration completed in " << elapsed.count() << " seconds";
+      }
+
+      // Verify received data (always, even during warmup)
+      if (!verifyDataReceived(received_data, data_size)) {
+        LOG(ERROR) << ReceivePrefix(display_iteration)
+                   << "Data verification failed!";
+      } else {
+        VLOG(1) << ReceivePrefix(display_iteration)
+                << "Data verification passed.";
       }
     }
   }
@@ -181,8 +177,14 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
 
     // First packet marked with signal character
     char signal_char = is_warmup ? 'W' : 'S';
-    std::vector<uint8_t> signal_buffer(buffer_size, signal_char);
-    if (sendto(sockfd, signal_buffer.data(), buffer_size, 0,
+    std::vector<uint8_t> first_packet(buffer_size);
+    first_packet[0] = signal_char;
+    // Fill rest of first packet with actual data
+    size_t first_packet_data_size = std::min(buffer_size - 1, data_size);
+    std::memcpy(first_packet.data() + 1, data_to_send.data(),
+                first_packet_data_size);
+
+    if (sendto(sockfd, first_packet.data(), buffer_size, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       LOG(ERROR) << "Sender: sendto() error on signal: " << strerror(errno);
     }
@@ -194,9 +196,7 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
       size_t offset = i * buffer_size;
-      const uint8_t *data_ptr =
-          is_warmup ? signal_buffer.data() : data_to_send.data() + offset;
-      if (sendto(sockfd, data_ptr, buffer_size, 0,
+      if (sendto(sockfd, data_to_send.data() + offset, buffer_size, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
         LOG(ERROR) << "Sender: sendto() error: " << strerror(errno);

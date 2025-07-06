@@ -146,16 +146,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
     shared_buffer->transfer_complete = false;
     std::vector<uint8_t> received_data;
-    if (!is_warmup) {
-      received_data.reserve(data_size);
-    }
+    received_data.reserve(data_size);
 
     sem_post(sem_sender);
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Receive data until data_size is reached
-    receive_data(shared_buffer, sem_sender, sem_receiver,
-                 is_warmup ? nullptr : &received_data, data_size);
+    receive_data(shared_buffer, sem_sender, sem_receiver, &received_data,
+                 data_size);
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
@@ -163,17 +161,17 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
 
-      // Verify received data
-      if (!verifyDataReceived(received_data, data_size)) {
-        LOG(ERROR) << ReceivePrefix(display_iteration)
-                   << "Data verification failed!";
-      } else {
-        VLOG(1) << ReceivePrefix(display_iteration)
-                << "Data verification passed.";
-      }
-
       VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
               << " seconds.";
+    }
+
+    // Verify received data (always, even during warmup)
+    if (!verifyDataReceived(received_data, data_size)) {
+      LOG(ERROR) << ReceivePrefix(display_iteration)
+                 << "Data verification failed!";
+    } else {
+      VLOG(1) << ReceivePrefix(display_iteration)
+              << "Data verification passed.";
     }
   }
 
@@ -240,15 +238,9 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Send data until data_size is reached
-    if (is_warmup) {
-      std::vector<uint8_t> warmup_data(data_size, 'W');
-      send_data(shared_buffer, sem_sender, sem_receiver, warmup_data.data(),
-                data_size);
-    } else {
-      send_data(shared_buffer, sem_sender, sem_receiver, data_to_send.data(),
-                data_size);
-    }
+    // Send data until data_size is reached (always use generated data)
+    send_data(shared_buffer, sem_sender, sem_receiver, data_to_send.data(),
+              data_size);
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
