@@ -42,14 +42,14 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Create and open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fd == -1) {
-    perror("send: open");
+    LOG(ERROR) << "send: open: " << strerror(errno);
     return;
   }
 
   // Size the file to accommodate data and sync structure
   size_t total_size = data_size + sizeof(sync_data);
   if (ftruncate(fd, total_size) == -1) {
-    perror("send: ftruncate");
+    LOG(ERROR) << "send: ftruncate: " << strerror(errno);
     close(fd);
     return;
   }
@@ -58,7 +58,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   void *mapped_region =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
-    perror("send: mmap");
+    LOG(ERROR) << "send: mmap: " << strerror(errno);
     close(fd);
     return;
   }
@@ -154,14 +154,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_RDWR);
   if (fd == -1) {
-    perror("receive: open");
+    LOG(ERROR) << "receive: open: " << strerror(errno);
     return;
   }
 
   // Get file size
   struct stat file_stat;
   if (fstat(fd, &file_stat) == -1) {
-    perror("receive: fstat");
+    LOG(ERROR) << "receive: fstat: " << strerror(errno);
     close(fd);
     return;
   }
@@ -172,7 +172,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   void *mapped_region =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
-    perror("receive: mmap");
+    LOG(ERROR) << "receive: mmap: " << strerror(errno);
     close(fd);
     return;
   }
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
   pid_t pid = fork();
 
   if (pid == -1) {
-    perror("fork");
+    LOG(ERROR) << "fork: " << strerror(errno);
     return 1;
   }
 

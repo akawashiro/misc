@@ -33,7 +33,7 @@ constexpr size_t CHUNK_SIZE = 8192; // 8 KB
 
 // --- Error Handling Function ---
 void die(const char *message) {
-  perror(message);
+  LOG(ERROR) << message << ": " << strerror(errno);
   exit(1);
 }
 
@@ -174,7 +174,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
     std::vector<char> warmup_buffer(CHUNK_SIZE, 'W');
     if (sendto(sockfd, warmup_buffer.data(), CHUNK_SIZE, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      perror("Sender: sendto() error on warmup signal");
+      LOG(ERROR) << "Sender: sendto() error on warmup signal: "
+                 << strerror(errno);
     }
 
     // Send remaining packets
@@ -187,7 +188,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
       if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
-        perror("Sender: sendto() error during warmup");
+        LOG(ERROR) << "Sender: sendto() error during warmup: "
+                   << strerror(errno);
       }
     }
     VLOG(1) << "[Sender] Warm-up " << warmup + 1 << "/" << num_warmups
@@ -204,7 +206,8 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
     std::vector<char> start_buffer(CHUNK_SIZE, 'S');
     if (sendto(sockfd, start_buffer.data(), CHUNK_SIZE, 0,
                (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      perror("Sender: sendto() error on start signal");
+      LOG(ERROR) << "Sender: sendto() error on start signal: "
+                 << strerror(errno);
     }
 
     // Send remaining packets
@@ -217,7 +220,7 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size) {
       if (sendto(sockfd, buffer.data(), CHUNK_SIZE, 0,
                  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // Display error but continue
-        perror("Sender: sendto() error");
+        LOG(ERROR) << "Sender: sendto() error: " << strerror(errno);
       }
     }
 

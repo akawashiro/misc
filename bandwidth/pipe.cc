@@ -38,7 +38,7 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
-        perror("send: write during warmup");
+        LOG(ERROR) << "send: write during warmup: " << strerror(errno);
         break;
       }
       total_sent += bytes_written;
@@ -65,7 +65,7 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
       ssize_t bytes_written =
           write(write_fd, send_buffer.data(), bytes_to_send);
       if (bytes_written == -1) {
-        perror("send: write");
+        LOG(ERROR) << "send: write: " << strerror(errno);
         break;
       }
       total_sent += bytes_written;
@@ -98,7 +98,7 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
     while (total_received < data_size) {
       ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
       if (bytes_read == -1) {
-        perror("receive: read during warmup");
+        LOG(ERROR) << "receive: read during warmup: " << strerror(errno);
         break;
       }
       if (bytes_read == 0) {
@@ -125,7 +125,7 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
     while (total_received < data_size) {
       ssize_t bytes_read = read(read_fd, recv_buffer.data(), BUFFER_SIZE);
       if (bytes_read == -1) {
-        perror("receive: read");
+        LOG(ERROR) << "receive: read: " << strerror(errno);
         break;
       }
       if (bytes_read == 0) {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   // Create a pipe
   int pipe_fds[2];
   if (pipe(pipe_fds) == -1) {
-    perror("pipe");
+    LOG(ERROR) << "pipe: " << strerror(errno);
     return 1;
   }
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
   pid_t pid = fork();
 
   if (pid == -1) {
-    perror("fork");
+    LOG(ERROR) << "fork: " << strerror(errno);
     close(read_fd);
     close(write_fd);
     return 1;

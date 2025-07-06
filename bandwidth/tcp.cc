@@ -1,7 +1,7 @@
 #include <algorithm>    // For std::min
 #include <arpa/inet.h>  // For inet_addr
 #include <chrono>       // For time measurement
-#include <cstring>      // For memset
+#include <cstring>      // For memset, strerror
 #include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
 #include <numeric>      // For std::accumulate
 #include <optional>
@@ -37,7 +37,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Create a TCP socket
   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_fd == -1) {
-    perror("receive: socket");
+    LOG(ERROR) << "receive: socket: " << strerror(errno);
     return;
   }
 
@@ -45,7 +45,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   int optval = 1;
   if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
                  sizeof(optval)) == -1) {
-    perror("receive: setsockopt SO_REUSEADDR");
+    LOG(ERROR) << "receive: setsockopt SO_REUSEADDR: " << strerror(errno);
     close(listen_fd);
     return;
   }
@@ -59,14 +59,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Bind the socket to the specified IP address and port
   if (bind(listen_fd, (struct sockaddr *)&receive_addr, sizeof(receive_addr)) ==
       -1) {
-    perror("receive: bind");
+    LOG(ERROR) << "receive: bind: " << strerror(errno);
     close(listen_fd);
     return;
   }
 
   // Listen for incoming connections
   if (listen(listen_fd, 5) == -1) {
-    perror("receive: listen");
+    LOG(ERROR) << "receive: listen: " << strerror(errno);
     close(listen_fd);
     return;
   }
@@ -78,7 +78,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   for (int warmup = 0; warmup < num_warmups; ++warmup) {
     conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
-      perror("receive: accept during warmup");
+      LOG(ERROR) << "receive: accept during warmup: " << strerror(errno);
       close(listen_fd);
       return;
     }
@@ -89,7 +89,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
-        perror("receive: recv during warmup");
+        LOG(ERROR) << "receive: recv during warmup: " << strerror(errno);
         break;
       }
       if (bytes_received == 0) {
@@ -109,7 +109,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     // Accept a sender connection for each iteration
     conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
-      perror("receive: accept");
+      LOG(ERROR) << "receive: accept: " << strerror(errno);
       close(listen_fd);
       return;
     }
@@ -128,7 +128,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), BUFFER_SIZE, 0);
       if (bytes_received == -1) {
-        perror("receive: recv");
+        LOG(ERROR) << "receive: recv: " << strerror(errno);
         break;
       }
       if (bytes_received == 0) {
@@ -171,7 +171,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_fd == -1) {
-      perror("send: socket during warmup");
+      LOG(ERROR) << "send: socket during warmup: " << strerror(errno);
       return;
     }
 
@@ -192,7 +192,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
           std::min((size_t)BUFFER_SIZE, data_size - total_sent);
       ssize_t bytes_sent = send(sock_fd, send_buffer.data(), bytes_to_send, 0);
       if (bytes_sent == -1) {
-        perror("send: send during warmup");
+        LOG(ERROR) << "send: send during warmup: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
@@ -215,7 +215,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
     // Create a TCP socket
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_fd == -1) {
-      perror("send: socket");
+      LOG(ERROR) << "send: socket: " << strerror(errno);
       return;
     }
 
@@ -231,7 +231,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
             << ")";
     while (connect(sock_fd, (struct sockaddr *)&receive_addr,
                    sizeof(receive_addr)) == -1) {
-      perror("send: connect (retrying in 1 second)");
+      LOG(ERROR) << "send: connect (retrying in 1 second): " << strerror(errno);
       sleep(1); // Wait a bit if receiver isn't ready yet
     }
 
@@ -250,7 +250,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
       if (bytes_sent == -1) {
-        perror("send: send");
+        LOG(ERROR) << "send: send: " << strerror(errno);
         break;
       }
       total_sent += bytes_sent;
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
   pid_t pid = fork();
 
   if (pid == -1) {
-    perror("fork");
+    LOG(ERROR) << "fork: " << strerror(errno);
     return 1;
   }
 

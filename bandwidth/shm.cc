@@ -96,12 +96,12 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Create shared memory
   int shm_fd = shm_open(SHM_NAME.c_str(), O_CREAT | O_RDWR, 0666);
   if (shm_fd == -1) {
-    perror("receive: shm_open");
+    LOG(ERROR) << "receive: shm_open: " << strerror(errno);
     return;
   }
 
   if (ftruncate(shm_fd, sizeof(SharedBuffer)) == -1) {
-    perror("receive: ftruncate");
+    LOG(ERROR) << "receive: ftruncate: " << strerror(errno);
     close(shm_fd);
     cleanup_resources();
     return;
@@ -111,7 +111,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
            shm_fd, 0));
   if (shared_buffer == MAP_FAILED) {
-    perror("receive: mmap");
+    LOG(ERROR) << "receive: mmap: " << strerror(errno);
     close(shm_fd);
     cleanup_resources();
     return;
@@ -121,7 +121,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), O_CREAT, 0666, 1);
   sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), O_CREAT, 0666, 0);
   if (sem_sender == SEM_FAILED || sem_receiver == SEM_FAILED) {
-    perror("receive: sem_open");
+    LOG(ERROR) << "receive: sem_open: " << strerror(errno);
     munmap(shared_buffer, sizeof(SharedBuffer));
     close(shm_fd);
     cleanup_resources();
@@ -184,7 +184,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   // Open existing shared memory
   int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
   if (shm_fd == -1) {
-    perror("send: shm_open");
+    LOG(ERROR) << "send: shm_open: " << strerror(errno);
     return;
   }
 
@@ -192,7 +192,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
       mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
            shm_fd, 0));
   if (shared_buffer == MAP_FAILED) {
-    perror("send: mmap");
+    LOG(ERROR) << "send: mmap: " << strerror(errno);
     close(shm_fd);
     return;
   }
@@ -201,7 +201,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size) {
   sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), 0);
   sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), 0);
   if (sem_sender == SEM_FAILED || sem_receiver == SEM_FAILED) {
-    perror("send: sem_open");
+    LOG(ERROR) << "send: sem_open: " << strerror(errno);
     munmap(shared_buffer, sizeof(SharedBuffer));
     close(shm_fd);
     return;
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
   pid_t pid = fork();
 
   if (pid == -1) {
-    perror("fork");
+    LOG(ERROR) << "fork: " << strerror(errno);
     return 1;
   }
 
