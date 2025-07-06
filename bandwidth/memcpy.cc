@@ -33,7 +33,11 @@ int main(int argc, char *argv[]) {
   std::vector<uint8_t> dst(DATA_SIZE, 0);
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
+  // Get values from command line flags
+  int num_iterations = 10; // Default value
+  int num_warmups = 3;     // Default value
+
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     std::fill(dst.begin(), dst.end(), 0);
     const auto start = std::chrono::high_resolution_clock::now();
@@ -41,13 +45,13 @@ int main(int argc, char *argv[]) {
     const auto end = std::chrono::high_resolution_clock::now();
 
     CHECK(verifyDataReceived(src)) << "Data verification failed before memcpy.";
-    if (NUM_WARMUPS <= iteration) {
+    if (num_warmups <= iteration) {
       const double duration =
           std::chrono::duration<double>(end - start).count();
       durations.push_back(duration);
     }
   }
 
-  double bandwidth = calculateBandwidth(durations);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec";
 }

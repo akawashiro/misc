@@ -62,9 +62,11 @@ bool verifyDataReceived(const std::vector<uint8_t> &data) {
   return true;
 }
 
-double calculateBandwidth(std::vector<double> durations) {
-  CHECK(durations.size() == NUM_ITERATIONS);
+double calculateBandwidth(std::vector<double> durations, int num_iterations) {
+  CHECK(durations.size() == num_iterations);
   std::sort(durations.begin(), durations.end());
+  // Ensure we have at least 3 iterations to remove min and max
+  CHECK(num_iterations >= 3) << "num_iterations must be at least 3";
   std::vector<double> filtered_durations(durations.begin() + 1,
                                          durations.end() - 1);
 

@@ -15,14 +15,18 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
-const size_t DATA_SIZE = 128 * 1024 * 1024; // 128 MiB
-const int BUFFER_SIZE = 4096;               // 4KB buffer for read/write
-const int NUM_ITERATIONS = 10;              // Number of measurement iterations
+#include "common.h"
 
-void writer_process(int write_fd) {
+ABSL_FLAG(int, num_iterations, 10,
+          "Number of measurement iterations (minimum 3)");
+ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
+
+const int BUFFER_SIZE = 4096; // 4KB buffer for read/write
+
+void writer_process(int write_fd, int num_warmups, int num_iterations) {
   // Perform warm-up runs
   VLOG(1) << "Writer: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     std::vector<char> send_buffer(BUFFER_SIZE, 'W'); // 'W' for warmup
     size_t total_sent = 0;
     while (total_sent < DATA_SIZE) {
@@ -36,15 +40,16 @@ void writer_process(int write_fd) {
       }
       total_sent += bytes_written;
     }
-    VLOG(1) << "Writer: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Writer: Warm-up " << warmup + 1 << "/" << num_warmups
+            << " completed";
   }
   VLOG(1) << "Writer: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     VLOG(1) << "Writer: Starting iteration " << iteration + 1 << "/"
-            << NUM_ITERATIONS;
+            << num_iterations;
 
     std::vector<char> send_buffer(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
     size_t total_sent = 0;
@@ -70,31 +75,20 @@ void writer_process(int write_fd) {
     VLOG(1) << "Writer: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Writer";
-  }
+  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Writer";
 
   // Close the write end of the pipe
   close(write_fd);
   VLOG(1) << "Writer: Exiting.";
 }
 
-void reader_process(int read_fd) {
+void reader_process(int read_fd, int num_warmups, int num_iterations) {
   // Perform warm-up runs
   VLOG(1) << "Reader: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
     while (total_received < DATA_SIZE) {
@@ -108,15 +102,16 @@ void reader_process(int read_fd) {
       }
       total_received += bytes_read;
     }
-    VLOG(1) << "Reader: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Reader: Warm-up " << warmup + 1 << "/" << num_warmups
+            << " completed";
   }
   VLOG(1) << "Reader: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     VLOG(1) << "Reader: Starting iteration " << iteration + 1 << "/"
-            << NUM_ITERATIONS;
+            << num_iterations;
 
     std::vector<char> recv_buffer(BUFFER_SIZE);
     size_t total_received = 0;
@@ -143,21 +138,10 @@ void reader_process(int read_fd) {
     VLOG(1) << "Reader: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Reader";
-  }
+  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Reader";
 
   // Close the read end of the pipe
   close(read_fd);
@@ -170,6 +154,16 @@ ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Pipe Bandwidth Benchmark");
   absl::ParseCommandLine(argc, argv);
+
+  // Get values from command line flags
+  int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+  int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+
+  // Validate num_iterations
+  if (num_iterations < 3) {
+    LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
 
   std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
   if (vlog.has_value()) {
@@ -202,11 +196,11 @@ int main(int argc, char *argv[]) {
   if (pid == 0) {
     // Child process (writer)
     close(read_fd); // Close unused read end
-    writer_process(write_fd);
+    writer_process(write_fd, num_warmups, num_iterations);
   } else {
     // Parent process (reader)
     close(write_fd); // Close unused write end
-    reader_process(read_fd);
+    reader_process(read_fd, num_warmups, num_iterations);
 
     // Wait for child process to complete
     int status;

@@ -18,12 +18,16 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
+#include "common.h"
+
+ABSL_FLAG(int, num_iterations, 10,
+          "Number of measurement iterations (minimum 3)");
+ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
+
 const std::string SHM_NAME = "/shm_bandwidth_test";
 const std::string SEM_WRITER_NAME = "/sem_writer_bandwidth";
 const std::string SEM_READER_NAME = "/sem_reader_bandwidth";
-constexpr size_t DATA_SIZE = 128 * (1 << 20);
 constexpr size_t BUFFER_SIZE = (1 << 20);
-constexpr int NUM_ITERATIONS = 10;
 
 struct SharedBuffer {
   size_t data_size;
@@ -82,7 +86,7 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_writer,
   return total_received;
 }
 
-void receive_process() {
+void receive_process(int num_warmups, int num_iterations) {
   // Clean up any existing resources
   cleanup_resources();
 
@@ -125,20 +129,21 @@ void receive_process() {
 
   // Perform warm-up runs
   VLOG(1) << "Receiver: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     shared_buffer->transfer_complete = false;
 
     sem_post(sem_writer);
     receive_data(shared_buffer, sem_writer, sem_reader);
-    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Receiver: Warm-up " << warmup + 1 << "/" << num_warmups
+            << " completed";
   }
   VLOG(1) << "Receiver: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     VLOG(1) << "Receiver: Starting iteration " << iteration + 1 << "/"
-            << NUM_ITERATIONS;
+            << num_iterations;
 
     shared_buffer->transfer_complete = false;
 
@@ -155,21 +160,10 @@ void receive_process() {
     VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() << " seconds.";
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
-  }
+  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
 
   // Cleanup
   sem_close(sem_writer);
@@ -180,7 +174,7 @@ void receive_process() {
   VLOG(1) << "Receiver: Exiting.";
 }
 
-void send_process() {
+void send_process(int num_warmups, int num_iterations) {
   // Give server time to initialize
   usleep(100000); // 100ms
 
@@ -212,19 +206,20 @@ void send_process() {
 
   // Perform warm-up runs
   VLOG(1) << "Sender: Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     std::vector<char> data(BUFFER_SIZE, 'W'); // 'W' for warmup
     send_data(shared_buffer, sem_writer, sem_reader, data);
-    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "Sender: Warm-up " << warmup + 1 << "/" << num_warmups
+            << " completed";
     usleep(100000); // 100ms delay between warmup runs
   }
   VLOG(1) << "Sender: Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     VLOG(1) << "Sender: Starting iteration " << iteration + 1 << "/"
-            << NUM_ITERATIONS;
+            << num_iterations;
 
     std::vector<char> data(BUFFER_SIZE, 'A'); // Fill buffer with 'A'
 
@@ -239,26 +234,15 @@ void send_process() {
     VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
 
     // Small delay between iterations
-    if (iteration < NUM_ITERATIONS - 1) {
+    if (iteration < num_iterations - 1) {
       usleep(100000); // 100ms delay
     }
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  if (average_duration > 0) {
-    double bandwidth_gibps =
-        DATA_SIZE / (average_duration * 1024.0 * 1024.0 * 1024.0);
-    LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
-  }
+  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
+  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
 
   // Cleanup
   sem_close(sem_writer);
@@ -274,6 +258,16 @@ ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Shared Memory Bandwidth Benchmark");
   absl::ParseCommandLine(argc, argv);
+
+  // Get values from command line flags
+  int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+  int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+
+  // Validate num_iterations
+  if (num_iterations < 3) {
+    LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
 
   std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
   if (vlog.has_value()) {
@@ -295,9 +289,9 @@ int main(int argc, char *argv[]) {
   }
 
   if (pid == 0) {
-    send_process();
+    send_process(num_warmups, num_iterations);
   } else {
-    receive_process();
+    receive_process(num_warmups, num_iterations);
 
     // Wait for child process to complete
     int status;

@@ -26,11 +26,12 @@ std::string SendPrefix(int iteration) {
   return absl::StrCat("Send (iteration ", iteration, "): ");
 }
 
-void receive_process(uint64_t buffer_size) {
+void receive_process(uint64_t buffer_size, int num_warmups,
+                     int num_iterations) {
   std::vector<double> durations;
   std::vector<uint8_t> read_data(DATA_SIZE, 0x00);
 
-  for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     int listen_fd, conn_fd;
     struct sockaddr_un addr;
@@ -92,7 +93,7 @@ void receive_process(uint64_t buffer_size) {
     VLOG(1) << ReceivePrefix(iteration) << "Finished receiving data.";
 
     verifyDataReceived(read_data);
-    if (NUM_WARMUPS <= iteration) {
+    if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
       VLOG(1) << ReceivePrefix(iteration)
@@ -100,16 +101,16 @@ void receive_process(uint64_t buffer_size) {
     }
   }
 
-  double bandwidth = calculateBandwidth(durations);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
   LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec.";
 }
 
-void send_process(uint64_t buffer_size) {
+void send_process(uint64_t buffer_size, int num_warmups, int num_iterations) {
   std::vector<uint8_t> data_to_send = generateDataToSend();
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_WARMUPS + NUM_ITERATIONS;
+  for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
     int sock_fd;
     struct sockaddr_un addr;
@@ -155,7 +156,7 @@ void send_process(uint64_t buffer_size) {
     auto end_time = std::chrono::high_resolution_clock::now();
     VLOG(1) << SendPrefix(iteration) << "Finish data transfer";
 
-    if (NUM_WARMUPS <= iteration) {
+    if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
       VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count()
@@ -164,7 +165,7 @@ void send_process(uint64_t buffer_size) {
     close(sock_fd);
   }
 
-  double bandwidth = calculateBandwidth(durations);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
   LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
@@ -172,10 +173,23 @@ ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
 ABSL_FLAG(int, buffer_size, DEFAULT_BUFFER_SIZE,
           "Size of the buffer used for sending and receiving data.");
+ABSL_FLAG(int, num_iterations, 10,
+          "Number of measurement iterations (minimum 3)");
+ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
 
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Unix Domain Socket Benchmark");
   absl::ParseCommandLine(argc, argv);
+
+  // Get values from command line flags
+  int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+  int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+
+  // Validate num_iterations
+  if (num_iterations < 3) {
+    LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
 
   std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
   if (vlog.has_value()) {
@@ -191,9 +205,9 @@ int main(int argc, char *argv[]) {
   CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    send_process(buffer_size);
+    send_process(buffer_size, num_warmups, num_iterations);
   } else {
-    receive_process(buffer_size);
+    receive_process(buffer_size, num_warmups, num_iterations);
   }
 
   return 0;

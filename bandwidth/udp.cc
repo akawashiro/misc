@@ -18,13 +18,18 @@
 #include "absl/log/initialize.h"
 #include "absl/log/log.h"
 
+#include "common.h"
+
+ABSL_FLAG(int, num_iterations, 10,
+          "Number of measurement iterations (minimum 3)");
+ABSL_FLAG(int, num_warmups, 3, "Number of warmup iterations");
+
 // --- Common Settings ---
 constexpr int PORT = 12345;
 constexpr const char *HOST = "127.0.0.1";
 constexpr size_t CHUNK_SIZE = 8192;                        // 8 KB
 constexpr uint64_t TOTAL_DATA_SIZE = 128ULL * 1024 * 1024; // 128 MiB
 constexpr uint64_t NUM_PACKETS = TOTAL_DATA_SIZE / CHUNK_SIZE;
-constexpr int NUM_ITERATIONS = 10; // Number of measurement iterations
 
 // --- Error Handling Function ---
 void die(const char *message) {
@@ -33,7 +38,7 @@ void die(const char *message) {
 }
 
 // --- Receiver (Child Process) Operations ---
-void run_receiver(int pipe_write_fd) {
+void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations) {
   int sockfd;
   struct sockaddr_in serv_addr, cli_addr;
   socklen_t cli_len = sizeof(cli_addr);
@@ -68,7 +73,7 @@ void run_receiver(int pipe_write_fd) {
 
   // Perform warm-up runs
   VLOG(1) << "[Receiver] Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     uint64_t total_bytes_received = 0;
     ssize_t bytes_received;
 
@@ -88,14 +93,15 @@ void run_receiver(int pipe_write_fd) {
           total_bytes_received += bytes_received;
         }
       }
-      VLOG(1) << "[Receiver] Warm-up " << warmup + 1 << "/3 completed";
+      VLOG(1) << "[Receiver] Warm-up " << warmup + 1 << "/" << num_warmups
+              << " completed";
     }
   }
   VLOG(1) << "[Receiver] Warm-up complete. Starting measurements...";
 
   std::vector<double> durations;
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     uint64_t total_bytes_received = 0;
     ssize_t bytes_received;
 
@@ -113,7 +119,7 @@ void run_receiver(int pipe_write_fd) {
       // Start measurement
       auto start_time = std::chrono::high_resolution_clock::now();
       LOG(INFO) << "[Receiver] Iteration " << iteration + 1 << "/"
-                << NUM_ITERATIONS << " started...";
+                << num_iterations << " started...";
 
       // Receive data until total size is reached
       while (total_bytes_received < TOTAL_DATA_SIZE) {
@@ -134,26 +140,16 @@ void run_receiver(int pipe_write_fd) {
     }
   }
 
-  // Sort durations and exclude min and max
-  std::sort(durations.begin(), durations.end());
-  std::vector<double> filtered_durations(durations.begin() + 1,
-                                         durations.end() - 1);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
 
-  // Calculate average of remaining 8 measurements
-  double average_duration = std::accumulate(filtered_durations.begin(),
-                                            filtered_durations.end(), 0.0) /
-                            filtered_durations.size();
-
-  double gibytes_per_second =
-      (static_cast<double>(TOTAL_DATA_SIZE) / (1024.0 * 1024.0 * 1024.0)) /
-      average_duration;
+  double gibytes_per_second = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << gibytes_per_second << " GiByte/sec";
 
   close(sockfd);
 }
 
 // --- Sender (Parent Process) Operations ---
-void run_sender() {
+void run_sender(int num_warmups, int num_iterations) {
   int sockfd;
   struct sockaddr_in serv_addr;
 
@@ -172,7 +168,7 @@ void run_sender() {
 
   // Perform warm-up runs
   VLOG(1) << "[Sender] Performing warm-up runs...";
-  for (int warmup = 0; warmup < 3; ++warmup) {
+  for (int warmup = 0; warmup < num_warmups; ++warmup) {
     // First packet marked with 'W' to signal warmup
     std::vector<char> warmup_buffer(CHUNK_SIZE, 'W');
     if (sendto(sockfd, warmup_buffer.data(), CHUNK_SIZE, 0,
@@ -192,14 +188,15 @@ void run_sender() {
         perror("Sender: sendto() error during warmup");
       }
     }
-    VLOG(1) << "[Sender] Warm-up " << warmup + 1 << "/3 completed";
+    VLOG(1) << "[Sender] Warm-up " << warmup + 1 << "/" << num_warmups
+            << " completed";
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   VLOG(1) << "[Sender] Warm-up complete. Starting measurements...";
 
-  for (int iteration = 0; iteration < NUM_ITERATIONS; ++iteration) {
+  for (int iteration = 0; iteration < num_iterations; ++iteration) {
     LOG(INFO) << "[Sender] Starting iteration " << iteration + 1 << "/"
-              << NUM_ITERATIONS;
+              << num_iterations;
 
     // First packet marked with 'S' to signal start
     std::vector<char> start_buffer(CHUNK_SIZE, 'S');
@@ -222,7 +219,7 @@ void run_sender() {
     }
 
     // Small delay between iterations
-    if (iteration < NUM_ITERATIONS - 1) {
+    if (iteration < num_iterations - 1) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
@@ -237,6 +234,16 @@ ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("UDP Bandwidth Benchmark");
   absl::ParseCommandLine(argc, argv);
+
+  // Get values from command line flags
+  int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+  int num_warmups = absl::GetFlag(FLAGS_num_warmups);
+
+  // Validate num_iterations
+  if (num_iterations < 3) {
+    LOG(ERROR) << "num_iterations must be at least 3, got: " << num_iterations;
+    return 1;
+  }
 
   std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
   if (vlog.has_value()) {
@@ -264,7 +271,8 @@ int main(int argc, char *argv[]) {
     // --- Child Process (Receiver) ---
     close(pipefd[0]); // Close read end of pipe (not used by child)
     run_receiver(
-        pipefd[1]); // Execute receiver process (pass write end of pipe)
+        pipefd[1], num_warmups,
+        num_iterations); // Execute receiver process (pass write end of pipe)
     exit(0);
 
   } else {
@@ -283,7 +291,7 @@ int main(int argc, char *argv[]) {
       LOG(INFO) << "[Main] Receiver is ready. Starting transmission.";
     }
 
-    run_sender(); // Execute sender process
+    run_sender(num_warmups, num_iterations); // Execute sender process
 
     // Wait for child process to terminate (prevent zombie processes)
     wait(NULL);

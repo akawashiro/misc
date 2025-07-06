@@ -11,7 +11,8 @@
 
 #include "common.h"
 
-void memcpyInMultiThread(uint64_t n_threads) {
+void memcpyInMultiThread(uint64_t n_threads, int num_warmups,
+                         int num_iterations) {
   std::vector<uint8_t> src = generateDataToSend();
   std::vector<uint8_t> dst(DATA_SIZE, 0x00);
   uint64_t chunk_size = DATA_SIZE / n_threads;
@@ -24,7 +25,7 @@ void memcpyInMultiThread(uint64_t n_threads) {
   };
 
   std::vector<double> durations;
-  for (size_t i = 0; i < NUM_WARMUPS + NUM_ITERATIONS; ++i) {
+  for (size_t i = 0; i < num_warmups + num_iterations; ++i) {
     std::fill(dst.begin(), dst.end(), 0x00);
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -37,14 +38,14 @@ void memcpyInMultiThread(uint64_t n_threads) {
     }
     auto end = std::chrono::high_resolution_clock::now();
 
-    if (NUM_WARMUPS <= i) {
+    if (num_warmups <= i) {
       const double duration =
           std::chrono::duration<double>(end - start).count();
       durations.push_back(duration);
     }
   }
 
-  double bandwidth = calculateBandwidth(durations);
+  double bandwidth = calculateBandwidth(durations, num_iterations);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec. Threads: " << n_threads;
 }
@@ -65,8 +66,12 @@ int main(int argc, char *argv[]) {
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
 
+  // Get values from command line flags
+  int num_iterations = 10; // Default value
+  int num_warmups = 3;     // Default value
+
   VLOG(1) << "Starting multi-threaded memcpy bandwidth test...";
   for (uint64_t n_threads = 1; n_threads <= 4; ++n_threads) {
-    memcpyInMultiThread(n_threads);
+    memcpyInMultiThread(n_threads, num_warmups, num_iterations);
   }
 }
