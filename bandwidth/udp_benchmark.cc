@@ -25,29 +25,6 @@ constexpr const char *HOST = "127.0.0.1";
 // --- Receiver (Child Process) Operations ---
 void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
                   uint64_t data_size, uint64_t buffer_size) {
-  int sockfd;
-  struct sockaddr_in serv_addr, cli_addr;
-  socklen_t cli_len = sizeof(cli_addr);
-
-  // Create UDP socket
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    LOG(ERROR) << "Receiver: socket() failed" << ": " << strerror(errno);
-    exit(1);
-  }
-
-  // Set receive address information
-  memset(&serv_addr, 0, sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(PORT);
-
-  // Bind address to socket
-  if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    close(pipe_write_fd); // Close pipe before exiting
-    LOG(ERROR) << "Receiver: bind() failed" << ": " << strerror(errno);
-    exit(1);
-  }
-
   // Notify parent process that receiver is ready
   char signal_char = 'R'; // 'R' for Ready
   if (write(pipe_write_fd, &signal_char, 1) != 1) {
@@ -63,6 +40,28 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
+    int sockfd;
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t cli_len = sizeof(cli_addr);
+
+    // Create UDP socket for each iteration
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+      LOG(ERROR) << "Receiver: socket() failed" << ": " << strerror(errno);
+      exit(1);
+    }
+
+    // Set receive address information
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(PORT);
+
+    // Bind address to socket
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+      LOG(ERROR) << "Receiver: bind() failed" << ": " << strerror(errno);
+      close(sockfd);
+      exit(1);
+    }
     bool is_warmup = iteration < num_warmups;
     int display_iteration =
         is_warmup ? iteration + 1 : iteration - num_warmups + 1;
@@ -130,42 +129,43 @@ void run_receiver(int pipe_write_fd, int num_warmups, int num_iterations,
                 << "Data verification passed.";
       }
     }
+
+    // Close socket for this iteration
+    close(sockfd);
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
   double gibytes_per_second = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << gibytes_per_second << " GiByte/sec";
-
-  close(sockfd);
 }
 
 // --- Sender (Parent Process) Operations ---
 void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
                 uint64_t buffer_size) {
-  int sockfd;
-  struct sockaddr_in serv_addr;
-
-  // Create UDP socket
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    LOG(ERROR) << "Sender: socket() failed" << ": " << strerror(errno);
-    exit(1);
-  }
-
-  // Set destination (receive) address information
-  memset(&serv_addr, 0, sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(PORT);
-  if (inet_aton(HOST, &serv_addr.sin_addr) == 0) {
-    LOG(ERROR) << "Sender: inet_aton() failed" << ": " << strerror(errno);
-    exit(1);
-  }
-
   // Generate data to send once
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
+    int sockfd;
+    struct sockaddr_in serv_addr;
+
+    // Create UDP socket for each iteration
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+      LOG(ERROR) << "Sender: socket() failed" << ": " << strerror(errno);
+      exit(1);
+    }
+
+    // Set destination (receive) address information
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    if (inet_aton(HOST, &serv_addr.sin_addr) == 0) {
+      LOG(ERROR) << "Sender: inet_aton() failed" << ": " << strerror(errno);
+      close(sockfd);
+      exit(1);
+    }
     bool is_warmup = iteration < num_warmups;
     int display_iteration =
         is_warmup ? iteration + 1 : iteration - num_warmups + 1;
@@ -204,6 +204,9 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
       }
     }
 
+    // Close socket for this iteration
+    close(sockfd);
+
     // Small delay between iterations
     if (iteration < num_warmups + num_iterations - 1) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -211,7 +214,6 @@ void run_sender(int num_warmups, int num_iterations, uint64_t data_size,
   }
 
   LOG(INFO) << "[Sender] All iterations complete.";
-  close(sockfd);
 }
 
 int run_udp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,

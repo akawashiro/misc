@@ -23,53 +23,14 @@ const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
                      uint64_t buffer_size) {
-  int listen_fd, conn_fd;
-  struct sockaddr_in receive_addr, send_addr;
-  socklen_t send_len = sizeof(send_addr);
-
-  // Create a TCP socket
-  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (listen_fd == -1) {
-    LOG(ERROR) << "receive: socket: " << strerror(errno);
-    return;
-  }
-
-  // Allow immediate reuse of the port after the program exits
-  int optval = 1;
-  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
-                 sizeof(optval)) == -1) {
-    LOG(ERROR) << "receive: setsockopt SO_REUSEADDR: " << strerror(errno);
-    close(listen_fd);
-    return;
-  }
-
-  // Configure receive address
-  memset(&receive_addr, 0, sizeof(receive_addr));
-  receive_addr.sin_family = AF_INET;
-  receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
-  receive_addr.sin_port = htons(PORT);
-
-  // Bind the socket to the specified IP address and port
-  if (bind(listen_fd, (struct sockaddr *)&receive_addr, sizeof(receive_addr)) ==
-      -1) {
-    LOG(ERROR) << "receive: bind: " << strerror(errno);
-    close(listen_fd);
-    return;
-  }
-
-  // Listen for incoming connections
-  if (listen(listen_fd, 5) == -1) {
-    LOG(ERROR) << "receive: listen: " << strerror(errno);
-    close(listen_fd);
-    return;
-  }
-
-  VLOG(1) << "Receiver: Listening on " << LOOPBACK_IP << ":" << PORT;
-
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
+    int listen_fd, conn_fd;
+    struct sockaddr_in receive_addr, send_addr;
+    socklen_t send_len = sizeof(send_addr);
+
     bool is_warmup = iteration < num_warmups;
     int display_iteration =
         is_warmup ? iteration + 1 : iteration - num_warmups + 1;
@@ -79,7 +40,47 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
               << num_warmups;
     }
 
-    // Accept a sender connection for each iteration
+    // Create a TCP socket for each iteration
+    listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_fd == -1) {
+      LOG(ERROR) << "receive: socket: " << strerror(errno);
+      return;
+    }
+
+    // Allow immediate reuse of the port after the program exits
+    int optval = 1;
+    if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                   sizeof(optval)) == -1) {
+      LOG(ERROR) << "receive: setsockopt SO_REUSEADDR: " << strerror(errno);
+      close(listen_fd);
+      return;
+    }
+
+    // Configure receive address
+    memset(&receive_addr, 0, sizeof(receive_addr));
+    receive_addr.sin_family = AF_INET;
+    receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
+    receive_addr.sin_port = htons(PORT);
+
+    // Bind the socket to the specified IP address and port
+    if (bind(listen_fd, (struct sockaddr *)&receive_addr,
+             sizeof(receive_addr)) == -1) {
+      LOG(ERROR) << "receive: bind: " << strerror(errno);
+      close(listen_fd);
+      return;
+    }
+
+    // Listen for incoming connections
+    if (listen(listen_fd, 5) == -1) {
+      LOG(ERROR) << "receive: listen: " << strerror(errno);
+      close(listen_fd);
+      return;
+    }
+
+    VLOG(1) << ReceivePrefix(display_iteration) << "Listening on "
+            << LOOPBACK_IP << ":" << PORT;
+
+    // Accept a sender connection for this iteration
     conn_fd = accept(listen_fd, (struct sockaddr *)&send_addr, &send_len);
     if (conn_fd == -1) {
       LOG(ERROR) << "receive: accept: " << strerror(errno);
@@ -138,8 +139,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
               << "Data verification passed.";
     }
 
-    // Close connection for this iteration
+    // Close connection and listening socket for this iteration
     close(conn_fd);
+    close(listen_fd);
   }
 
   double bandwidth_gibps =
@@ -148,8 +150,6 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
 
-  // Close sockets
-  close(listen_fd);
   VLOG(1) << "Receiver: Exiting.";
 }
 
