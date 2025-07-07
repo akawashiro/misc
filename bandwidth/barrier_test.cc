@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 
 #include <optional>
+#include <thread>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -38,7 +39,8 @@ public:
       shm_data_->count_.store(0);
     } else if (shm_fd_ < 0) {
       if (errno == EEXIST) {
-        VLOG(1) << "Shared memory with id '" << shm_id_
+        VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+                << " - Shared memory with id '" << shm_id_
                 << "' already exists, opening it instead.";
         shm_fd_ = shm_open(shm_id_.c_str(), O_RDWR, 0644);
         CHECK(shm_fd_ >= 0) << "Failed to open existing shared memory with id '"
@@ -55,24 +57,61 @@ public:
       }
     }
     sem_post(init_sem_);
+    // Critical section ends here.
+
+    shm_data_->n_users_.fetch_add(1);
+
+    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+            << " - SenseReversingBarrier initialized with id '" << shm_id_
+            << "' for " << n_ << " users. Waiting for all users to join.";
+    while (shm_data_->n_users_.load() < n_) {
+      std::this_thread::yield();
+    }
+    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+            << " - All users have joined the barrier with id '" << shm_id_
+            << "'. Proceeding.";
   }
+
   ~SenseReversingBarrier() {
-    if (init_sem_) {
-      sem_close(init_sem_);
-      sem_unlink(sem_id_.c_str());
+    uint64_t remaining_users = shm_data_->n_users_.fetch_sub(1);
+    if (remaining_users == 1) {
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - Last user of shared memory with id '" << shm_id_
+              << "' is exiting. Unlinking shared memory.";
+      if (init_sem_) {
+        sem_close(init_sem_);
+        sem_unlink(sem_id_.c_str());
+      }
+      if (shm_fd_ >= 0) {
+        munmap(shm_data_, sizeof(ShmData));
+        close(shm_fd_);
+        shm_unlink(shm_id_.c_str());
+      }
+    } else {
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - Not the last user of shared memory with id '" << shm_id_
+              << " " << remaining_users << " users remaining.";
+      if (init_sem_) {
+        sem_close(init_sem_);
+      }
+      if (shm_fd_ >= 0) {
+        munmap(shm_data_, sizeof(ShmData));
+        close(shm_fd_);
+      }
     }
   }
 
 private:
   struct ShmData {
     std::atomic<uint64_t> count_;
-    std::atomic<bool> sense_{false};
+    std::atomic<bool> shared_sense_{false};
     std::atomic<uint64_t> n_users_{0};
   };
 
   sem_t *init_sem_;
   int shm_fd_;
   ShmData *shm_data_;
+  bool sense_ = true;
 
   const uint64_t n_;
   const std::string sem_id_;
@@ -89,6 +128,7 @@ void TestConstructor() {
     return;
   } else {
     SenseReversingBarrier barrier(2, "/TestBarrier");
+    waitpid(pid, nullptr, 0);
     return;
   }
 }
