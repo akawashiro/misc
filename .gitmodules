@@ -1,3 +1,6 @@
 [submodule "bandwidth/abseil-cpp"]
 	path = bandwidth/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
+[submodule "bandwidth/Catch2"]
+	path = bandwidth/Catch2
+	url = https://github.com/catchorg/Catch2.git
