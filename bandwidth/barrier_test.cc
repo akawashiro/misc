@@ -15,7 +15,7 @@
 class SenseReversingBarrier {
 public:
   SenseReversingBarrier(int n, const std::string &id) : n_(n), id_(id) {
-    init_sem_ = sem_open(id.c_str(), O_CREAT, 0644, 1);
+    init_sem_ = sem_open((id + "_sem").c_str(), O_CREAT, 0644, 1);
     CHECK(init_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
                                    << id_ << "': " << strerror(errno);
     sem_wait(init_sem_);
