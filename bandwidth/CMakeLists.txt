@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(bandwidth LANGUAGES CXX)
+enable_testing()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_subdirectory(abseil-cpp)
-add_subdirectory(Catch2)
 
 set(BANDWIDTH_LIBS absl::log absl::base absl::synchronization
                    absl::log_initialize absl::flags absl::flags_parse)
@@ -54,4 +55,5 @@ target_link_libraries(
   pthread)
 
 add_executable(barrier_test barrier_test.cc)
-target_link_libraries(barrier_test Catch2::Catch2WithMain)
+target_link_libraries(barrier_test ${BANDWIDTH_LIBS} rt pthread)
+add_test(NAME barrier_test COMMAND barrier_test)
