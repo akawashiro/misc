@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <semaphore.h>
+#include <sys/mman.h>
 #include <sys/wait.h>
 
 #include <optional>
@@ -14,26 +15,68 @@
 
 class SenseReversingBarrier {
 public:
-  SenseReversingBarrier(int n, const std::string &id) : n_(n), id_(id) {
-    init_sem_ = sem_open((id + "_sem").c_str(), O_CREAT, 0644, 1);
+  SenseReversingBarrier(int n, const std::string &id)
+      : n_(n), sem_id_(id + "_sem"), shm_id_(id + "_shm") {
+    init_sem_ = sem_open(sem_id_.c_str(), O_CREAT, 0644, 1);
     CHECK(init_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
-                                   << id_ << "': " << strerror(errno);
+                                   << sem_id_ << "': " << strerror(errno);
+
+    // Critical section to ensure all processes hold initialized shared memory.
     sem_wait(init_sem_);
-    VLOG(1) << "SenseReversingBarrier initialized with id: " << id_
-            << ", n: " << n_;
+    shm_fd_ = shm_open(shm_id_.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
+    if (shm_fd_ >= 0) {
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - Created shared memory with id '" << shm_id_ << "'";
+      CHECK(ftruncate(shm_fd_, sizeof(ShmData)) == 0)
+          << "Failed to set size of shared memory with id '" << shm_id_
+          << "': " << strerror(errno);
+      shm_data_ = static_cast<ShmData *>(mmap(nullptr, sizeof(ShmData),
+                                              PROT_READ | PROT_WRITE,
+                                              MAP_SHARED, shm_fd_, 0));
+      CHECK(shm_data_ != MAP_FAILED) << "Failed to map shared memory with id '"
+                                     << shm_id_ << "': " << strerror(errno);
+      shm_data_->count_.store(0);
+    } else if (shm_fd_ < 0) {
+      if (errno == EEXIST) {
+        VLOG(1) << "Shared memory with id '" << shm_id_
+                << "' already exists, opening it instead.";
+        shm_fd_ = shm_open(shm_id_.c_str(), O_RDWR, 0644);
+        CHECK(shm_fd_ >= 0) << "Failed to open existing shared memory with id '"
+                            << shm_id_ << "': " << strerror(errno);
+        shm_data_ = static_cast<ShmData *>(mmap(nullptr, sizeof(ShmData),
+                                                PROT_READ | PROT_WRITE,
+                                                MAP_SHARED, shm_fd_, 0));
+        CHECK(shm_data_ != MAP_FAILED)
+            << "Failed to map existing shared memory with id '" << shm_id_
+            << "': " << strerror(errno);
+      } else {
+        CHECK(false) << "Failed to create shared memory with id '" << shm_id_
+                     << "': " << strerror(errno);
+      }
+    }
     sem_post(init_sem_);
   }
   ~SenseReversingBarrier() {
     if (init_sem_) {
       sem_close(init_sem_);
-      sem_unlink(id_.c_str());
+      sem_unlink(sem_id_.c_str());
     }
   }
 
 private:
+  struct ShmData {
+    std::atomic<uint64_t> count_;
+    std::atomic<bool> sense_{false};
+    std::atomic<uint64_t> n_users_{0};
+  };
+
   sem_t *init_sem_;
+  int shm_fd_;
+  ShmData *shm_data_;
+
   const uint64_t n_;
-  const std::string id_;
+  const std::string sem_id_;
+  const std::string shm_id_;
 };
 
 namespace {
