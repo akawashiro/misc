@@ -20,15 +20,12 @@ public:
   SenseReversingBarrier(int n, const std::string &id)
       : n_(n), init_sem_id_(id + "_init_sem"), shm_sem_id_(id + "_shm_sem"),
         shm_id_(id + "_shm") {
-    init_sem_ = sem_open(init_sem_id_.c_str(), O_CREAT, 0644, 1);
-    CHECK(init_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
-                                   << init_sem_id_ << "': " << strerror(errno);
     shm_sem_ = sem_open(shm_sem_id_.c_str(), O_CREAT, 0644, 1);
     CHECK(shm_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
                                   << shm_sem_id_ << "': " << strerror(errno);
 
     // Critical section to ensure all processes hold initialized shared memory.
-    sem_wait(init_sem_);
+    sem_wait(shm_sem_);
     shm_fd_ = shm_open(shm_id_.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
     if (shm_fd_ >= 0) {
       VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
@@ -64,7 +61,7 @@ public:
                      << "': " << strerror(errno);
       }
     }
-    sem_post(init_sem_);
+    sem_post(shm_sem_);
     // Critical section ends here.
 
     sem_wait(shm_sem_);
@@ -130,10 +127,6 @@ public:
       VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
               << " - Last user of shared memory with id '" << shm_id_
               << "' is exiting. Unlinking shared memory.";
-      if (init_sem_) {
-        sem_close(init_sem_);
-        sem_unlink(init_sem_id_.c_str());
-      }
       if (shm_sem_) {
         sem_close(shm_sem_);
         sem_unlink(shm_sem_id_.c_str());
@@ -147,9 +140,6 @@ public:
       VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
               << " - Not the last user of shared memory with id '" << shm_id_
               << " " << remaining_users << " users remaining.";
-      if (init_sem_) {
-        sem_close(init_sem_);
-      }
       if (shm_sem_) {
         sem_close(shm_sem_);
       }
@@ -167,7 +157,6 @@ private:
     uint64_t n_users_{0};
   };
 
-  sem_t *init_sem_;
   sem_t *shm_sem_;
   int shm_fd_;
   ShmData *shm_data_;
