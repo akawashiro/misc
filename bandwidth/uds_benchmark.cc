@@ -11,10 +11,9 @@
 #include <vector>
 
 #include "absl/log/check.h"
-#include "absl/log/globals.h"
 #include "absl/log/log.h"
-#include "absl/strings/str_cat.h"
 
+#include "barrier.h"
 #include "common.h"
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
@@ -22,6 +21,8 @@ constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
 
 void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
                      uint64_t data_size) {
+  SenseReversingBarrier barrier(2, "/uds_benchmark");
+
   std::vector<double> durations;
   std::vector<uint8_t> read_data(data_size, 0x00);
 
@@ -54,6 +55,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       return;
     }
 
+    barrier.Wait();
     VLOG(1) << ReceivePrefix(iteration) << "Waiting for sender connection on "
             << SOCKET_PATH;
 
@@ -102,6 +104,8 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
 
 void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
                   uint64_t data_size) {
+  SenseReversingBarrier barrier(2, "/uds_benchmark");
+
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
@@ -117,6 +121,7 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
+    barrier.Wait();
     VLOG(1) << SendPrefix(iteration) << "Connecting to receiver on "
             << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {

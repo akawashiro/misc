@@ -5,8 +5,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(abseil-cpp)
 
+add_library(barrier barrier.cc)
+target_link_libraries(barrier absl::log)
 set(BANDWIDTH_LIBS absl::log absl::base absl::synchronization
-                   absl::log_initialize absl::flags absl::flags_parse)
+                   absl::log_initialize absl::flags absl::flags_parse barrier)
 
 add_library(common common.cc)
 target_link_libraries(common ${BANDWIDTH_LIBS})
@@ -54,6 +56,6 @@ target_link_libraries(
   rt
   pthread)
 
-add_executable(barrier_test barrier_test.cc barrier.cc)
+add_executable(barrier_test barrier_test.cc)
 target_link_libraries(barrier_test ${BANDWIDTH_LIBS} rt pthread)
 add_test(NAME barrier_test COMMAND barrier_test)
