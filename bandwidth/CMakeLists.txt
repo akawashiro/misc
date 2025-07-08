@@ -54,6 +54,6 @@ target_link_libraries(
   rt
   pthread)
 
-add_executable(barrier_test barrier_test.cc)
+add_executable(barrier_test barrier_test.cc barrier.cc)
 target_link_libraries(barrier_test ${BANDWIDTH_LIBS} rt pthread)
 add_test(NAME barrier_test COMMAND barrier_test)
