@@ -40,7 +40,10 @@ public:
                                               MAP_SHARED, shm_fd_, 0));
       CHECK(shm_data_ != MAP_FAILED) << "Failed to map shared memory with id '"
                                      << shm_id_ << "': " << strerror(errno);
-      shm_data_->count_.store(0);
+
+      shm_data_->count_ = 0;
+      shm_data_->shared_sense_ = false;
+      shm_data_->n_users_ = 0;
     } else if (shm_fd_ < 0) {
       if (errno == EEXIST) {
         VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
@@ -63,12 +66,20 @@ public:
     sem_post(init_sem_);
     // Critical section ends here.
 
-    shm_data_->n_users_.fetch_add(1);
+    sem_wait(shm_sem_);
+    shm_data_->n_users_++;
+    sem_post(shm_sem_);
 
     VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
             << " - SenseReversingBarrier initialized with id '" << shm_id_
             << "' for " << n_ << " users. Waiting for all users to join.";
-    while (shm_data_->n_users_.load() < n_) {
+    while (true) {
+      sem_wait(shm_sem_);
+      bool all_users_joined = shm_data_->n_users_ >= n_;
+      sem_post(shm_sem_);
+      if (all_users_joined) {
+        break;
+      }
       std::this_thread::yield();
     }
     VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
@@ -77,7 +88,10 @@ public:
   }
 
   ~SenseReversingBarrier() {
-    uint64_t remaining_users = shm_data_->n_users_.fetch_sub(1);
+    sem_wait(shm_sem_);
+    uint64_t remaining_users = shm_data_->n_users_;
+    shm_data_->n_users_--;
+    sem_post(shm_sem_);
     if (remaining_users == 1) {
       VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
               << " - Last user of shared memory with id '" << shm_id_
@@ -114,9 +128,9 @@ public:
 
 private:
   struct ShmData {
-    std::atomic<uint64_t> count_;
-    std::atomic<bool> shared_sense_{false};
-    std::atomic<uint64_t> n_users_{0};
+    uint64_t count_{0};
+    bool shared_sense_{false};
+    uint64_t n_users_{0};
   };
 
   sem_t *init_sem_;
