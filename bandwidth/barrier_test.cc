@@ -17,10 +17,14 @@
 class SenseReversingBarrier {
 public:
   SenseReversingBarrier(int n, const std::string &id)
-      : n_(n), sem_id_(id + "_sem"), shm_id_(id + "_shm") {
-    init_sem_ = sem_open(sem_id_.c_str(), O_CREAT, 0644, 1);
+      : n_(n), init_sem_id_(id + "_init_sem"), shm_sem_id_(id + "_shm_sem"),
+        shm_id_(id + "_shm") {
+    init_sem_ = sem_open(init_sem_id_.c_str(), O_CREAT, 0644, 1);
     CHECK(init_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
-                                   << sem_id_ << "': " << strerror(errno);
+                                   << init_sem_id_ << "': " << strerror(errno);
+    shm_sem_ = sem_open(shm_sem_id_.c_str(), O_CREAT, 0644, 1);
+    CHECK(shm_sem_ != SEM_FAILED) << "Failed to create semaphore with id '"
+                                  << shm_sem_id_ << "': " << strerror(errno);
 
     // Critical section to ensure all processes hold initialized shared memory.
     sem_wait(init_sem_);
@@ -80,7 +84,11 @@ public:
               << "' is exiting. Unlinking shared memory.";
       if (init_sem_) {
         sem_close(init_sem_);
-        sem_unlink(sem_id_.c_str());
+        sem_unlink(init_sem_id_.c_str());
+      }
+      if (shm_sem_) {
+        sem_close(shm_sem_);
+        sem_unlink(shm_sem_id_.c_str());
       }
       if (shm_fd_ >= 0) {
         munmap(shm_data_, sizeof(ShmData));
@@ -93,6 +101,9 @@ public:
               << " " << remaining_users << " users remaining.";
       if (init_sem_) {
         sem_close(init_sem_);
+      }
+      if (shm_sem_) {
+        sem_close(shm_sem_);
       }
       if (shm_fd_ >= 0) {
         munmap(shm_data_, sizeof(ShmData));
@@ -109,12 +120,14 @@ private:
   };
 
   sem_t *init_sem_;
+  sem_t *shm_sem_;
   int shm_fd_;
   ShmData *shm_data_;
   bool sense_ = true;
 
   const uint64_t n_;
-  const std::string sem_id_;
+  const std::string init_sem_id_;
+  const std::string shm_sem_id_;
   const std::string shm_id_;
 };
 
