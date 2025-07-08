@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 
 #include <optional>
+#include <random>
 #include <thread>
 
 #include "absl/flags/flag.h"
@@ -87,6 +88,39 @@ public:
             << "'. Proceeding.";
   }
 
+  void Wait() {
+    bool last_user = false;
+    sem_wait(shm_sem_);
+    shm_data_->count_++;
+    if (shm_data_->count_ == n_) {
+      last_user = true;
+      shm_data_->shared_sense_ = !shm_data_->shared_sense_;
+      shm_data_->count_ = 0;
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - All users reached the barrier with id '" << shm_id_
+              << "'. Sense reversed to " << shm_data_->shared_sense_;
+    }
+    sem_post(shm_sem_);
+
+    if (!last_user) {
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - Waiting for other users to reach the barrier with id '"
+              << shm_id_ << "'.";
+      while (true) {
+        sem_wait(shm_sem_);
+        bool reversed = shm_data_->shared_sense_ != sense_;
+        sem_post(shm_sem_);
+        if (!reversed) {
+          break;
+        }
+      }
+      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
+              << " - All users reached the barrier with id '" << shm_id_;
+    }
+
+    sense_ = !sense_;
+  }
+
   ~SenseReversingBarrier() {
     sem_wait(shm_sem_);
     uint64_t remaining_users = shm_data_->n_users_;
@@ -159,23 +193,72 @@ void TestConstructor() {
     return;
   }
 }
+
+void TestWait() {
+  constexpr int ITERATIONS = 1000;
+  constexpr double MAX_WAIT_MS = 100.0;
+  int pid = fork();
+  CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
+
+  if (pid == 0) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
+    SenseReversingBarrier barrier(2, "/TestBarrier");
+    for (int i = 0; i < ITERATIONS; ++i) {
+      LOG(INFO) << "Child waiting at barrier iteration " << i;
+      barrier.Wait();
+      double sleep_ms = dis(gen);
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(static_cast<int>(sleep_ms)));
+      LOG(INFO) << "Child passed barrier iteration " << i;
+    }
+    return;
+  } else {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
+    SenseReversingBarrier barrier(2, "/TestBarrier");
+    for (int i = 0; i < ITERATIONS; ++i) {
+      LOG(INFO) << "Parent waiting at barrier iteration " << i;
+      barrier.Wait();
+      double sleep_ms = dis(gen);
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(static_cast<int>(sleep_ms)));
+      LOG(INFO) << "Parent passed barrier iteration " << i;
+    }
+    waitpid(pid, nullptr, 0);
+    return;
+  }
+}
 } // namespace
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
+ABSL_FLAG(std::string, test_type, "constructor",
+          "Type of test to run. Available types: constructor, wait");
 
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Sense Reversing Barrier Test");
   absl::ParseCommandLine(argc, argv);
-  std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
+  const std::optional<int> vlog = absl::GetFlag(FLAGS_vlog);
   if (vlog.has_value()) {
     int v = *vlog;
     absl::SetGlobalVLogLevel(v);
   }
+  const std::string test_type = absl::GetFlag(FLAGS_test_type);
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
 
-  TestConstructor();
+  if (test_type == "constructor") {
+    TestConstructor();
+  } else if (test_type == "wait") {
+    TestWait();
+  } else {
+    LOG(ERROR) << "Unknown test type: " << test_type
+               << ". Available types: constructor, wait";
+    return 1;
+  }
 
   return 0;
 }
