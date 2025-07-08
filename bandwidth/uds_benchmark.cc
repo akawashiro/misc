@@ -55,13 +55,13 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       return;
     }
 
-    barrier.Wait();
     VLOG(1) << ReceivePrefix(iteration) << "Waiting for sender connection on "
             << SOCKET_PATH;
 
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
+    barrier.Wait();
     VLOG(1) << ReceivePrefix(iteration) << "Sender connected.";
     VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
     std::vector<uint8_t> recv_buffer(buffer_size);
@@ -121,7 +121,6 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH.c_str(), sizeof(addr.sun_path) - 1);
 
-    barrier.Wait();
     VLOG(1) << SendPrefix(iteration) << "Connecting to receiver on "
             << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
@@ -138,6 +137,7 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       }
     }
 
+    barrier.Wait();
     VLOG(1) << SendPrefix(iteration) << "Begin data transfer.";
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();

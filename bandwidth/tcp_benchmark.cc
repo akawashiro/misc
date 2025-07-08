@@ -1,20 +1,19 @@
 #include "tcp_benchmark.h"
 
-#include <algorithm>    // For std::min
-#include <arpa/inet.h>  // For inet_addr
-#include <chrono>       // For time measurement
+#include <algorithm>
+#include <arpa/inet.h>
+#include <chrono>
 #include <cstring>      // For memset, strerror
 #include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
-#include <numeric>      // For std::accumulate
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h> // For fork, close
 #include <vector>
 
-#include "absl/log/globals.h"
 #include "absl/log/log.h"
 
 #include "common.h"
+#include "barrier.h"
 
 namespace {
 const int PORT = 12345; // Port number for TCP communication
@@ -23,6 +22,8 @@ const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
                      uint64_t buffer_size) {
+    SenseReversingBarrier barrier(2, "/tcp_benchmark");
+
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -94,6 +95,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     std::vector<uint8_t> recv_buffer(buffer_size);
     std::vector<uint8_t> received_data;
     received_data.reserve(data_size);
+
+    barrier.Wait();
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -150,6 +153,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
+    SenseReversingBarrier barrier(2, "/tcp_benchmark");
+
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
@@ -195,6 +200,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
               << "Connected to receiver. Sending data...";
     }
 
+    barrier.Wait();
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
