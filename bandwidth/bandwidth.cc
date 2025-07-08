@@ -15,11 +15,10 @@
 #include "pipe_benchmark.h"
 #include "shm_benchmark.h"
 #include "tcp_benchmark.h"
-#include "udp_benchmark.h"
 #include "uds_benchmark.h"
 
 ABSL_FLAG(std::string, type, "",
-          "Benchmark type to run (memcpy, memcpy_mt, tcp, udp, uds, pipe, "
+          "Benchmark type to run (memcpy, memcpy_mt, tcp, uds, pipe, "
           "mmap, shm)");
 ABSL_FLAG(int, num_iterations, 10,
           "Number of measurement iterations (minimum 3)");
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
   // Validate type
   if (type.empty()) {
     LOG(ERROR) << "Must specify --type. Available types: memcpy, memcpy_mt, "
-                  "tcp, udp, uds, pipe, mmap, shm";
+                  "tcp, uds, pipe, mmap, shm";
     return 1;
   }
 
@@ -107,9 +106,6 @@ int main(int argc, char *argv[]) {
   } else if (type == "tcp") {
     result =
         run_tcp_benchmark(num_iterations, num_warmups, data_size, buffer_size);
-  } else if (type == "udp") {
-    result =
-        run_udp_benchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "uds") {
     result =
         run_uds_benchmark(num_iterations, num_warmups, data_size, buffer_size);

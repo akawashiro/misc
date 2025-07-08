@@ -25,9 +25,6 @@ target_link_libraries(memcpy_mt_benchmark ${BANDWIDTH_LIBS})
 add_library(tcp_benchmark tcp_benchmark.cc)
 target_link_libraries(tcp_benchmark ${BANDWIDTH_LIBS})
 
-add_library(udp_benchmark udp_benchmark.cc)
-target_link_libraries(udp_benchmark ${BANDWIDTH_LIBS})
-
 add_library(uds_benchmark uds_benchmark.cc)
 target_link_libraries(uds_benchmark ${BANDWIDTH_LIBS})
 
