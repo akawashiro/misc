@@ -7,8 +7,14 @@ add_subdirectory(abseil-cpp)
 
 add_library(barrier barrier.cc)
 target_link_libraries(barrier absl::log)
-set(BANDWIDTH_LIBS absl::log absl::base absl::synchronization
-                   absl::log_initialize absl::flags absl::flags_parse barrier)
+set(BANDWIDTH_LIBS
+    absl::log
+    absl::base
+    absl::synchronization
+    absl::log_initialize
+    absl::flags
+    absl::flags_parse
+    barrier)
 
 add_library(common common.cc)
 target_link_libraries(common ${BANDWIDTH_LIBS})
@@ -44,7 +50,6 @@ target_link_libraries(
   memcpy_benchmark
   memcpy_mt_benchmark
   tcp_benchmark
-  udp_benchmark
   uds_benchmark
   pipe_benchmark
   mmap_benchmark

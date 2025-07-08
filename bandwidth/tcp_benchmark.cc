@@ -12,8 +12,8 @@
 
 #include "absl/log/log.h"
 
-#include "common.h"
 #include "barrier.h"
+#include "common.h"
 
 namespace {
 const int PORT = 12345; // Port number for TCP communication
@@ -22,7 +22,7 @@ const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
                      uint64_t buffer_size) {
-    SenseReversingBarrier barrier(2, "/tcp_benchmark");
+  SenseReversingBarrier barrier(2, "/tcp_benchmark");
 
   std::vector<double> durations;
 
@@ -153,7 +153,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
-    SenseReversingBarrier barrier(2, "/tcp_benchmark");
+  SenseReversingBarrier barrier(2, "/tcp_benchmark");
 
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;

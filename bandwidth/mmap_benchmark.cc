@@ -1,20 +1,20 @@
 #include "mmap_benchmark.h"
 
-#include <algorithm> // For std::min
-#include <chrono>
-#include <cstring>
-#include <fcntl.h> // For open
-#include <numeric>
+#include <fcntl.h>
 #include <string>
 #include <sys/mman.h> // For mmap, munmap
 #include <sys/stat.h> // For fstat
 #include <sys/wait.h> // For wait
 #include <unistd.h>   // For fork, close, ftruncate
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
 #include <vector>
 
-#include "absl/log/globals.h"
 #include "absl/log/log.h"
 
+#include "barrier.h"
 #include "common.h"
 
 namespace {
@@ -32,6 +32,8 @@ struct sync_data {
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
+  SenseReversingBarrier barrier(2, "/mmap_benchmark");
+
   // Create and open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fd == -1) {
@@ -126,6 +128,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 }
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
+  SenseReversingBarrier barrier(2, "/mmap_benchmark");
+
   // Give sender time to create the file
   usleep(100000); // 100ms
 

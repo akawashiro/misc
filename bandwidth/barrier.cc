@@ -5,8 +5,8 @@
 
 #include <thread>
 
-#include "absl/log/log.h"
 #include "absl/log/check.h"
+#include "absl/log/log.h"
 
 SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
     : n_(n), init_sem_id_(id + "_init_sem"), shm_sem_id_(id + "_shm_sem"),
