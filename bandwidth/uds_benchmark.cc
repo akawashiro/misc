@@ -62,10 +62,10 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     conn_fd = accept(listen_fd, NULL, NULL);
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
-    barrier.Wait();
     VLOG(1) << ReceivePrefix(iteration) << "Sender connected.";
     VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
     std::vector<uint8_t> recv_buffer(buffer_size);
+    barrier.Wait();
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -94,7 +94,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
       VLOG(1) << ReceivePrefix(iteration)
-              << "Time taken: " << elapsed_time.count() << " seconds.";
+              << "Time taken: " << elapsed_time.count() * 1000 << " ms.";
     }
   }
 
@@ -160,8 +160,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count()
-              << " seconds.";
+      VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
     close(sock_fd);
   }
