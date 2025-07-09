@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <chrono>
-#include <cstring>      // For memset, strerror
-#include <netinet/in.h> // For sockaddr_in and IPPROTO_TCP
+#include <cstring>
+#include <netinet/in.h>
 #include <string>
 #include <sys/socket.h>
-#include <unistd.h> // For fork, close
+#include <unistd.h>
 #include <vector>
 
 #include "absl/log/log.h"
@@ -16,13 +16,13 @@
 #include "common.h"
 
 namespace {
-const int PORT = 12345; // Port number for TCP communication
-const std::string LOOPBACK_IP = "127.0.0.1"; // Localhost IP address
-// BUFFER_SIZE is now passed as a parameter
+const int PORT = 12345;
+const std::string LOOPBACK_IP = "127.0.0.1";
+const std::string BARRIER_ID = "/tcp_benchmark";
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
                      uint64_t buffer_size) {
-  SenseReversingBarrier barrier(2, "/tcp_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
 
@@ -142,18 +142,17 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     close(listen_fd);
   }
 
-  double bandwidth_gibps =
-      calculateBandwidth(durations, num_iterations, data_size) /
-      (1024.0 * 1024.0 * 1024.0);
+  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
+            << " GiByte/sec. Receiver";
 
   VLOG(1) << "Receiver: Exiting.";
 }
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
-  SenseReversingBarrier barrier(2, "/tcp_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
@@ -236,12 +235,9 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
   }
 
-  double bandwidth_gibps =
-      calculateBandwidth(durations, num_iterations, data_size) /
-      (1024.0 * 1024.0 * 1024.0);
+  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
 
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
-
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
   VLOG(1) << "Sender: Exiting.";
 }
 
@@ -249,6 +245,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
                       uint64_t buffer_size) {
+  SenseReversingBarrier::ClearResource(BARRIER_ID);
+
   pid_t pid = fork();
 
   if (pid == -1) {

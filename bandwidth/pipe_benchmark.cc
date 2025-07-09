@@ -12,9 +12,13 @@
 #include "barrier.h"
 #include "common.h"
 
+namespace {
+
+const std::string BARRIER_ID = "/pipe_benchmark";
+
 void send_process(int write_fd, int num_warmups, int num_iterations,
                   uint64_t data_size, uint64_t buffer_size) {
-  SenseReversingBarrier barrier(2, "/pipe_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
@@ -65,7 +69,7 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
 
 void receive_process(int read_fd, int num_warmups, int num_iterations,
                      uint64_t data_size, uint64_t buffer_size) {
-  SenseReversingBarrier barrier(2, "/pipe_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
 
@@ -129,6 +133,8 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
   close(read_fd);
   VLOG(1) << "Receiver: Exiting.";
 }
+
+} // namespace
 
 int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
                        uint64_t buffer_size) {
