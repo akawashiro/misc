@@ -1,8 +1,12 @@
+#include <string>
 #include <sys/wait.h>
 
+#include <filesystem>
+#include <fstream>
 #include <optional>
 #include <random>
 #include <thread>
+#include <vector>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -40,22 +44,26 @@ void WaitWithoutSleep(int num_processes, int num_iterations) {
   }
 }
 
-void WaitWithRandomSleep(int num_processes, int num_iterations) {
+std::vector<std::chrono::high_resolution_clock::time_point>
+WaitWithRandomSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
   SenseReversingBarrier barrier(num_processes, "/TestBarrier");
 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
+  std::vector<std::chrono::high_resolution_clock::time_point> passed_times;
 
   for (int j = 0; j < num_iterations; ++j) {
     LOG(INFO) << "Waiting at barrier iteration " << j;
-    barrier.Wait();
     double sleep_ms = dis(gen);
     std::this_thread::sleep_for(
         std::chrono::milliseconds(static_cast<int>(sleep_ms)));
+    barrier.Wait();
+    passed_times.push_back(std::chrono::high_resolution_clock::now());
     LOG(INFO) << "Passed barrier iteration " << j;
   }
+  return passed_times;
 }
 
 void TestWaitWithoutSleep(int num_processes, int num_iterations) {
@@ -92,22 +100,89 @@ void TestWaitWithoutSleep(int num_processes, int num_iterations) {
   return;
 }
 
+void RecordPassedTimesToFile(
+    const std::vector<std::chrono::high_resolution_clock::time_point> &times,
+    const std::filesystem::path &file_path) {
+  std::ofstream file(file_path);
+  if (!file.is_open()) {
+    LOG(ERROR) << "Failed to open file for writing: " << file_path;
+    return;
+  }
+
+  for (const auto &time : times) {
+    auto duration = time.time_since_epoch();
+    file << std::chrono::duration_cast<std::chrono::nanoseconds>(duration)
+                .count()
+         << "\n";
+  }
+  file.close();
+}
+
+std::vector<std::chrono::high_resolution_clock::time_point>
+ReadPassedTimesFromFile(const std::filesystem::path &file_path) {
+  std::vector<std::chrono::high_resolution_clock::time_point> times;
+  std::ifstream file(file_path);
+  if (!file.is_open()) {
+    LOG(ERROR) << "Failed to open file for reading: " << file_path;
+    return times;
+  }
+  std::string line;
+  while (std::getline(file, line)) {
+    try {
+      auto nanoseconds = std::stoll(line);
+      times.push_back(std::chrono::high_resolution_clock::time_point(
+          std::chrono::nanoseconds(nanoseconds)));
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Failed to parse time from file: " << e.what();
+    }
+  }
+  file.close();
+  return times;
+}
+
 void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
   std::vector<int> pids;
+
+  std::string directory_name =
+      "TestWaitWithoutSleep_" +
+      std::to_string(
+          std::chrono::high_resolution_clock::now().time_since_epoch().count());
+  std::filesystem::path temp_dir_path =
+      std::filesystem::temp_directory_path() / directory_name;
+  std::filesystem::create_directory(temp_dir_path);
 
   for (int i = 0; i < num_processes - 1; ++i) {
     int pid = fork();
     CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
 
     if (pid == 0) {
-      WaitWithRandomSleep(num_processes, num_iterations);
+      const auto passed_times =
+          WaitWithRandomSleep(num_processes, num_iterations);
+      RecordPassedTimesToFile(
+          passed_times,
+          temp_dir_path / ("process_" + std::to_string(i) + "_times.txt"));
       return;
     } else {
       pids.push_back(pid);
     }
   }
 
-  WaitWithRandomSleep(num_processes, num_iterations);
+  {
+    const auto passed_times =
+        WaitWithRandomSleep(num_processes, num_iterations);
+    RecordPassedTimesToFile(passed_times,
+                            temp_dir_path / "main_process_times.txt");
+    const auto read_times =
+        ReadPassedTimesFromFile(temp_dir_path / "main_process_times.txt");
+    CHECK_EQ(passed_times.size(), read_times.size())
+        << "Number of passed times does not match the number of read times.";
+    for (size_t i = 0; i < passed_times.size(); ++i) {
+      CHECK(passed_times[i] == read_times[i])
+          << "Passed time at index " << i
+          << " does not match the read time from file.";
+    }
+    LOG(INFO) << "All passed times match the read times from file.";
+  }
 
   for (int child_pid : pids) {
     waitpid(child_pid, nullptr, 0);

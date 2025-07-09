@@ -9,6 +9,7 @@ add_library(barrier barrier.cc)
 target_link_libraries(barrier absl::log)
 set(BANDWIDTH_LIBS
     absl::log
+    absl::check
     absl::base
     absl::synchronization
     absl::log_initialize
