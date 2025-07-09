@@ -8,6 +8,7 @@ public:
   SenseReversingBarrier(int n, const std::string &id);
   ~SenseReversingBarrier();
   void Wait();
+  static void ClearResource(const std::string &id);
 
 private:
   struct ShmData {

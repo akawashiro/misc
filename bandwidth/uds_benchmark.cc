@@ -18,10 +18,11 @@
 
 const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
+const std::string BARRIER_ID = "/uds_benchmark";
 
 void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
                      uint64_t data_size) {
-  SenseReversingBarrier barrier(2, "/uds_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
   std::vector<uint8_t> read_data(data_size, 0x00);
@@ -104,7 +105,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
 
 void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
                   uint64_t data_size) {
-  SenseReversingBarrier barrier(2, "/uds_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
@@ -171,6 +172,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
 
 int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
                       uint64_t buffer_size) {
+  SenseReversingBarrier::ClearResource(BARRIER_ID);
+
   pid_t pid = fork();
   CHECK(pid != -1) << "Failed to fork process";
 
