@@ -166,8 +166,8 @@ void AnalizeAllPassedTimes(
     std::vector<double> times_duration_secs;
     for (int i = 0; i < n_processes; i++) {
       times_duration_secs.push_back(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(
-              times[i].time_since_epoch())
+          std::chrono::duration_cast<std::chrono::nanoseconds>(times[i] -
+                                                               times[0])
               .count() /
           1e9);
     }
@@ -183,10 +183,14 @@ void AnalizeAllPassedTimes(
             }) /
         n_processes;
     const double stddev = std::sqrt(variance);
+    const double max_diff =
+        *std::max_element(times_duration_secs.begin(), times_duration_secs.end()) -
+        *std::min_element(times_duration_secs.begin(), times_duration_secs.end());
 
     LOG(INFO) << "Iteration " << iter << ": "
-              << "Average time: " << average_time << " seconds, "
-              << "Standard deviation: " << stddev << " seconds.";
+              << "Average time: " << average_time * 1000 << " ms, "
+              << "Standard deviation: " << stddev * 1000 << " ms, "
+              << "Max difference: " << max_diff * 1000 << " ms.";
   }
 }
 
@@ -237,6 +241,11 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
 
     all_passed_times.push_back(passed_times);
   }
+
+  for (int child_pid : pids) {
+    waitpid(child_pid, nullptr, 0);
+  }
+
   for (size_t i = 0; i < pids.size(); ++i) {
     const auto read_times = ReadPassedTimesFromFile(
         temp_dir_path / ("process_" + std::to_string(i) + "_times.txt"));
@@ -245,10 +254,6 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
               << read_times.size() << " entries.";
   }
   AnalizeAllPassedTimes(all_passed_times);
-
-  for (int child_pid : pids) {
-    waitpid(child_pid, nullptr, 0);
-  }
   return;
 }
 
