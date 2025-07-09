@@ -167,6 +167,8 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
     }
   }
 
+  std::vector<std::vector<std::chrono::high_resolution_clock::time_point>>
+      all_passed_times;
   {
     const auto passed_times =
         WaitWithRandomSleep(num_processes, num_iterations);
@@ -182,6 +184,16 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
           << " does not match the read time from file.";
     }
     LOG(INFO) << "All passed times match the read times from file.";
+
+    all_passed_times.push_back(passed_times);
+  }
+  for (size_t i = 0; i < pids.size(); ++i) {
+    const auto read_times =
+        ReadPassedTimesFromFile(temp_dir_path /
+                                ("process_" + std::to_string(i) + "_times.txt"));
+    all_passed_times.push_back(read_times);
+    LOG(INFO) << "Read times from file for process " << i
+              << ": " << read_times.size() << " entries.";
   }
 
   for (int child_pid : pids) {
