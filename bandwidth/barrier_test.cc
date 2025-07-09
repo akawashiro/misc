@@ -29,7 +29,7 @@ void TestConstructor() {
   }
 }
 
-void WaitWithSleep(int num_processes, int num_iterations) {
+void WaitWithRandomSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
   SenseReversingBarrier barrier(num_processes, "/TestBarrier");
 
@@ -47,7 +47,7 @@ void WaitWithSleep(int num_processes, int num_iterations) {
   }
 }
 
-void TestWait(int num_processes, int num_iterations) {
+void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
   std::vector<int> pids;
 
   for (int i = 0; i < num_processes - 1; ++i) {
@@ -55,7 +55,7 @@ void TestWait(int num_processes, int num_iterations) {
     CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
 
     if (pid == 0) {
-      WaitWithSleep(num_processes, num_iterations);
+      WaitWithRandomSleep(num_processes, num_iterations);
       return;
     } else {
       pids.push_back(pid);
