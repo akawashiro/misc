@@ -19,8 +19,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
   sem_wait(shm_sem_);
   shm_fd_ = shm_open(shm_id_.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
   if (shm_fd_ >= 0) {
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - Created shared memory with id '" << shm_id_ << "'";
+    VLOG(1) << " - Created shared memory with id '" << shm_id_ << "'";
     CHECK(ftruncate(shm_fd_, sizeof(ShmData)) == 0)
         << "Failed to set size of shared memory with id '" << shm_id_
         << "': " << strerror(errno);
@@ -35,8 +34,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
     shm_data_->n_users_ = 0;
   } else if (shm_fd_ < 0) {
     if (errno == EEXIST) {
-      VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-              << " - Shared memory with id '" << shm_id_
+      VLOG(1) << " - Shared memory with id '" << shm_id_
               << "' already exists, opening it instead.";
       shm_fd_ = shm_open(shm_id_.c_str(), O_RDWR, 0644);
       CHECK(shm_fd_ >= 0) << "Failed to open existing shared memory with id '"
@@ -59,8 +57,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
   shm_data_->n_users_++;
   sem_post(shm_sem_);
 
-  VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-          << " - SenseReversingBarrier initialized with id '" << shm_id_
+  VLOG(1) << " - SenseReversingBarrier initialized with id '" << shm_id_
           << "' for " << n_ << " users. Waiting for all users to join.";
   while (true) {
     sem_wait(shm_sem_);
@@ -71,8 +68,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
     }
     std::this_thread::yield();
   }
-  VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-          << " - All users have joined the barrier with id '" << shm_id_
+  VLOG(1) << " - All users have joined the barrier with id '" << shm_id_
           << "'. Proceeding.";
 }
 
@@ -84,15 +80,13 @@ void SenseReversingBarrier::Wait() {
     last_user = true;
     shm_data_->shared_sense_ = !shm_data_->shared_sense_;
     shm_data_->count_ = 0;
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - All users reached the barrier with id '" << shm_id_
+    VLOG(1) << "All users reached the barrier with id '" << shm_id_
             << "'. Sense reversed to " << shm_data_->shared_sense_;
   }
   sem_post(shm_sem_);
 
   if (!last_user) {
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - Waiting for other users to reach the barrier with id '"
+    VLOG(1) << "Waiting for other users to reach the barrier with id '"
             << shm_id_ << "'.";
     while (true) {
       sem_wait(shm_sem_);
@@ -102,8 +96,7 @@ void SenseReversingBarrier::Wait() {
         break;
       }
     }
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - All users reached the barrier with id '" << shm_id_;
+    VLOG(1) << "All users reached the barrier with id '" << shm_id_;
   }
 
   sense_ = !sense_;
@@ -115,8 +108,7 @@ SenseReversingBarrier::~SenseReversingBarrier() {
   shm_data_->n_users_--;
   sem_post(shm_sem_);
   if (remaining_users == 1) {
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - Last user of shared memory with id '" << shm_id_
+    VLOG(1) << "Last user of shared memory with id '" << shm_id_
             << "' is exiting. Unlinking shared memory.";
     if (shm_sem_) {
       sem_close(shm_sem_);
@@ -128,8 +120,7 @@ SenseReversingBarrier::~SenseReversingBarrier() {
       shm_unlink(shm_id_.c_str());
     }
   } else {
-    VLOG(1) << "PID: " << getpid() << " TID: " << pthread_self()
-            << " - Not the last user of shared memory with id '" << shm_id_
+    VLOG(1) << " - Not the last user of shared memory with id '" << shm_id_
             << " " << remaining_users << " users remaining.";
     if (shm_sem_) {
       sem_close(shm_sem_);

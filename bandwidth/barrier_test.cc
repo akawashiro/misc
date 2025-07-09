@@ -183,9 +183,10 @@ void AnalizeAllPassedTimes(
             }) /
         n_processes;
     const double stddev = std::sqrt(variance);
-    const double max_diff =
-        *std::max_element(times_duration_secs.begin(), times_duration_secs.end()) -
-        *std::min_element(times_duration_secs.begin(), times_duration_secs.end());
+    const double max_diff = *std::max_element(times_duration_secs.begin(),
+                                              times_duration_secs.end()) -
+                            *std::min_element(times_duration_secs.begin(),
+                                              times_duration_secs.end());
 
     LOG(INFO) << "Iteration " << iter << ": "
               << "Average time: " << average_time * 1000 << " ms, "
