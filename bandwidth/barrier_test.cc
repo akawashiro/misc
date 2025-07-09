@@ -29,49 +29,57 @@ void TestConstructor() {
   }
 }
 
-void TestWait() {
-  constexpr int ITERATIONS = 20;
+void WaitWithSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
-  int pid = fork();
-  CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
+  SenseReversingBarrier barrier(num_processes, "/TestBarrier");
 
-  if (pid == 0) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
-    SenseReversingBarrier barrier(2, "/TestBarrier");
-    for (int i = 0; i < ITERATIONS; ++i) {
-      LOG(INFO) << "Child waiting at barrier iteration " << i;
-      barrier.Wait();
-      double sleep_ms = dis(gen);
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(static_cast<int>(sleep_ms)));
-      LOG(INFO) << "Child passed barrier iteration " << i;
-    }
-    return;
-  } else {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
-    SenseReversingBarrier barrier(2, "/TestBarrier");
-    for (int i = 0; i < ITERATIONS; ++i) {
-      LOG(INFO) << "Parent waiting at barrier iteration " << i;
-      barrier.Wait();
-      double sleep_ms = dis(gen);
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(static_cast<int>(sleep_ms)));
-      LOG(INFO) << "Parent passed barrier iteration " << i;
-    }
-    waitpid(pid, nullptr, 0);
-    return;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<double> dis(0.0, MAX_WAIT_MS);
+
+  for (int j = 0; j < num_iterations; ++j) {
+    LOG(INFO) << "Waiting at barrier iteration " << j;
+    barrier.Wait();
+    double sleep_ms = dis(gen);
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(static_cast<int>(sleep_ms)));
+    LOG(INFO) << "Passed barrier iteration " << j;
   }
 }
+
+void TestWait(int num_processes, int num_iterations) {
+  std::vector<int> pids;
+
+  for (int i = 0; i < num_processes - 1; ++i) {
+    int pid = fork();
+    CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
+
+    if (pid == 0) {
+      WaitWithSleep(num_processes, num_iterations);
+      return;
+    } else {
+      pids.push_back(pid);
+    }
+  }
+
+  WaitWithSleep(num_processes, num_iterations);
+
+  for (int child_pid : pids) {
+    waitpid(child_pid, nullptr, 0);
+  }
+  return;
+}
+
 } // namespace
 
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
 ABSL_FLAG(std::string, test_type, "constructor",
           "Type of test to run. Available types: constructor, wait");
+ABSL_FLAG(int, num_processes, 2,
+          "Number of processes to use in the wait test.");
+ABSL_FLAG(int, num_iterations, 20,
+          "Number of iterations to run in the wait test.");
 
 int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Sense Reversing Barrier Test");
@@ -88,7 +96,9 @@ int main(int argc, char *argv[]) {
   if (test_type == "constructor") {
     TestConstructor();
   } else if (test_type == "wait") {
-    TestWait();
+    int num_processes = absl::GetFlag(FLAGS_num_processes);
+    int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+    TestWait(num_processes, num_iterations);
   } else {
     LOG(ERROR) << "Unknown test type: " << test_type
                << ". Available types: constructor, wait";
