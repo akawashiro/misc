@@ -84,6 +84,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
     close(conn_fd);
     close(listen_fd);
     remove(SOCKET_PATH.c_str());
@@ -155,6 +156,7 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
     VLOG(1) << SendPrefix(iteration) << "Finish data transfer";
 
     if (num_warmups <= iteration) {

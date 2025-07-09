@@ -127,7 +127,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
 
       VLOG(1) << "Receiver: Received "
               << total_received / (1024.0 * 1024.0 * 1024.0)
-              << " GiB of data in " << elapsed_time.count() << " seconds.";
+              << " GiB of data in " << elapsed_time.count() * 1000 << " ms.";
     }
 
     // Verify received data (always, even during warmup)
@@ -223,7 +223,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000 << " ms.";
     }
 
     // Close the socket
