@@ -19,7 +19,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
   sem_wait(shm_sem_);
   shm_fd_ = shm_open(shm_id_.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
   if (shm_fd_ >= 0) {
-    VLOG(1) << " - Created shared memory with id '" << shm_id_ << "'";
+    VLOG(1) << "Created shared memory with id '" << shm_id_ << "'";
     CHECK(ftruncate(shm_fd_, sizeof(ShmData)) == 0)
         << "Failed to set size of shared memory with id '" << shm_id_
         << "': " << strerror(errno);
@@ -34,7 +34,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
     shm_data_->n_users_ = 0;
   } else if (shm_fd_ < 0) {
     if (errno == EEXIST) {
-      VLOG(1) << " - Shared memory with id '" << shm_id_
+      VLOG(1) << "Shared memory with id '" << shm_id_
               << "' already exists, opening it instead.";
       shm_fd_ = shm_open(shm_id_.c_str(), O_RDWR, 0644);
       CHECK(shm_fd_ >= 0) << "Failed to open existing shared memory with id '"
@@ -57,7 +57,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
   shm_data_->n_users_++;
   sem_post(shm_sem_);
 
-  VLOG(1) << " - SenseReversingBarrier initialized with id '" << shm_id_
+  VLOG(1) << "SenseReversingBarrier initialized with id '" << shm_id_
           << "' for " << n_ << " users. Waiting for all users to join.";
   while (true) {
     sem_wait(shm_sem_);
@@ -68,7 +68,7 @@ SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
     }
     std::this_thread::yield();
   }
-  VLOG(1) << " - All users have joined the barrier with id '" << shm_id_
+  VLOG(1) << "All users have joined the barrier with id '" << shm_id_
           << "'. Proceeding.";
 }
 
@@ -120,7 +120,7 @@ SenseReversingBarrier::~SenseReversingBarrier() {
       shm_unlink(shm_id_.c_str());
     }
   } else {
-    VLOG(1) << " - Not the last user of shared memory with id '" << shm_id_
+    VLOG(1) << "Not the last user of shared memory with id '" << shm_id_
             << " " << remaining_users << " users remaining.";
     if (shm_sem_) {
       sem_close(shm_sem_);
