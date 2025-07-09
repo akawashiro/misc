@@ -140,6 +140,56 @@ ReadPassedTimesFromFile(const std::filesystem::path &file_path) {
   return times;
 }
 
+void AnalizeAllPassedTimes(
+    const std::vector<
+        std::vector<std::chrono::high_resolution_clock::time_point>>
+        &all_passed_times) {
+  if (all_passed_times.empty()) {
+    LOG(ERROR) << "No passed times to analyze.";
+    return;
+  }
+  const int n_iterations = all_passed_times[0].size();
+  const int n_processes = all_passed_times.size();
+  for (int i = 0; i < n_processes; i++) {
+    CHECK_EQ(all_passed_times[i].size(), n_iterations)
+        << "Process " << i << " has a different number of passed times ("
+        << all_passed_times[i].size() << ") than the first process ("
+        << n_iterations << ").";
+  }
+
+  for (int iter = 0; iter < n_iterations; iter++) {
+    std::vector<std::chrono::high_resolution_clock::time_point> times;
+    for (int i = 0; i < n_processes; i++) {
+      times.push_back(all_passed_times[i][iter]);
+    }
+    std::sort(times.begin(), times.end());
+    std::vector<double> times_duration_secs;
+    for (int i = 0; i < n_processes; i++) {
+      times_duration_secs.push_back(
+          std::chrono::duration_cast<std::chrono::nanoseconds>(
+              times[i].time_since_epoch())
+              .count() /
+          1e9);
+    }
+    const double average_time =
+        std::accumulate(times_duration_secs.begin(), times_duration_secs.end(),
+                        0.0) /
+        n_processes;
+    const double variance =
+        std::accumulate(
+            times_duration_secs.begin(), times_duration_secs.end(), 0.0,
+            [average_time](double acc, double time) {
+              return acc + (time - average_time) * (time - average_time);
+            }) /
+        n_processes;
+    const double stddev = std::sqrt(variance);
+
+    LOG(INFO) << "Iteration " << iter << ": "
+              << "Average time: " << average_time << " seconds, "
+              << "Standard deviation: " << stddev << " seconds.";
+  }
+}
+
 void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
   std::vector<int> pids;
 
@@ -188,13 +238,13 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
     all_passed_times.push_back(passed_times);
   }
   for (size_t i = 0; i < pids.size(); ++i) {
-    const auto read_times =
-        ReadPassedTimesFromFile(temp_dir_path /
-                                ("process_" + std::to_string(i) + "_times.txt"));
+    const auto read_times = ReadPassedTimesFromFile(
+        temp_dir_path / ("process_" + std::to_string(i) + "_times.txt"));
     all_passed_times.push_back(read_times);
-    LOG(INFO) << "Read times from file for process " << i
-              << ": " << read_times.size() << " entries.";
+    LOG(INFO) << "Read times from file for process " << i << ": "
+              << read_times.size() << " entries.";
   }
+  AnalizeAllPassedTimes(all_passed_times);
 
   for (int child_pid : pids) {
     waitpid(child_pid, nullptr, 0);
