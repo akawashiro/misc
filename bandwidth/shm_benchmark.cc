@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cstring>
 #include <fcntl.h>
-#include <numeric>
 #include <semaphore.h>
 #include <string>
 #include <sys/mman.h>
@@ -13,7 +12,6 @@
 #include <unistd.h>
 #include <vector>
 
-#include "absl/log/globals.h"
 #include "absl/log/log.h"
 
 #include "common.h"
