@@ -29,6 +29,17 @@ void TestConstructor() {
   }
 }
 
+void WaitWithoutSleep(int num_processes, int num_iterations) {
+  constexpr double MAX_WAIT_MS = 100.0;
+  SenseReversingBarrier barrier(num_processes, "/TestBarrier");
+
+  for (int j = 0; j < num_iterations; ++j) {
+    LOG(INFO) << "Waiting at barrier iteration " << j;
+    barrier.Wait();
+    LOG(INFO) << "Passed barrier iteration " << j;
+  }
+}
+
 void WaitWithRandomSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
   SenseReversingBarrier barrier(num_processes, "/TestBarrier");
@@ -47,6 +58,40 @@ void WaitWithRandomSleep(int num_processes, int num_iterations) {
   }
 }
 
+void TestWaitWithoutSleep(int num_processes, int num_iterations) {
+  std::vector<int> pids;
+
+  for (int i = 0; i < num_processes - 1; ++i) {
+    int pid = fork();
+    CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
+
+    if (pid == 0) {
+      WaitWithoutSleep(num_processes, num_iterations);
+      return;
+    } else {
+      pids.push_back(pid);
+    }
+  }
+
+  auto start_time = std::chrono::high_resolution_clock::now();
+  WaitWithoutSleep(num_processes, num_iterations);
+  auto end_time = std::chrono::high_resolution_clock::now();
+
+  for (int child_pid : pids) {
+    waitpid(child_pid, nullptr, 0);
+  }
+  double duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        end_time - start_time)
+                        .count() /
+                    10e6;
+
+  LOG(INFO) << "Wait time: " << duration / num_iterations
+            << " ms per iteration.";
+  LOG(INFO) << "Wait time: " << duration / num_iterations / num_processes
+            << " ms per iteration per process.";
+  return;
+}
+
 void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
   std::vector<int> pids;
 
@@ -62,7 +107,7 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
     }
   }
 
-  WaitWithSleep(num_processes, num_iterations);
+  WaitWithRandomSleep(num_processes, num_iterations);
 
   for (int child_pid : pids) {
     waitpid(child_pid, nullptr, 0);
@@ -75,7 +120,8 @@ void TestWaitWithRandomSleep(int num_processes, int num_iterations) {
 ABSL_FLAG(std::optional<int>, vlog, std::nullopt,
           "Show VLOG messages lower than this level.");
 ABSL_FLAG(std::string, test_type, "constructor",
-          "Type of test to run. Available types: constructor, wait");
+          "Type of test to run. Available types: constructor, "
+          "wait_with_random_sleep");
 ABSL_FLAG(int, num_processes, 2,
           "Number of processes to use in the wait test.");
 ABSL_FLAG(int, num_iterations, 20,
@@ -95,10 +141,14 @@ int main(int argc, char *argv[]) {
 
   if (test_type == "constructor") {
     TestConstructor();
-  } else if (test_type == "wait") {
+  } else if (test_type == "wait_with_random_sleep") {
     int num_processes = absl::GetFlag(FLAGS_num_processes);
     int num_iterations = absl::GetFlag(FLAGS_num_iterations);
-    TestWait(num_processes, num_iterations);
+    TestWaitWithRandomSleep(num_processes, num_iterations);
+  } else if (test_type == "wait_without_sleep") {
+    int num_processes = absl::GetFlag(FLAGS_num_processes);
+    int num_iterations = absl::GetFlag(FLAGS_num_iterations);
+    TestWaitWithoutSleep(num_processes, num_iterations);
   } else {
     LOG(ERROR) << "Unknown test type: " << test_type
                << ". Available types: constructor, wait";
