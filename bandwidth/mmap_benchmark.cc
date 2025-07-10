@@ -19,29 +19,23 @@
 
 namespace {
 const std::string MMAP_FILE_PATH = "/tmp/mmap_bandwidth_test.dat";
-const int BUFFER_SIZE = 4096; // 4KB buffer for read/write
+const int BUFFER_SIZE = 4096;
+const std::string BARRIER_ID = "/mmap_benchmark";
 
-// Structure for synchronization between processes
 struct sync_data {
-  volatile bool sender_ready;
-  volatile bool receiver_ready;
-  volatile size_t bytes_written;
-  volatile bool sender_done;
-  volatile int current_iteration;
+  std::atomic<uint64_t> bytes_written;
 };
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
-  SenseReversingBarrier barrier(2, "/mmap_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
-  // Create and open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fd == -1) {
     LOG(ERROR) << "send: open: " << strerror(errno);
     return;
   }
 
-  // Size the file to accommodate data and sync structure
   size_t total_size = data_size + sizeof(sync_data);
   if (ftruncate(fd, total_size) == -1) {
     LOG(ERROR) << "send: ftruncate: " << strerror(errno);
@@ -58,18 +52,12 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     return;
   }
 
-  // Set up pointers
   char *data_region = static_cast<char *>(mapped_region);
   sync_data *sync = reinterpret_cast<sync_data *>(data_region + data_size);
-
-  // Initialize sync structure
-  sync->sender_ready = false;
-  sync->receiver_ready = false;
   sync->bytes_written = 0;
-  sync->sender_done = false;
-  sync->current_iteration = -1;
 
-  // Generate data to send once
+  barrier.Wait();
+
   std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
   std::vector<double> durations;
 
@@ -84,24 +72,12 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
               << num_iterations;
     }
 
-    sync->current_iteration = iteration;
     sync->bytes_written = 0;
-    sync->sender_ready = true;
 
-    // Wait for receiver to be ready
-    while (!sync->receiver_ready) {
-      usleep(1);
-    }
-
+    barrier.Wait();
     auto start_time = std::chrono::high_resolution_clock::now();
-
-    // Write data in chunks (always use generated data)
-    for (size_t offset = 0; offset < data_size; offset += buffer_size) {
-      size_t chunk_size = std::min(buffer_size, data_size - offset);
-      memcpy(data_region + offset, data_to_send.data() + offset, chunk_size);
-      sync->bytes_written = offset + chunk_size;
-    }
-
+    memcpy(data_region, data_to_send.data(), data_size);
+    sync->bytes_written.store(data_size);
     auto end_time = std::chrono::high_resolution_clock::now();
 
     if (!is_warmup) {
@@ -109,29 +85,21 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
       durations.push_back(elapsed_time.count());
       VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
     }
-
-    sync->sender_ready = false;
-    sync->receiver_ready = false;
   }
 
-  sync->sender_done = true;
-
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
-
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
 
-  // Clean up
   munmap(mapped_region, total_size);
   close(fd);
   VLOG(1) << "Sender: Exiting.";
 }
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
-  SenseReversingBarrier barrier(2, "/mmap_benchmark");
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
-  // Give sender time to create the file
-  usleep(100000); // 100ms
+  barrier.Wait();
 
   // Open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_RDWR);
@@ -167,36 +135,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
        ++iteration) {
-    bool is_warmup = iteration < num_warmups;
-
-    if (is_warmup) {
-      VLOG(1) << "Receiver: Warm-up " << iteration << "/" << num_warmups;
-    } else {
-      VLOG(1) << "Receiver: Starting iteration " << iteration << "/"
-              << num_iterations;
-    }
-
-    // Wait for sender to be ready
-    while (!sync->sender_ready || sync->current_iteration != iteration) {
-      usleep(1);
-    }
-
-    sync->receiver_ready = true;
+    barrier.Wait();
     auto start_time = std::chrono::high_resolution_clock::now();
-
-    // Read data by waiting for sender to complete each chunk
-    size_t last_read = 0;
-    while (last_read < data_size) {
-      while (sync->bytes_written <= last_read && sync->sender_ready) {
-        usleep(1); // Wait for more data
-      }
-      if (!sync->sender_ready)
-        break; // Sender finished this iteration
-      last_read = sync->bytes_written;
+    while (sync->bytes_written.load() == 0) {
     }
-
+    memcpy(data_region, data_region, data_size);
     auto end_time = std::chrono::high_resolution_clock::now();
 
+    bool is_warmup = iteration < num_warmups;
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
@@ -217,11 +163,9 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   }
 
   double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
+            << " GiByte/sec. Receiver";
 
-  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
-
-  // Clean up
   munmap(mapped_region, total_size);
   close(fd);
   VLOG(1) << "Receiver: Exiting.";
@@ -231,7 +175,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
 int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
                        uint64_t buffer_size) {
-  // Remove the file if it exists from a previous run
+  SenseReversingBarrier::ClearResource(BARRIER_ID);
   unlink(MMAP_FILE_PATH.c_str());
 
   pid_t pid = fork();
@@ -242,17 +186,13 @@ int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    // Child process (sender)
     send_process(num_warmups, num_iterations, data_size, buffer_size);
   } else {
-    // Parent process (receiver)
     receive_process(num_warmups, num_iterations, data_size);
 
-    // Wait for child process to complete
     int status;
     wait(&status);
 
-    // Clean up the temporary file
     unlink(MMAP_FILE_PATH.c_str());
   }
 
