@@ -120,6 +120,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -219,11 +220,13 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     shutdown(sock_fd, SHUT_WR);
 
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000 << " ms.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
 
     // Close the socket

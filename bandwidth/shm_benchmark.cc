@@ -238,7 +238,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000 << " ms.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
 
     // Small delay between iterations

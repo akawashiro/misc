@@ -8,13 +8,13 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 
-void SenseReversingBarrier::ClearResource(const std::string &id){
-    const std::string init_sem_id = id + "_init_sem";
-    const std::string shm_sem_id = id + "_shm_sem";
-    const std::string shm_id = id + "_shm";
-    sem_unlink(init_sem_id.c_str());
-    sem_unlink(shm_sem_id.c_str());
-    shm_unlink(shm_id.c_str());
+void SenseReversingBarrier::ClearResource(const std::string &id) {
+  const std::string init_sem_id = id + "_init_sem";
+  const std::string shm_sem_id = id + "_shm_sem";
+  const std::string shm_id = id + "_shm";
+  sem_unlink(init_sem_id.c_str());
+  sem_unlink(shm_sem_id.c_str());
+  shm_unlink(shm_id.c_str());
 }
 
 SenseReversingBarrier::SenseReversingBarrier(int n, const std::string &id)
@@ -129,8 +129,8 @@ SenseReversingBarrier::~SenseReversingBarrier() {
       shm_unlink(shm_id_.c_str());
     }
   } else {
-    VLOG(1) << "Not the last user of shared memory with id '" << shm_id_
-            << " " << remaining_users << " users remaining.";
+    VLOG(1) << "Not the last user of shared memory with id '" << shm_id_ << " "
+            << remaining_users << " users remaining.";
     if (shm_sem_) {
       sem_close(shm_sem_);
     }

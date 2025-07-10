@@ -162,8 +162,8 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << SendPrefix(iteration) << "Time taken: " << elapsed_time.count() * 1000
-              << " ms.";
+      VLOG(1) << SendPrefix(iteration)
+              << "Time taken: " << elapsed_time.count() * 1000 << " ms.";
     }
     close(sock_fd);
   }
