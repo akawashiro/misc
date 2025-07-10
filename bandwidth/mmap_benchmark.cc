@@ -1,7 +1,6 @@
 #include "mmap_benchmark.h"
 
 #include <fcntl.h>
-#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -9,6 +8,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "absl/log/log.h"

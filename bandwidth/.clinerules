@@ -7,3 +7,13 @@
 - Use const or constexpr where possible.
 - Do not leave comments on deleted code.
 - Stop writing comments right side of include for example "#include <algorithm> // for std::sort"
+- Header files must be ordered in the following order. When you are editing dir2/foo2.cc:
+  - dir2/foo2.h.
+  - A blank line
+  - C system headers, and any other headers in angle brackets with the .h extension, e.g., <unistd.h>, <stdlib.h>, <Python.h>.
+  - A blank line
+  - C++ standard library headers (without file extension), e.g., <algorithm>, <cstddef>.
+  - A blank line
+  - Other libraries' .h files.
+  - A blank line
+  - Your project's .h files.

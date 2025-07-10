@@ -1,13 +1,14 @@
 #include "tcp_benchmark.h"
 
-#include <algorithm>
 #include <arpa/inet.h>
-#include <chrono>
-#include <cstring>
 #include <netinet/in.h>
-#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <string>
 #include <vector>
 
 #include "absl/log/log.h"
