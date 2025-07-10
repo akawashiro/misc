@@ -2,12 +2,11 @@
 
 #include <fcntl.h>
 #include <string>
-#include <sys/mman.h> // For mmap, munmap
-#include <sys/stat.h> // For fstat
-#include <sys/wait.h> // For wait
-#include <unistd.h>   // For fork, close, ftruncate
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <vector>
@@ -83,7 +82,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000 << " ms.";
     }
   }
 
@@ -147,11 +146,10 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
 
-      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
-              << " seconds.";
+      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
 
-    // Verify received data (always, even during warmup)
     std::vector<uint8_t> received_data(
         reinterpret_cast<uint8_t *>(data_region),
         reinterpret_cast<uint8_t *>(data_region) + data_size);
