@@ -20,8 +20,8 @@ const std::string SOCKET_PATH = "/tmp/unix_domain_socket_test.sock";
 constexpr size_t DEFAULT_BUFFER_SIZE = (1 << 20);
 const std::string BARRIER_ID = "/uds_benchmark";
 
-void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
-                     uint64_t data_size) {
+void ReceiveProcess(uint64_t buffer_size, int num_warmups, int num_iterations,
+                    uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
@@ -90,7 +90,7 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     remove(SOCKET_PATH.c_str());
     VLOG(1) << ReceivePrefix(iteration) << "Finished receiving data.";
 
-    verifyDataReceived(read_data, data_size);
+    VerifyDataReceived(read_data, data_size);
     if (num_warmups <= iteration) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
@@ -99,16 +99,16 @@ void receive_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << " Receive bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec.";
 }
 
-void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
-                  uint64_t data_size) {
+void SendProcess(uint64_t buffer_size, int num_warmups, int num_iterations,
+                 uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
-  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+  std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -168,21 +168,21 @@ void send_process(uint64_t buffer_size, int num_warmups, int num_iterations,
     close(sock_fd);
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << " Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
-int run_uds_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                      uint64_t buffer_size) {
+int RunUdsBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                    uint64_t buffer_size) {
   SenseReversingBarrier::ClearResource(BARRIER_ID);
 
   pid_t pid = fork();
   CHECK(pid != -1) << "Failed to fork process";
 
   if (pid == 0) {
-    send_process(buffer_size, num_warmups, num_iterations, data_size);
+    SendProcess(buffer_size, num_warmups, num_iterations, data_size);
   } else {
-    receive_process(buffer_size, num_warmups, num_iterations, data_size);
+    ReceiveProcess(buffer_size, num_warmups, num_iterations, data_size);
 
     // Wait for child process to complete
     int status;

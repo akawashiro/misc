@@ -20,8 +20,8 @@ const int PORT = 12345;
 const std::string LOOPBACK_IP = "127.0.0.1";
 const std::string BARRIER_ID = "/tcp_benchmark";
 
-void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
-                     uint64_t buffer_size) {
+void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size,
+                    uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
@@ -132,7 +132,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     // Verify received data (always, even during warmup)
-    if (!verifyDataReceived(received_data, data_size)) {
+    if (!VerifyDataReceived(received_data, data_size)) {
       LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
@@ -143,7 +143,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
     close(listen_fd);
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec. Receiver";
@@ -151,11 +151,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size,
   VLOG(1) << "Receiver: Exiting.";
 }
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size,
-                  uint64_t buffer_size) {
+void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
+                 uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
-  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+  std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -238,7 +238,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
   VLOG(1) << "Sender: Exiting.";
@@ -246,8 +246,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 } // namespace
 
-int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                      uint64_t buffer_size) {
+int RunTcpBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                    uint64_t buffer_size) {
   SenseReversingBarrier::ClearResource(BARRIER_ID);
 
   pid_t pid = fork();
@@ -259,10 +259,10 @@ int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
 
   if (pid == 0) {
     // Child process (sender)
-    send_process(num_warmups, num_iterations, data_size, buffer_size);
+    SendProcess(num_warmups, num_iterations, data_size, buffer_size);
   } else {
     // Parent process (receiver)
-    receive_process(num_warmups, num_iterations, data_size, buffer_size);
+    ReceiveProcess(num_warmups, num_iterations, data_size, buffer_size);
   }
 
   return 0;

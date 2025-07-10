@@ -25,8 +25,8 @@ struct sync_data {
   std::atomic<uint64_t> bytes_written;
 };
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size,
-                  uint64_t buffer_size) {
+void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
+                 uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   int fd = open(MMAP_FILE_PATH.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
@@ -57,7 +57,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
   barrier.Wait();
 
-  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+  std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -82,11 +82,12 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000 << " ms.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
 
@@ -95,7 +96,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
   VLOG(1) << "Sender: Exiting.";
 }
 
-void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   barrier.Wait();
@@ -153,14 +154,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     std::vector<uint8_t> received_data(
         reinterpret_cast<uint8_t *>(data_region),
         reinterpret_cast<uint8_t *>(data_region) + data_size);
-    if (!verifyDataReceived(received_data, data_size)) {
+    if (!VerifyDataReceived(received_data, data_size)) {
       LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec. Receiver";
 
@@ -171,8 +172,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
 
 } // namespace
 
-int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                       uint64_t buffer_size) {
+int RunMmapBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                     uint64_t buffer_size) {
   SenseReversingBarrier::ClearResource(BARRIER_ID);
   unlink(MMAP_FILE_PATH.c_str());
 
@@ -184,9 +185,9 @@ int run_mmap_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    send_process(num_warmups, num_iterations, data_size, buffer_size);
+    SendProcess(num_warmups, num_iterations, data_size, buffer_size);
   } else {
-    receive_process(num_warmups, num_iterations, data_size);
+    ReceiveProcess(num_warmups, num_iterations, data_size);
 
     int status;
     wait(&status);

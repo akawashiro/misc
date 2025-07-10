@@ -8,7 +8,7 @@
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 
-std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data,
+std::vector<uint8_t> CalcChecksum(const std::vector<uint8_t> &data,
                                   uint64_t data_size) {
   CHECK(data_size > CHECKSUM_SIZE)
       << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
@@ -21,7 +21,7 @@ std::vector<uint8_t> calcChecksum(const std::vector<uint8_t> &data,
   return checksum;
 }
 
-std::vector<uint8_t> generateDataToSend(uint64_t data_size) {
+std::vector<uint8_t> GenerateDataToSend(uint64_t data_size) {
   CHECK(data_size > CHECKSUM_SIZE)
       << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
       << CHECKSUM_SIZE << ")";
@@ -42,7 +42,7 @@ std::vector<uint8_t> generateDataToSend(uint64_t data_size) {
   }
   VLOG(1) << "Context data generated. Size: " << context_size
           << " bytes. Filling checksum...";
-  const std::vector<uint8_t> checksum = calcChecksum(data, data_size);
+  const std::vector<uint8_t> checksum = CalcChecksum(data, data_size);
   for (size_t j = 0; j < CHECKSUM_SIZE; ++j) {
     data[context_size + j] = checksum[j];
   }
@@ -53,7 +53,7 @@ std::vector<uint8_t> generateDataToSend(uint64_t data_size) {
   return data;
 }
 
-bool verifyDataReceived(const std::vector<uint8_t> &data, uint64_t data_size) {
+bool VerifyDataReceived(const std::vector<uint8_t> &data, uint64_t data_size) {
   CHECK(data_size > CHECKSUM_SIZE)
       << "data_size (" << data_size << ") must be greater than CHECKSUM_SIZE ("
       << CHECKSUM_SIZE << ")";
@@ -64,7 +64,7 @@ bool verifyDataReceived(const std::vector<uint8_t> &data, uint64_t data_size) {
     return false;
   }
 
-  std::vector<uint8_t> checksum = calcChecksum(data, data_size);
+  std::vector<uint8_t> checksum = CalcChecksum(data, data_size);
   for (size_t i = 0; i < CHECKSUM_SIZE; ++i) {
     if (data[context_size + i] != checksum[i]) {
       LOG(ERROR) << "Checksum mismatch at index " << i << ": expected "
@@ -76,7 +76,7 @@ bool verifyDataReceived(const std::vector<uint8_t> &data, uint64_t data_size) {
   return true;
 }
 
-double calculateBandwidth(std::vector<double> durations, int num_iterations,
+double CalculateBandwidth(std::vector<double> durations, int num_iterations,
                           uint64_t data_size) {
   CHECK(durations.size() == num_iterations);
   std::sort(durations.begin(), durations.end());

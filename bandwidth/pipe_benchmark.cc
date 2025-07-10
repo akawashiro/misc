@@ -16,11 +16,11 @@ namespace {
 
 const std::string BARRIER_ID = "/pipe_benchmark";
 
-void send_process(int write_fd, int num_warmups, int num_iterations,
-                  uint64_t data_size, uint64_t buffer_size) {
+void SendProcess(int write_fd, int num_warmups, int num_iterations,
+                 uint64_t data_size, uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
-  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+  std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -58,7 +58,7 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
@@ -67,8 +67,8 @@ void send_process(int write_fd, int num_warmups, int num_iterations,
   VLOG(1) << "Sender: Exiting.";
 }
 
-void receive_process(int read_fd, int num_warmups, int num_iterations,
-                     uint64_t data_size, uint64_t buffer_size) {
+void ReceiveProcess(int read_fd, int num_warmups, int num_iterations,
+                    uint64_t data_size, uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   std::vector<double> durations;
@@ -119,14 +119,14 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
               << " seconds.";
     }
 
-    if (!verifyDataReceived(received_data, data_size)) {
+    if (!VerifyDataReceived(received_data, data_size)) {
       LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1024.0 * 1024.0 * 1024.0)
             << " GiByte/sec. Receiver";
 
@@ -136,8 +136,8 @@ void receive_process(int read_fd, int num_warmups, int num_iterations,
 
 } // namespace
 
-int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                       uint64_t buffer_size) {
+int RunPipeBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                     uint64_t buffer_size) {
   int pipe_fds[2];
   if (pipe(pipe_fds) == -1) {
     LOG(ERROR) << "pipe: " << strerror(errno);
@@ -158,11 +158,11 @@ int run_pipe_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
 
   if (pid == 0) {
     close(read_fd); // Close unused read end
-    send_process(write_fd, num_warmups, num_iterations, data_size, buffer_size);
+    SendProcess(write_fd, num_warmups, num_iterations, data_size, buffer_size);
   } else {
     close(write_fd); // Close unused write end
-    receive_process(read_fd, num_warmups, num_iterations, data_size,
-                    buffer_size);
+    ReceiveProcess(read_fd, num_warmups, num_iterations, data_size,
+                   buffer_size);
 
     int status;
     wait(&status);

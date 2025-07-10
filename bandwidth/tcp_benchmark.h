@@ -2,5 +2,5 @@
 
 #include <cstdint>
 
-int run_tcp_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                      uint64_t buffer_size);
+int RunTcpBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                    uint64_t buffer_size);

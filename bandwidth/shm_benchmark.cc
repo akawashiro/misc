@@ -88,7 +88,7 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
   return total_received;
 }
 
-void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
+void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
 
   // Create shared memory
@@ -164,14 +164,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     // Verify received data (always, even during warmup)
-    if (!verifyDataReceived(received_data, data_size)) {
+    if (!VerifyDataReceived(received_data, data_size)) {
       LOG(ERROR) << ReceivePrefix(iteration) << "Data verification failed!";
     } else {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
@@ -185,8 +185,8 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   VLOG(1) << "Receiver: Exiting.";
 }
 
-void send_process(int num_warmups, int num_iterations, uint64_t data_size,
-                  uint64_t buffer_size) {
+void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
+                 uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
   barrier.Wait();
 
@@ -217,7 +217,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
   }
 
   // Generate data to send once
-  std::vector<uint8_t> data_to_send = generateDataToSend(data_size);
+  std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -251,7 +251,7 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
   LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
@@ -266,8 +266,8 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 } // namespace
 
-int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
-                      uint64_t buffer_size) {
+int RunShmBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
+                    uint64_t buffer_size) {
   SenseReversingBarrier::ClearResource(BARRIER_ID);
   CleanupResources();
 
@@ -279,9 +279,9 @@ int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    send_process(num_warmups, num_iterations, data_size, buffer_size);
+    SendProcess(num_warmups, num_iterations, data_size, buffer_size);
   } else {
-    receive_process(num_warmups, num_iterations, data_size);
+    ReceiveProcess(num_warmups, num_iterations, data_size);
 
     int status;
     wait(&status);

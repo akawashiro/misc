@@ -100,24 +100,24 @@ int main(int argc, char *argv[]) {
   // Run the appropriate benchmark
   int result = 0;
   if (type == "memcpy") {
-    result = run_memcpy_benchmark(num_iterations, num_warmups, data_size);
+    result = RunMemcpyBenchmark(num_iterations, num_warmups, data_size);
   } else if (type == "memcpy_mt") {
-    result = run_memcpy_mt_benchmark(num_iterations, num_warmups, data_size);
+    result = RunMemcpyMtBenchmark(num_iterations, num_warmups, data_size);
   } else if (type == "tcp") {
     result =
-        run_tcp_benchmark(num_iterations, num_warmups, data_size, buffer_size);
+        RunTcpBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "uds") {
     result =
-        run_uds_benchmark(num_iterations, num_warmups, data_size, buffer_size);
+        RunUdsBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "pipe") {
     result =
-        run_pipe_benchmark(num_iterations, num_warmups, data_size, buffer_size);
+        RunPipeBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "mmap") {
     result =
-        run_mmap_benchmark(num_iterations, num_warmups, data_size, buffer_size);
+        RunMmapBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "shm") {
     result =
-        run_shm_benchmark(num_iterations, num_warmups, data_size, buffer_size);
+        RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else {
     LOG(ERROR) << "Unknown benchmark type: " << type
                << ". Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, "

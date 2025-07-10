@@ -9,9 +9,9 @@
 
 #include "common.h"
 
-int run_memcpy_benchmark(int num_iterations, int num_warmups,
-                         uint64_t data_size) {
-  std::vector<uint8_t> src = generateDataToSend(data_size);
+int RunMemcpyBenchmark(int num_iterations, int num_warmups,
+                       uint64_t data_size) {
+  std::vector<uint8_t> src = GenerateDataToSend(data_size);
   std::vector<uint8_t> dst(data_size, 0);
   std::vector<double> durations;
 
@@ -22,7 +22,7 @@ int run_memcpy_benchmark(int num_iterations, int num_warmups,
     std::memcpy(dst.data(), src.data(), data_size);
     const auto end = std::chrono::high_resolution_clock::now();
 
-    CHECK(verifyDataReceived(src, data_size))
+    CHECK(VerifyDataReceived(src, data_size))
         << "Data verification failed before memcpy.";
     if (num_warmups <= iteration) {
       const double duration =
@@ -31,7 +31,7 @@ int run_memcpy_benchmark(int num_iterations, int num_warmups,
     }
   }
 
-  double bandwidth = calculateBandwidth(durations, num_iterations, data_size);
+  double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec";
 
   return 0;
