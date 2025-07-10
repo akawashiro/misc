@@ -54,7 +54,8 @@ void SendProcess(int write_fd, int num_warmups, int num_iterations,
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
-      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() << " seconds.";
+      VLOG(1) << "Sender: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
   }
 
@@ -115,8 +116,8 @@ void ReceiveProcess(int read_fd, int num_warmups, int num_iterations,
       std::chrono::duration<double> elapsed_time = end_time - start_time;
       durations.push_back(elapsed_time.count());
 
-      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count()
-              << " seconds.";
+      VLOG(1) << "Receiver: Time taken: " << elapsed_time.count() * 1000
+              << " ms.";
     }
 
     if (!VerifyDataReceived(received_data, data_size)) {
