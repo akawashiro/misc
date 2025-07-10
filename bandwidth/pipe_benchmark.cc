@@ -1,10 +1,11 @@
 #include "pipe_benchmark.h"
 
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <vector>
 
 #include "absl/log/log.h"
@@ -158,10 +159,10 @@ int RunPipeBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    close(read_fd); // Close unused read end
+    close(read_fd);
     SendProcess(write_fd, num_warmups, num_iterations, data_size, buffer_size);
   } else {
-    close(write_fd); // Close unused write end
+    close(write_fd);
     ReceiveProcess(read_fd, num_warmups, num_iterations, data_size,
                    buffer_size);
 
