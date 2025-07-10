@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   // Validate type
   if (type.empty()) {
     LOG(ERROR) << "Must specify --type. Available types: memcpy, memcpy_mt, "
-                  "tcp, uds, pipe, mmap, shm";
+                  "tcp, uds, pipe, mmap, shm, all";
     return 1;
   }
 
@@ -118,10 +118,24 @@ int main(int argc, char *argv[]) {
   } else if (type == "shm") {
     result =
         RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+  } else if (type == "all") {
+    result = RunMemcpyBenchmark(num_iterations, num_warmups, data_size);
+    result |=
+        RunMemcpyMtBenchmark(num_iterations, num_warmups, data_size);
+    result |=
+        RunTcpBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+    result |=
+        RunUdsBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+    result |=
+        RunPipeBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+    result |=
+        RunMmapBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+    result |=
+        RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else {
     LOG(ERROR) << "Unknown benchmark type: " << type
                << ". Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, "
-                  "mmap, shm";
+                  "mmap, shm, all";
     return 1;
   }
 
