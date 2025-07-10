@@ -14,12 +14,14 @@
 
 #include "absl/log/log.h"
 
+#include "barrier.h"
 #include "common.h"
 
 namespace {
 const std::string SHM_NAME = "/shm_bandwidth_test";
 const std::string SEM_SENDER_NAME = "/sem_sender_bandwidth";
 const std::string SEM_RECEIVER_NAME = "/sem_receiver_bandwidth";
+const std::string BARRIER_ID = "/shm_benchmark";
 constexpr size_t BUFFER_SIZE = (1 << 20);
 
 struct SharedBuffer {
@@ -28,7 +30,7 @@ struct SharedBuffer {
   char data[BUFFER_SIZE];
 };
 
-void cleanup_resources() {
+void CleanupResources() {
   shm_unlink(SHM_NAME.c_str());
   sem_unlink(SEM_SENDER_NAME.c_str());
   sem_unlink(SEM_RECEIVER_NAME.c_str());
@@ -87,8 +89,7 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
 }
 
 void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
-  // Clean up any existing resources
-  cleanup_resources();
+  SenseReversingBarrier barrier(2, BARRIER_ID);
 
   // Create shared memory
   int shm_fd = shm_open(SHM_NAME.c_str(), O_CREAT | O_RDWR, 0666);
@@ -100,7 +101,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   if (ftruncate(shm_fd, sizeof(SharedBuffer)) == -1) {
     LOG(ERROR) << "receive: ftruncate: " << strerror(errno);
     close(shm_fd);
-    cleanup_resources();
+    CleanupResources();
     return;
   }
 
@@ -110,9 +111,11 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   if (shared_buffer == MAP_FAILED) {
     LOG(ERROR) << "receive: mmap: " << strerror(errno);
     close(shm_fd);
-    cleanup_resources();
+    CleanupResources();
     return;
   }
+
+  barrier.Wait();
 
   // Create semaphores for synchronization
   sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), O_CREAT, 0666, 1);
@@ -121,7 +124,7 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
     LOG(ERROR) << "receive: sem_open: " << strerror(errno);
     munmap(shared_buffer, sizeof(SharedBuffer));
     close(shm_fd);
-    cleanup_resources();
+    CleanupResources();
     return;
   }
 
@@ -178,14 +181,14 @@ void receive_process(int num_warmups, int num_iterations, uint64_t data_size) {
   sem_close(sem_receiver);
   munmap(shared_buffer, sizeof(SharedBuffer));
   close(shm_fd);
-  cleanup_resources();
+  CleanupResources();
   VLOG(1) << "Receiver: Exiting.";
 }
 
 void send_process(int num_warmups, int num_iterations, uint64_t data_size,
                   uint64_t buffer_size) {
-  // Give receiver time to initialize
-  usleep(100000); // 100ms
+  SenseReversingBarrier barrier(2, BARRIER_ID);
+  barrier.Wait();
 
   // Open existing shared memory
   int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
@@ -265,10 +268,13 @@ void send_process(int num_warmups, int num_iterations, uint64_t data_size,
 
 int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
                       uint64_t buffer_size) {
+  SenseReversingBarrier::ClearResource(BARRIER_ID);
+  CleanupResources();
+
   pid_t pid = fork();
 
   if (pid == -1) {
-    LOG(ERROR) << "fork: " << strerror(errno);
+    LOG(ERROR) << "Fork failed: " << strerror(errno);
     return 1;
   }
 
@@ -277,7 +283,6 @@ int run_shm_benchmark(int num_iterations, int num_warmups, uint64_t data_size,
   } else {
     receive_process(num_warmups, num_iterations, data_size);
 
-    // Wait for child process to complete
     int status;
     wait(&status);
   }
