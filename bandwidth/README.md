@@ -1,4 +1,11 @@
-# Bandwidth benchmarks
+# IPC benchmark
+
+## How to build and run
+```bash
+git submodule update --init --recursive
+cmake -S . -B build -D CMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build
+```
 
 ## Machine information
 
