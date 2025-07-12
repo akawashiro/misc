@@ -78,6 +78,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     memcpy(data_region, data_to_send.data(), data_size);
     sync->bytes_written.store(data_size);
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -101,14 +102,12 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
 
   barrier.Wait();
 
-  // Open the memory-mapped file
   int fd = open(MMAP_FILE_PATH.c_str(), O_RDWR);
   if (fd == -1) {
     LOG(ERROR) << "receive: open: " << strerror(errno);
     return;
   }
 
-  // Get file size
   struct stat file_stat;
   if (fstat(fd, &file_stat) == -1) {
     LOG(ERROR) << "receive: fstat: " << strerror(errno);
@@ -118,7 +117,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
 
   size_t total_size = file_stat.st_size;
 
-  // Map the file into memory
   void *mapped_region =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (mapped_region == MAP_FAILED) {
@@ -141,6 +139,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     }
     memcpy(data_region, data_region, data_size);
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     bool is_warmup = iteration < num_warmups;
     if (!is_warmup) {
@@ -186,12 +185,10 @@ int RunMmapBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
 
   if (pid == 0) {
     SendProcess(num_warmups, num_iterations, data_size, buffer_size);
+    exit(0);
   } else {
     ReceiveProcess(num_warmups, num_iterations, data_size);
-
-    int status;
-    wait(&status);
-
+    waitpid(pid, nullptr, 0);
     unlink(MMAP_FILE_PATH.c_str());
   }
 

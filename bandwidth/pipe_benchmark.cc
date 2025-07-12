@@ -161,13 +161,12 @@ int RunPipeBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
   if (pid == 0) {
     close(read_fd);
     SendProcess(write_fd, num_warmups, num_iterations, data_size, buffer_size);
+    exit(0);
   } else {
     close(write_fd);
     ReceiveProcess(read_fd, num_warmups, num_iterations, data_size,
                    buffer_size);
-
-    int status;
-    wait(&status);
+    waitpid(pid, nullptr, 0);
   }
 
   return 0;

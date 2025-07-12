@@ -93,9 +93,11 @@ double CalculateBandwidth(std::vector<double> durations, int num_iterations,
 }
 
 std::string ReceivePrefix(int iteration) {
-  return absl::StrCat("Receive (iteration ", iteration, "): ");
+  int pid = getpid();
+  return absl::StrCat("Receive (PID ", pid, ", iteration ", iteration, "): ");
 }
 
 std::string SendPrefix(int iteration) {
-  return absl::StrCat("Send (iteration ", iteration, "): ");
+  int pid = getpid();
+  return absl::StrCat("Send (PID ", pid, ", iteration ", iteration, "): ");
 }

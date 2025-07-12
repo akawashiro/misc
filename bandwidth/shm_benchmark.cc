@@ -116,8 +116,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     return;
   }
 
-  barrier.Wait();
-
   // Create semaphores for synchronization
   sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), O_CREAT, 0666, 1);
   sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), O_CREAT, 0666, 0);
@@ -130,6 +128,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   }
 
   VLOG(1) << "Receiver: Shared memory and semaphores initialized";
+  barrier.Wait();
 
   std::vector<double> durations;
 
@@ -189,7 +188,9 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
 void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
                  uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
+  VLOG(1) << "Sender: Receiver process started. Waiting for receiver...";
   barrier.Wait();
+  VLOG(1) << "Sender: Receiver process ready. Starting data transfer...";
 
   // Open existing shared memory
   int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
@@ -209,8 +210,14 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
 
   // Open existing semaphores
   sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), 0);
+  if(sem_sender == SEM_FAILED) {
+    LOG(ERROR) << "send: sem_open: " << strerror(errno);
+    munmap(shared_buffer, sizeof(SharedBuffer));
+    close(shm_fd);
+    return;
+  }
   sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), 0);
-  if (sem_sender == SEM_FAILED || sem_receiver == SEM_FAILED) {
+  if (sem_receiver == SEM_FAILED) {
     LOG(ERROR) << "send: sem_open: " << strerror(errno);
     munmap(shared_buffer, sizeof(SharedBuffer));
     close(shm_fd);
@@ -281,11 +288,10 @@ int RunShmBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
 
   if (pid == 0) {
     SendProcess(num_warmups, num_iterations, data_size, buffer_size);
+    exit(0);
   } else {
     ReceiveProcess(num_warmups, num_iterations, data_size);
-
-    int status;
-    wait(&status);
+    waitpid(pid, nullptr, 0);
   }
 
   return 0;

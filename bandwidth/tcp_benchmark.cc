@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -76,6 +77,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size,
       return;
     }
 
+    barrier.Wait();
     VLOG(1) << ReceivePrefix(iteration) << "Listening on " << LOOPBACK_IP << ":"
             << PORT;
 
@@ -148,8 +150,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size,
 
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
             << " GiByte/sec. Receiver";
-
-  VLOG(1) << "Receiver: Exiting.";
 }
 
 void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
@@ -186,14 +186,16 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     receive_addr.sin_addr.s_addr = inet_addr(LOOPBACK_IP.c_str());
     receive_addr.sin_port = htons(PORT);
 
-    // Connect to the receiver
+    // Wait until the receiver is ready
+    barrier.Wait();
+
     while (connect(sock_fd, (struct sockaddr *)&receive_addr,
                    sizeof(receive_addr)) == -1) {
       if (!is_warmup) {
         LOG(ERROR) << "send: connect (retrying in 1 second): "
                    << strerror(errno);
       }
-      sleep(1); // Wait a bit if receiver isn't ready yet
+      sleep(1);
     }
 
     if (!is_warmup) {
@@ -205,7 +207,6 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     size_t total_sent = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Send data until data_size is reached
     while (total_sent < data_size) {
       size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_sent =
@@ -217,7 +218,6 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
       total_sent += bytes_sent;
     }
 
-    // Ensure all data is sent before closing the socket
     shutdown(sock_fd, SHUT_WR);
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -230,19 +230,12 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
               << " ms.";
     }
 
-    // Close the socket
     close(sock_fd);
-
-    // Small delay between iterations to allow receiver to reset
-    if (iteration < num_warmups + num_iterations - 1) {
-      usleep(100000); // 100ms delay
-    }
   }
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
-  VLOG(1) << "Sender: Exiting.";
 }
 
 } // namespace
@@ -252,18 +245,17 @@ int RunTcpBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
   SenseReversingBarrier::ClearResource(BARRIER_ID);
 
   pid_t pid = fork();
-
   if (pid == -1) {
     LOG(ERROR) << "fork: " << strerror(errno);
     return 1;
   }
 
   if (pid == 0) {
-    // Child process (sender)
     SendProcess(num_warmups, num_iterations, data_size, buffer_size);
+    exit(0);
   } else {
-    // Parent process (receiver)
     ReceiveProcess(num_warmups, num_iterations, data_size, buffer_size);
+    waitpid(pid, nullptr, 0);
   }
 
   return 0;

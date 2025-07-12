@@ -64,13 +64,16 @@ void ReceiveProcess(uint64_t buffer_size, int num_warmups, int num_iterations,
     CHECK(conn_fd != -1) << "Failed to accept connection";
 
     VLOG(1) << ReceivePrefix(iteration) << "Sender connected.";
-    VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
     std::vector<uint8_t> recv_buffer(buffer_size);
     barrier.Wait();
+    VLOG(1) << ReceivePrefix(iteration) << "Begin receiving data.";
     size_t total_received = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while (total_received < data_size) {
+      VLOG(1) << ReceivePrefix(iteration)
+              << "Receiving data, total received: " << total_received
+              << " bytes.";
       ssize_t bytes_received =
           recv(conn_fd, recv_buffer.data(), buffer_size, 0);
       CHECK(bytes_received >= 0) << "Failed to receive data";
@@ -128,9 +131,8 @@ void SendProcess(uint64_t buffer_size, int num_warmups, int num_iterations,
             << SOCKET_PATH;
     while (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
       if (errno == ENOENT || errno == ECONNREFUSED) {
-        LOG(ERROR) << SendPrefix(iteration)
-                   << "Connection failed: " << strerror(errno)
-                   << ". Retrying...";
+        VLOG(1) << SendPrefix(iteration)
+                << "Connection failed: " << strerror(errno) << ". Retrying...";
         sleep(1);
       } else {
         LOG(ERROR) << SendPrefix(iteration)
@@ -146,6 +148,8 @@ void SendProcess(uint64_t buffer_size, int num_warmups, int num_iterations,
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while (total_sent < data_size) {
+      VLOG(1) << SendPrefix(iteration)
+              << "Sending data, total sent: " << total_sent << " bytes.";
       size_t bytes_to_send = std::min(buffer_size, data_size - total_sent);
       ssize_t bytes_sent =
           send(sock_fd, data_to_send.data() + total_sent, bytes_to_send, 0);
@@ -182,12 +186,10 @@ int RunUdsBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
 
   if (pid == 0) {
     SendProcess(buffer_size, num_warmups, num_iterations, data_size);
+    exit(0);
   } else {
     ReceiveProcess(buffer_size, num_warmups, num_iterations, data_size);
-
-    // Wait for child process to complete
-    int status;
-    wait(&status);
+    waitpid(pid, nullptr, 0);
   }
 
   return 0;
