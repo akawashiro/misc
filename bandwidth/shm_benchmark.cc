@@ -64,17 +64,13 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
                     uint64_t data_size) {
   size_t total_received = 0;
 
-  LOG(INFO) << "total_received: " << total_received
-            << ", data_size: " << data_size;
   while (total_received < data_size) {
     sem_wait(sem_receiver);
 
-    LOG(INFO) << "Received data size: " << shared_buffer->data_size;
-    if (received_data) {
-      memcpy(received_data->data() + total_received, shared_buffer->data,
-             shared_buffer->data_size);
-    }
+    memcpy(received_data->data() + total_received, shared_buffer->data,
+           shared_buffer->data_size);
     total_received += shared_buffer->data_size;
+
     if (shared_buffer->transfer_complete) {
       break;
     }
@@ -86,8 +82,6 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
 }
 
 void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
-  LOG(INFO) << "data_size: " << data_size << ", num_warmups: " << num_warmups
-            << ", num_iterations: " << num_iterations;
   SenseReversingBarrier barrier(2, BARRIER_ID);
   std::vector<double> durations;
 
@@ -141,8 +135,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
 
     shared_buffer->transfer_complete = false;
     std::vector<uint8_t> received_data(data_size, 0);
-
-    sem_post(sem_sender);
 
     barrier.Wait();
     auto start_time = std::chrono::high_resolution_clock::now();
