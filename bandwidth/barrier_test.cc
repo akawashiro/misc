@@ -19,15 +19,18 @@
 #include "barrier.h"
 
 namespace {
+
+const std::string BRRIER_ID = "/TestBarrier";
+
 void TestConstructor() {
   int pid = fork();
   CHECK(pid >= 0) << "Fork failed: " << strerror(errno);
 
   if (pid == 0) {
-    SenseReversingBarrier barrier(2, "/TestBarrier");
+    SenseReversingBarrier barrier(2, BRRIER_ID);
     return;
   } else {
-    SenseReversingBarrier barrier(2, "/TestBarrier");
+    SenseReversingBarrier barrier(2, BRRIER_ID);
     waitpid(pid, nullptr, 0);
     return;
   }
@@ -35,7 +38,7 @@ void TestConstructor() {
 
 void WaitWithoutSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
-  SenseReversingBarrier barrier(num_processes, "/TestBarrier");
+  SenseReversingBarrier barrier(num_processes, BRRIER_ID);
 
   for (int j = 0; j < num_iterations; ++j) {
     LOG(INFO) << "Waiting at barrier iteration " << j;
@@ -47,7 +50,7 @@ void WaitWithoutSleep(int num_processes, int num_iterations) {
 std::vector<std::chrono::high_resolution_clock::time_point>
 WaitWithRandomSleep(int num_processes, int num_iterations) {
   constexpr double MAX_WAIT_MS = 100.0;
-  SenseReversingBarrier barrier(num_processes, "/TestBarrier");
+  SenseReversingBarrier barrier(num_processes, BRRIER_ID);
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -281,6 +284,8 @@ int main(int argc, char *argv[]) {
   const std::string test_type = absl::GetFlag(FLAGS_test_type);
   absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog();
+
+  SenseReversingBarrier::ClearResource(BRRIER_ID);
 
   if (test_type == "constructor") {
     TestConstructor();
