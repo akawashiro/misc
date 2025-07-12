@@ -1,10 +1,30 @@
 # IPC benchmark
 
-## How to build and run
+## How to build
 ```bash
-git submodule update --init --recursive
-cmake -S . -B build -D CMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build
+$ git submodule update --init --recursive
+$ cmake -S . -B build -D CMAKE_BUILD_TYPE=RelWithDebInfo
+$ cmake --build build -j
+```
+
+## How to run
+```bash
+$ ./build/bandwidth --type=all
+I0712 21:25:02.979927 2670975 memcpy_benchmark.cc:35] Bandwidth: 17.2696 GiByte/sec
+I0712 21:25:04.092510 2670975 memcpy_mt_benchmark.cc:57] 1 threads bandwidth: 17.3955 GiByte/sec.
+I0712 21:25:05.190273 2670975 memcpy_mt_benchmark.cc:57] 2 threads bandwidth: 18.8934 GiByte/sec.
+I0712 21:25:06.296253 2670975 memcpy_mt_benchmark.cc:57] 3 threads bandwidth: 18.3064 GiByte/sec.
+I0712 21:25:07.404877 2670975 memcpy_mt_benchmark.cc:57] 4 threads bandwidth: 17.9708 GiByte/sec.
+I0712 21:25:09.432892 2670975 tcp_benchmark.cc:236] Send bandwidth: 4.59247 GiByte/sec.
+I0712 21:25:09.506085 2670975 tcp_benchmark.cc:151] Receive bandwidth: 4.59251 GiByte/sec.
+I0712 21:25:21.996513 2670975 uds_benchmark.cc:177]  Send bandwidth: 6.03234 GiByte/sec.
+I0712 21:25:22.060526 2670975 uds_benchmark.cc:107]  Receive bandwidth: 6.03102 GiByte/sec.
+I0712 21:25:23.949664 2670975 pipe_benchmark.cc:66] Send bandwidth: 2.10952 GiByte/sec.
+I0712 21:25:24.023313 2670975 pipe_benchmark.cc:132] Receive bandwidth: 2.10827 GiByte/sec.
+I0712 21:25:26.377329 2670975 mmap_benchmark.cc:93] Send bandwidth: 17.9482 GiByte/sec.
+I0712 21:25:26.537044 2670975 mmap_benchmark.cc:164] Receive bandwidth: 17.949 GiByte/sec.
+I0712 21:25:28.409375 2670975 shm_benchmark.cc:243] Send bandwidth: 7.4463 GiByte/sec.
+I0712 21:25:28.482611 2670975 shm_benchmark.cc:170] Receive bandwidth: 7.41675 GiByte/sec.
 ```
 
 ## Machine information
