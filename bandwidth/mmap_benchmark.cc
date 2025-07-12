@@ -90,7 +90,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
+  LOG(INFO) << "Send bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 
   munmap(mapped_region, total_size);
   close(fd);
@@ -161,8 +161,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   }
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
-            << " GiByte/sec. Receiver";
+  LOG(INFO) << "Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 
   munmap(mapped_region, total_size);
   close(fd);

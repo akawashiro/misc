@@ -129,8 +129,8 @@ int main(int argc, char *argv[]) {
         RunPipeBenchmark(num_iterations, num_warmups, data_size, buffer_size);
     result |=
         RunMmapBenchmark(num_iterations, num_warmups, data_size, buffer_size);
-    // result |=
-    //     RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
+    result |=
+        RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else {
     LOG(ERROR) << "Unknown benchmark type: " << type
                << ". Available types: memcpy, memcpy_mt, tcp, udp, uds, pipe, "

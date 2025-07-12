@@ -63,7 +63,7 @@ void SendProcess(int write_fd, int num_warmups, int num_iterations,
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
 
   double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
+  LOG(INFO) << "Send bandwidth: " << bandwidth_gibps << " GiByte/sec.";
 
   close(write_fd);
   VLOG(1) << "Sender: Exiting.";
@@ -129,8 +129,7 @@ void ReceiveProcess(int read_fd, int num_warmups, int num_iterations,
   }
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
-  LOG(INFO) << "Bandwidth: " << bandwidth / (1024.0 * 1024.0 * 1024.0)
-            << " GiByte/sec. Receiver";
+  LOG(INFO) << "Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 
   close(read_fd);
   VLOG(1) << "Receiver: Exiting.";
