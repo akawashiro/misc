@@ -42,7 +42,6 @@ size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
   size_t total_sent = 0;
 
   while (total_sent < data_size) {
-    // Wait for permission to write
     sem_wait(sem_sender);
 
     size_t bytes_to_send = std::min(BUFFER_SIZE, data_size - total_sent);
@@ -54,7 +53,6 @@ size_t send_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
       shared_buffer->transfer_complete = true;
     }
 
-    // Signal receiver that data is ready
     sem_post(sem_receiver);
   }
 
@@ -66,23 +64,21 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
                     uint64_t data_size) {
   size_t total_received = 0;
 
+  LOG(INFO) << "total_received: " << total_received
+            << ", data_size: " << data_size;
   while (total_received < data_size) {
-    // Wait for sender to signal data is ready
     sem_wait(sem_receiver);
 
+    LOG(INFO) << "Received data size: " << shared_buffer->data_size;
+    if (received_data) {
+      memcpy(received_data->data() + total_received, shared_buffer->data,
+             shared_buffer->data_size);
+    }
+    total_received += shared_buffer->data_size;
     if (shared_buffer->transfer_complete) {
       break;
     }
 
-    if (received_data) {
-      received_data->insert(received_data->end(),
-                            reinterpret_cast<uint8_t *>(shared_buffer->data),
-                            reinterpret_cast<uint8_t *>(shared_buffer->data) +
-                                shared_buffer->data_size);
-    }
-    total_received += shared_buffer->data_size;
-
-    // Signal sender that data has been read
     sem_post(sem_sender);
   }
 
@@ -90,46 +86,9 @@ size_t receive_data(SharedBuffer *shared_buffer, sem_t *sem_sender,
 }
 
 void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
+  LOG(INFO) << "data_size: " << data_size << ", num_warmups: " << num_warmups
+            << ", num_iterations: " << num_iterations;
   SenseReversingBarrier barrier(2, BARRIER_ID);
-
-  // Create shared memory
-  int shm_fd = shm_open(SHM_NAME.c_str(), O_CREAT | O_RDWR, 0666);
-  if (shm_fd == -1) {
-    LOG(ERROR) << "receive: shm_open: " << strerror(errno);
-    return;
-  }
-
-  if (ftruncate(shm_fd, sizeof(SharedBuffer)) == -1) {
-    LOG(ERROR) << "receive: ftruncate: " << strerror(errno);
-    close(shm_fd);
-    CleanupResources();
-    return;
-  }
-
-  SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
-      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
-           shm_fd, 0));
-  if (shared_buffer == MAP_FAILED) {
-    LOG(ERROR) << "receive: mmap: " << strerror(errno);
-    close(shm_fd);
-    CleanupResources();
-    return;
-  }
-
-  // Create semaphores for synchronization
-  sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), O_CREAT, 0666, 1);
-  sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), O_CREAT, 0666, 0);
-  if (sem_sender == SEM_FAILED || sem_receiver == SEM_FAILED) {
-    LOG(ERROR) << "receive: sem_open: " << strerror(errno);
-    munmap(shared_buffer, sizeof(SharedBuffer));
-    close(shm_fd);
-    CleanupResources();
-    return;
-  }
-
-  VLOG(1) << "Receiver: Shared memory and semaphores initialized";
-  barrier.Wait();
-
   std::vector<double> durations;
 
   for (int iteration = 0; iteration < num_warmups + num_iterations;
@@ -142,18 +101,55 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
       VLOG(1) << ReceivePrefix(iteration) << "Starting iteration...";
     }
 
+    // Create shared memory
+    int shm_fd = shm_open(SHM_NAME.c_str(), O_CREAT | O_RDWR, 0666);
+    if (shm_fd == -1) {
+      LOG(ERROR) << "receive: shm_open: " << strerror(errno);
+      return;
+    }
+
+    if (ftruncate(shm_fd, sizeof(SharedBuffer)) == -1) {
+      LOG(ERROR) << "receive: ftruncate: " << strerror(errno);
+      close(shm_fd);
+      CleanupResources();
+      return;
+    }
+
+    SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
+        mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+             shm_fd, 0));
+    if (shared_buffer == MAP_FAILED) {
+      LOG(ERROR) << "receive: mmap: " << strerror(errno);
+      close(shm_fd);
+      CleanupResources();
+      return;
+    }
+
+    // Create semaphores for synchronization
+    sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), O_CREAT, 0666, 1);
+    sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), O_CREAT, 0666, 0);
+    if (sem_sender == SEM_FAILED || sem_receiver == SEM_FAILED) {
+      LOG(ERROR) << "receive: sem_open: " << strerror(errno);
+      munmap(shared_buffer, sizeof(SharedBuffer));
+      close(shm_fd);
+      CleanupResources();
+      return;
+    }
+
+    VLOG(1) << "Receiver: Shared memory and semaphores initialized";
+    barrier.Wait();
+
     shared_buffer->transfer_complete = false;
-    std::vector<uint8_t> received_data;
-    received_data.reserve(data_size);
+    std::vector<uint8_t> received_data(data_size, 0);
 
     sem_post(sem_sender);
-    auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Receive data until data_size is reached
+    barrier.Wait();
+    auto start_time = std::chrono::high_resolution_clock::now();
     receive_data(shared_buffer, sem_sender, sem_receiver, &received_data,
                  data_size);
-
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -169,62 +165,23 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     } else {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
+
+    // Cleanup
+    sem_close(sem_sender);
+    sem_close(sem_receiver);
+    munmap(shared_buffer, sizeof(SharedBuffer));
+    close(shm_fd);
+    CleanupResources();
   }
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
-
-  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Receiver";
-
-  // Cleanup
-  sem_close(sem_sender);
-  sem_close(sem_receiver);
-  munmap(shared_buffer, sizeof(SharedBuffer));
-  close(shm_fd);
-  CleanupResources();
-  VLOG(1) << "Receiver: Exiting.";
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30)
+            << " GiByte/sec. Receiver";
 }
 
 void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
                  uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
-  VLOG(1) << "Sender: Receiver process started. Waiting for receiver...";
-  barrier.Wait();
-  VLOG(1) << "Sender: Receiver process ready. Starting data transfer...";
-
-  // Open existing shared memory
-  int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
-  if (shm_fd == -1) {
-    LOG(ERROR) << "send: shm_open: " << strerror(errno);
-    return;
-  }
-
-  SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
-      mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
-           shm_fd, 0));
-  if (shared_buffer == MAP_FAILED) {
-    LOG(ERROR) << "send: mmap: " << strerror(errno);
-    close(shm_fd);
-    return;
-  }
-
-  // Open existing semaphores
-  sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), 0);
-  if(sem_sender == SEM_FAILED) {
-    LOG(ERROR) << "send: sem_open: " << strerror(errno);
-    munmap(shared_buffer, sizeof(SharedBuffer));
-    close(shm_fd);
-    return;
-  }
-  sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), 0);
-  if (sem_receiver == SEM_FAILED) {
-    LOG(ERROR) << "send: sem_open: " << strerror(errno);
-    munmap(shared_buffer, sizeof(SharedBuffer));
-    close(shm_fd);
-    return;
-  }
-
-  // Generate data to send once
   std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
 
@@ -238,13 +195,45 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
       VLOG(1) << SendPrefix(iteration) << "Starting iteration...";
     }
 
-    auto start_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
+    // Open existing shared memory
+    int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
+    if (shm_fd == -1) {
+      LOG(ERROR) << "send: shm_open: " << strerror(errno);
+      return;
+    }
 
-    // Send data until data_size is reached (always use generated data)
+    SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
+        mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+             shm_fd, 0));
+    if (shared_buffer == MAP_FAILED) {
+      LOG(ERROR) << "send: mmap: " << strerror(errno);
+      close(shm_fd);
+      return;
+    }
+
+    // Open existing semaphores
+    sem_t *sem_sender = sem_open(SEM_SENDER_NAME.c_str(), 0);
+    if (sem_sender == SEM_FAILED) {
+      LOG(ERROR) << "send: sem_open: " << strerror(errno);
+      munmap(shared_buffer, sizeof(SharedBuffer));
+      close(shm_fd);
+      return;
+    }
+    sem_t *sem_receiver = sem_open(SEM_RECEIVER_NAME.c_str(), 0);
+    if (sem_receiver == SEM_FAILED) {
+      LOG(ERROR) << "send: sem_open: " << strerror(errno);
+      munmap(shared_buffer, sizeof(SharedBuffer));
+      close(shm_fd);
+      return;
+    }
+
+    barrier.Wait();
+    auto start_time = std::chrono::high_resolution_clock::now();
     send_data(shared_buffer, sem_sender, sem_receiver, data_to_send.data(),
               data_size);
-
     auto end_time = std::chrono::high_resolution_clock::now();
+    barrier.Wait();
 
     if (!is_warmup) {
       std::chrono::duration<double> elapsed_time = end_time - start_time;
@@ -253,23 +242,14 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
               << " ms.";
     }
 
-    // Small delay between iterations
-    if (iteration < num_warmups + num_iterations - 1) {
-      usleep(100000); // 100ms delay
-    }
+    sem_close(sem_sender);
+    sem_close(sem_receiver);
+    munmap(shared_buffer, sizeof(SharedBuffer));
+    close(shm_fd);
   }
 
   double bandwidth = CalculateBandwidth(durations, num_iterations, data_size);
-
-  double bandwidth_gibps = bandwidth / (1024.0 * 1024.0 * 1024.0);
-  LOG(INFO) << "Bandwidth: " << bandwidth_gibps << " GiByte/sec. Sender";
-
-  // Cleanup
-  sem_close(sem_sender);
-  sem_close(sem_receiver);
-  munmap(shared_buffer, sizeof(SharedBuffer));
-  close(shm_fd);
-  VLOG(1) << "Sender: Exiting.";
+  LOG(INFO) << "Bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec. Sender";
 }
 
 } // namespace
