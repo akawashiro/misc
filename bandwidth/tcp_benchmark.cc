@@ -96,7 +96,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     std::vector<uint8_t> recv_buffer(buffer_size);
-    std::vector<uint8_t> received_data;
+    std::vector<uint8_t> received_data(data_size);
     received_data.reserve(data_size);
 
     barrier.Wait();
@@ -117,9 +117,9 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size,
         }
         break;
       }
+      memcpy(received_data.data() + total_received, recv_buffer.data(),
+             bytes_received);
       total_received += bytes_received;
-      received_data.insert(received_data.end(), recv_buffer.begin(),
-                           recv_buffer.begin() + bytes_received);
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -216,10 +216,9 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
       }
       total_sent += bytes_sent;
     }
-
     shutdown(sock_fd, SHUT_WR);
-
     auto end_time = std::chrono::high_resolution_clock::now();
+
     barrier.Wait();
 
     if (!is_warmup) {
