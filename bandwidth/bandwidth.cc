@@ -120,8 +120,7 @@ int main(int argc, char *argv[]) {
         RunShmBenchmark(num_iterations, num_warmups, data_size, buffer_size);
   } else if (type == "all") {
     result = RunMemcpyBenchmark(num_iterations, num_warmups, data_size);
-    result |=
-        RunMemcpyMtBenchmark(num_iterations, num_warmups, data_size);
+    result |= RunMemcpyMtBenchmark(num_iterations, num_warmups, data_size);
     result |=
         RunTcpBenchmark(num_iterations, num_warmups, data_size, buffer_size);
     result |=
