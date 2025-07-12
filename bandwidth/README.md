@@ -153,28 +153,3 @@ Connecting to host localhost, port 5201
 [  5]   0.00-10.00  sec  51.8 GBytes  5.18 GBytes/sec    0             sender
 [  5]   0.00-10.00  sec  51.8 GBytes  5.18 GBytes/sec                  receiver
 ```
-
-#### LAN network (masumi <-> WSL)
-
-```
-$ iperf3 -c 192.168.11.70 --format G -bytes 1G
-Connecting to host 192.168.11.70, port 5201
-[  5] local 172.20.125.7 port 60718 connected to 192.168.11.70 port 5201
-[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
-[  5]   0.00-1.00   sec   114 MBytes  0.11 GBytes/sec    0   3.95 MBytes
-[  5]   1.00-2.00   sec   112 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   2.00-3.00   sec   110 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   3.00-4.00   sec   111 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   4.00-5.00   sec   111 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   5.00-6.00   sec   111 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   6.00-7.00   sec   111 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   7.00-8.00   sec   112 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   8.00-9.00   sec   110 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-[  5]   9.00-10.00  sec   111 MBytes  0.11 GBytes/sec    0   4.15 MBytes
-- - - - - - - - - - - - - - - - - - - - - - - - -
-[ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-10.00  sec  1.09 GBytes  0.11 GBytes/sec    0             sender
-[  5]   0.00-10.03  sec  1.09 GBytes  0.11 GBytes/sec                  receiver
-
-iperf Done.
-```
