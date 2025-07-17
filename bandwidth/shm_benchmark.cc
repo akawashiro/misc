@@ -62,6 +62,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
         mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
              shm_fd, 0));
+    memset(shared_buffer, 0, sizeof(SharedBuffer));
     if (shared_buffer == MAP_FAILED) {
       LOG(ERROR) << "receive: mmap: " << strerror(errno);
       close(shm_fd);
@@ -82,9 +83,14 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     auto start_time = std::chrono::high_resolution_clock::now();
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
+      LOG(INFO) << ReceivePrefix(iteration)
+                << "shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]: "
+                << shared_buffer->data_size[(i + PIPELINE_INDEX) % 2];
       memcpy(received_data.data() + bytes_received,
              shared_buffer->data[(i + PIPELINE_INDEX) % 2],
              shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]);
+      bytes_received +=
+          shared_buffer->data_size[(i + PIPELINE_INDEX) % 2];
     }
     auto end_time = std::chrono::high_resolution_clock::now();
     barrier.Wait();
@@ -151,9 +157,13 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     constexpr uint64_t PIPELINE_INDEX = 0;
     const uint64_t n_pipeline = (data_size + BUFFER_SIZE - 1) / BUFFER_SIZE + 1;
     auto start_time = std::chrono::high_resolution_clock::now();
+    VLOG(1) << SendPrefix(iteration) << "n_pipeline: " << n_pipeline;
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
       const size_t size_to_send = std::min(data_size - bytes_send, buffer_size);
+      LOG(INFO) << SendPrefix(iteration)
+                << "size_to_send: " << size_to_send
+                << ", bytes_send: " << bytes_send;
       memcpy(shared_buffer->data[(i + PIPELINE_INDEX) % 2],
              data_to_send.data() + bytes_send, size_to_send);
       shared_buffer->data_size[(i + PIPELINE_INDEX) % 2] = size_to_send;
