@@ -29,9 +29,7 @@ struct SharedBuffer {
   char data[2][BUFFER_SIZE];
 };
 
-void CleanupResources() {
-  shm_unlink(SHM_NAME.c_str());
-}
+void CleanupResources() { shm_unlink(SHM_NAME.c_str()); }
 
 void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
@@ -78,8 +76,16 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     std::vector<uint8_t> received_data(data_size, 0);
 
     barrier.Wait();
+    uint64_t bytes_received = 0;
+    constexpr uint64_t PIPELINE_INDEX = 1;
+    const uint64_t n_pipeline = (data_size + BUFFER_SIZE - 1) / BUFFER_SIZE + 1;
     auto start_time = std::chrono::high_resolution_clock::now();
-
+    for (uint64_t i = 0; i < n_pipeline; ++i) {
+      barrier.Wait();
+      memcpy(received_data.data() + bytes_received,
+             shared_buffer->data[(i + PIPELINE_INDEX) % 2],
+             shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]);
+    }
     auto end_time = std::chrono::high_resolution_clock::now();
     barrier.Wait();
 
@@ -141,7 +147,18 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     }
 
     barrier.Wait();
+    uint64_t bytes_send = 0;
+    constexpr uint64_t PIPELINE_INDEX = 0;
+    const uint64_t n_pipeline = (data_size + BUFFER_SIZE - 1) / BUFFER_SIZE + 1;
     auto start_time = std::chrono::high_resolution_clock::now();
+    for (uint64_t i = 0; i < n_pipeline; ++i) {
+      barrier.Wait();
+      const size_t size_to_send = std::min(data_size - bytes_send, buffer_size);
+      memcpy(shared_buffer->data[(i + PIPELINE_INDEX) % 2],
+             data_to_send.data() + bytes_send, size_to_send);
+      shared_buffer->data_size[(i + PIPELINE_INDEX) % 2] = size_to_send;
+      bytes_send += size_to_send;
+    }
     auto end_time = std::chrono::high_resolution_clock::now();
     barrier.Wait();
 
