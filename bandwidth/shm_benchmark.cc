@@ -24,7 +24,6 @@ const std::string BARRIER_ID = "/shm_benchmark";
 constexpr size_t BUFFER_SIZE = (1 << 20);
 
 struct SharedBuffer {
-  bool transfer_complete;
   size_t data_size[2];
   char data[2][BUFFER_SIZE];
 };
@@ -73,7 +72,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     VLOG(1) << "Receiver: Shared memory and semaphores initialized";
     barrier.Wait();
 
-    shared_buffer->transfer_complete = false;
     std::vector<uint8_t> received_data(data_size, 0);
 
     barrier.Wait();
@@ -83,9 +81,6 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     auto start_time = std::chrono::high_resolution_clock::now();
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
-      LOG(INFO) << ReceivePrefix(iteration)
-                << "shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]: "
-                << shared_buffer->data_size[(i + PIPELINE_INDEX) % 2];
       memcpy(received_data.data() + bytes_received,
              shared_buffer->data[(i + PIPELINE_INDEX) % 2],
              shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]);
@@ -119,8 +114,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   LOG(INFO) << "Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
-void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
-                 uint64_t buffer_size) {
+void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
   std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
@@ -160,10 +154,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size,
     VLOG(1) << SendPrefix(iteration) << "n_pipeline: " << n_pipeline;
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
-      const size_t size_to_send = std::min(data_size - bytes_send, buffer_size);
-      LOG(INFO) << SendPrefix(iteration)
-                << "size_to_send: " << size_to_send
-                << ", bytes_send: " << bytes_send;
+      const size_t size_to_send = std::min(data_size - bytes_send, BUFFER_SIZE);
       memcpy(shared_buffer->data[(i + PIPELINE_INDEX) % 2],
              data_to_send.data() + bytes_send, size_to_send);
       shared_buffer->data_size[(i + PIPELINE_INDEX) % 2] = size_to_send;
@@ -202,7 +193,7 @@ int RunShmBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    SendProcess(num_warmups, num_iterations, data_size, buffer_size);
+    SendProcess(num_warmups, num_iterations, data_size);
     exit(0);
   } else {
     ReceiveProcess(num_warmups, num_iterations, data_size);
