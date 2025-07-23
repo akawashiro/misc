@@ -21,16 +21,15 @@
 namespace {
 const std::string SHM_NAME = "/shm_bandwidth_test";
 const std::string BARRIER_ID = "/shm_benchmark";
-constexpr size_t BUFFER_SIZE = (1 << 20);
 
 struct SharedBuffer {
   size_t data_size[2];
-  char data[2][BUFFER_SIZE];
+  char data[];
 };
 
 void CleanupResources() { shm_unlink(SHM_NAME.c_str()); }
 
-void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
+void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size, uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
   std::vector<double> durations;
 
@@ -45,13 +44,14 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     // Create shared memory
+    const size_t shared_buffer_size = sizeof(SharedBuffer) + 2 * buffer_size;
     int shm_fd = shm_open(SHM_NAME.c_str(), O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {
       LOG(ERROR) << "receive: shm_open: " << strerror(errno);
       return;
     }
 
-    if (ftruncate(shm_fd, sizeof(SharedBuffer)) == -1) {
+    if (ftruncate(shm_fd, shared_buffer_size) == -1) {
       LOG(ERROR) << "receive: ftruncate: " << strerror(errno);
       close(shm_fd);
       CleanupResources();
@@ -59,9 +59,9 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
-        mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+        mmap(NULL, shared_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED,
              shm_fd, 0));
-    memset(shared_buffer, 0, sizeof(SharedBuffer));
+    memset(shared_buffer, 0, shared_buffer_size);
     if (shared_buffer == MAP_FAILED) {
       LOG(ERROR) << "receive: mmap: " << strerror(errno);
       close(shm_fd);
@@ -77,12 +77,13 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     barrier.Wait();
     uint64_t bytes_received = 0;
     constexpr uint64_t PIPELINE_INDEX = 1;
-    const uint64_t n_pipeline = (data_size + BUFFER_SIZE - 1) / BUFFER_SIZE + 1;
+    const uint64_t n_pipeline = (data_size + buffer_size - 1) / buffer_size + 1;
     auto start_time = std::chrono::high_resolution_clock::now();
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
+      char* buffer_ptr = shared_buffer->data + ((i + PIPELINE_INDEX) % 2) * buffer_size;
       memcpy(received_data.data() + bytes_received,
-             shared_buffer->data[(i + PIPELINE_INDEX) % 2],
+             buffer_ptr,
              shared_buffer->data_size[(i + PIPELINE_INDEX) % 2]);
       bytes_received +=
           shared_buffer->data_size[(i + PIPELINE_INDEX) % 2];
@@ -105,7 +106,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
       VLOG(1) << ReceivePrefix(iteration) << "Data verification passed.";
     }
 
-    munmap(shared_buffer, sizeof(SharedBuffer));
+    munmap(shared_buffer, shared_buffer_size);
     close(shm_fd);
     CleanupResources();
   }
@@ -114,7 +115,7 @@ void ReceiveProcess(int num_warmups, int num_iterations, uint64_t data_size) {
   LOG(INFO) << "Receive bandwidth: " << bandwidth / (1 << 30) << " GiByte/sec.";
 }
 
-void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
+void SendProcess(int num_warmups, int num_iterations, uint64_t data_size, uint64_t buffer_size) {
   SenseReversingBarrier barrier(2, BARRIER_ID);
   std::vector<uint8_t> data_to_send = GenerateDataToSend(data_size);
   std::vector<double> durations;
@@ -131,6 +132,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
 
     barrier.Wait();
     // Open existing shared memory
+    const size_t shared_buffer_size = sizeof(SharedBuffer) + 2 * buffer_size;
     int shm_fd = shm_open(SHM_NAME.c_str(), O_RDWR, 0666);
     if (shm_fd == -1) {
       LOG(ERROR) << "send: shm_open: " << strerror(errno);
@@ -138,7 +140,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     }
 
     SharedBuffer *shared_buffer = static_cast<SharedBuffer *>(
-        mmap(NULL, sizeof(SharedBuffer), PROT_READ | PROT_WRITE, MAP_SHARED,
+        mmap(NULL, shared_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED,
              shm_fd, 0));
     if (shared_buffer == MAP_FAILED) {
       LOG(ERROR) << "send: mmap: " << strerror(errno);
@@ -149,13 +151,14 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
     barrier.Wait();
     uint64_t bytes_send = 0;
     constexpr uint64_t PIPELINE_INDEX = 0;
-    const uint64_t n_pipeline = (data_size + BUFFER_SIZE - 1) / BUFFER_SIZE + 1;
+    const uint64_t n_pipeline = (data_size + buffer_size - 1) / buffer_size + 1;
     auto start_time = std::chrono::high_resolution_clock::now();
     VLOG(1) << SendPrefix(iteration) << "n_pipeline: " << n_pipeline;
     for (uint64_t i = 0; i < n_pipeline; ++i) {
       barrier.Wait();
-      const size_t size_to_send = std::min(data_size - bytes_send, BUFFER_SIZE);
-      memcpy(shared_buffer->data[(i + PIPELINE_INDEX) % 2],
+      const size_t size_to_send = std::min(data_size - bytes_send, buffer_size);
+      char* buffer_ptr = shared_buffer->data + ((i + PIPELINE_INDEX) % 2) * buffer_size;
+      memcpy(buffer_ptr,
              data_to_send.data() + bytes_send, size_to_send);
       shared_buffer->data_size[(i + PIPELINE_INDEX) % 2] = size_to_send;
       bytes_send += size_to_send;
@@ -170,7 +173,7 @@ void SendProcess(int num_warmups, int num_iterations, uint64_t data_size) {
               << " ms.";
     }
 
-    munmap(shared_buffer, sizeof(SharedBuffer));
+    munmap(shared_buffer, shared_buffer_size);
     close(shm_fd);
   }
 
@@ -193,10 +196,10 @@ int RunShmBenchmark(int num_iterations, int num_warmups, uint64_t data_size,
   }
 
   if (pid == 0) {
-    SendProcess(num_warmups, num_iterations, data_size);
+    SendProcess(num_warmups, num_iterations, data_size, buffer_size);
     exit(0);
   } else {
-    ReceiveProcess(num_warmups, num_iterations, data_size);
+    ReceiveProcess(num_warmups, num_iterations, data_size, buffer_size);
     waitpid(pid, nullptr, 0);
   }
 
