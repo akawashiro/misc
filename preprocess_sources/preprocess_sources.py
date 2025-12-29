@@ -110,6 +110,10 @@ def generate_preprocess_command(entry: Dict) -> Tuple[str, str, str]:
     if '-E' not in new_cmd_parts:
         new_cmd_parts.insert(insert_index, '-E')
     
+    # Add -fdirectives-only flag to process only preprocessing directives
+    if '-fdirectives-only' not in new_cmd_parts:
+        new_cmd_parts.insert(insert_index + 1, '-fdirectives-only')
+    
     # Remove certain flags that might interfere with preprocessing
     flags_to_remove = ['-c', '-MD', '-MMD', '-MT', '-MF']
     new_cmd_parts = [p for p in new_cmd_parts if not any(p.startswith(f) for f in flags_to_remove)]
