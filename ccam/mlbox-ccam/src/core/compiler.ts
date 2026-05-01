@@ -135,7 +135,7 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       return leaf(judgement, [{ op: 'emit', instruction: { op: 'quote', value: intValue(expr.value) } }])
     case 'var':
       if (codeVars.includes(expr.name)) {
-        return leaf(judgement, [{ op: 'splice', path: envPath(capturedCtx, expr.name) }])
+        return leaf(judgement, codeVariableSubstitution(envPath(capturedCtx, expr.name)))
       }
       return leaf(
         judgement,
@@ -262,6 +262,20 @@ function emittedProgram(program: Instruction[]): Instruction[] {
 
 function emitSequence(program: Instruction[]): Instruction[] {
   return program.map((instruction) => ({ op: 'emit', instruction }) as Instruction)
+}
+
+function codeVariableSubstitution(path: Instruction[]): Instruction[] {
+  return [
+    { op: 'push' },
+    { op: 'push' },
+    { op: 'fst' },
+    ...path,
+    { op: 'swap' },
+    { op: 'snd' },
+    { op: 'cons' },
+    { op: 'app' },
+    { op: 'swap' },
+  ]
 }
 
 function envPath(ctx: ContextEntry[], name: string): Instruction[] {

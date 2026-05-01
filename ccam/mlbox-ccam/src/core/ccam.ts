@@ -20,7 +20,6 @@ export type Instruction =
   | { op: 'arena' }
   | { op: 'merge'; program: Instruction[] }
   | { op: 'call' }
-  | { op: 'splice'; path: Instruction[] }
   | { op: 'evalLift'; program: Instruction[] }
   | { op: 'add' }
   | { op: 'sub' }
@@ -114,14 +113,6 @@ function execute(instruction: Instruction, stack: Value[], prepend: (program: In
       prepend(block.program)
       return
     }
-    case 'splice': {
-      const env = asPair(stack[0])
-      const generator = asClosure(selectPath(env.left, instruction.path))
-      const block: Value = { type: 'block', program: [] }
-      runClosureForBlock(generator, block)
-      asBlock(env.right).program.push(...asBlock(block).program)
-      return
-    }
     case 'evalLift': {
       const env = asPair(stack[0])
       const result = run(instruction.program, env.left).value
@@ -142,21 +133,8 @@ function execute(instruction: Instruction, stack: Value[], prepend: (program: In
   }
 }
 
-function runClosureForBlock(closure: Extract<Value, { type: 'closure' }>, block: Value): void {
-  run(closure.program, { type: 'pair', left: closure.env, right: block }, 300)
-}
-
 function currentBlock(value: Value): Extract<Value, { type: 'block' }> {
   return asBlock(asPair(value).right)
-}
-
-function selectPath(value: Value, path: Instruction[]): Value {
-  return path.reduce((current, instruction) => {
-    if (instruction.op === 'fst') return asPair(current).left
-    if (instruction.op === 'snd') return asPair(current).right
-    if (instruction.op === 'id') return current
-    throw new Error(`Invalid environment path instruction: ${instruction.op}`)
-  }, value)
 }
 
 function asPair(value: Value | undefined): Extract<Value, { type: 'pair' }> {
@@ -201,8 +179,6 @@ export function formatInstruction(instruction: Instruction): string {
       return `emit(${formatInstruction(instruction.instruction)})`
     case 'merge':
       return `merge(Cur(${formatProgram(instruction.program)}))`
-    case 'splice':
-      return `splice(${formatProgram(instruction.path)})`
     case 'evalLift':
       return `lift[${formatProgram(instruction.program)}]`
     default:

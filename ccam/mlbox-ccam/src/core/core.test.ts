@@ -30,6 +30,8 @@ describe('ML^box parser/compiler/CCAM', () => {
     const result = execute('eval (let cogen a = lift (6 * 7) in code (a + 8) end)')
     expect(formatValue(result.value)).toBe('50')
     expect(formatProgram(result.compiled.program)).toContain('app')
+    expect(formatProgram(result.compiled.program)).not.toContain('splice')
+    expect(result.compiled.log.join('\n')).not.toContain('splice')
   })
 
   it('formats compile traces from source term to final CCAM program', () => {
