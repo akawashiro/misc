@@ -9,6 +9,15 @@ function execute(source: string) {
   return { ...run(compiled.program), compiled }
 }
 
+function expectLinesInOrder(log: string[], expected: string[]) {
+  let previousIndex = -1
+  for (const line of expected) {
+    const index = log.findIndex((entry, entryIndex) => entryIndex > previousIndex && entry === line)
+    expect(index).toBeGreaterThan(previousIndex)
+    previousIndex = index
+  }
+}
+
 describe('ML^box parser/compiler/CCAM', () => {
   it('runs integer arithmetic on the CCAM', () => {
     const result = execute('6 * 7 + 8')
@@ -44,8 +53,33 @@ describe('ML^box parser/compiler/CCAM', () => {
     const compiled = compile(ast)
 
     expect(compiled.log[0]).toBe('[[ (fn x => x + 1) 41 ]] Ω=∅ Λ=∅')
-    expect(compiled.log[1]).toBe('push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅; swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app')
+    expectLinesInOrder(compiled.log, [
+      'push',
+      'push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅',
+      'push; Cur([[ x + 1 ]] Ω=x Λ=∅)',
+      'push; Cur(push; snd; swap; \'1; cons; add); swap; \'41; cons; app',
+    ])
     expect(compiled.log.some((line) => line.includes('Cur(') && line.includes('[[ 41 ]] Ω=∅ Λ=∅'))).toBe(true)
+    expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
+  })
+
+  it('expands let cogen and lift compile traces one instruction at a time', () => {
+    const ast = parse('eval (let cogen a = lift (6 * 7) in code (a + 8) end)')
+    const compiled = compile(ast)
+
+    expectLinesInOrder(compiled.log, [
+      'push; [[ lift (6 * 7) ]] Ω=∅ Λ=∅',
+      'push; [[ 6 * 7 ]] Ω=∅ Λ=∅',
+      'push; push',
+      'push; push; [[ 6 ]] Ω=∅ Λ=∅',
+      'push; push; \'6',
+      'push; push; \'6; swap',
+      'push; push; \'6; swap; [[ 7 ]] Ω=∅ Λ=∅',
+      'push; push; \'6; swap; \'7',
+      'push; push; \'6; swap; \'7; cons',
+      'push; push; \'6; swap; \'7; cons; mul',
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd)',
+    ])
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
 })
