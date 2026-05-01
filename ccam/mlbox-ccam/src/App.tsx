@@ -60,7 +60,12 @@ function App() {
       <header className="topbar">
         <div>
           <h1>ML^box to CCAM</h1>
-          <p>Modal ML terms are parsed, compiled, and executed by a client-side CCAM simulator.</p>
+          <p>
+            Modal ML terms are parsed, compiled, and executed by a client-side CCAM simulator.{' '}
+            <a href="https://dl.acm.org/doi/10.1145/277652.277727" target="_blank" rel="noreferrer">
+              Run-time Code Generation and Modal-ML
+            </a>
+          </p>
         </div>
       </header>
 
