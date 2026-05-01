@@ -22,6 +22,11 @@ export function compile(expr: Expr): CompileResult {
   return { program: compiled.program, log: compiled.trace }
 }
 
+export function compileGenerator(expr: Expr, capturedCtx: ContextEntry[] = [], codeVars: string[] = []): CompileResult {
+  const compiled = compileGeneratorCore(expr, capturedCtx, codeVars)
+  return { program: compiled.program, log: compiled.trace }
+}
+
 function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
   const judgement = formatJudgement(expr, ctx, [])
 
@@ -89,7 +94,7 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
     }
     case 'code': {
       const codeVars = ctx.filter((entry) => entry.isCode).map((entry) => entry.name)
-      const body = compileGenerator(expr.body, ctx, codeVars)
+      const body = compileGeneratorCore(expr.body, ctx, codeVars)
       const program: Instruction[] = [{ op: 'cur', program: [...body.program, { op: 'snd' }] }]
       return composite(judgement, `Cur(${formatGeneratorJudgement(expr.body, ctx, codeVars)}; snd)`, program, [
         { placeholder: formatGeneratorJudgement(expr.body, ctx, codeVars), trace: body.trace },
@@ -120,7 +125,7 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
   }
 }
 
-function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: string[]): Compiled {
+function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars: string[]): Compiled {
   const judgement = formatGeneratorJudgement(expr, capturedCtx, codeVars)
 
   switch (expr.type) {
@@ -136,7 +141,7 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       )
     case 'lambda': {
       const bodyCtx = [...capturedCtx, { name: expr.param, isCode: false }]
-      const body = compileGenerator(expr.body, bodyCtx, codeVars)
+      const body = compileGeneratorCore(expr.body, bodyCtx, codeVars)
       const bodyProgram = emittedProgram(body.program)
       const program: Instruction[] = [{ op: 'merge', program: bodyProgram }]
       return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, bodyCtx, codeVars)}))`, program, [
@@ -144,8 +149,8 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       ])
     }
     case 'app': {
-      const fn = compileGenerator(expr.fn, capturedCtx, codeVars)
-      const arg = compileGenerator(expr.arg, capturedCtx, codeVars)
+      const fn = compileGeneratorCore(expr.fn, capturedCtx, codeVars)
+      const arg = compileGeneratorCore(expr.arg, capturedCtx, codeVars)
       const program = emitSequence([
         { op: 'push' },
         ...emittedProgram(fn.program),
@@ -166,8 +171,8 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
     }
     case 'binary': {
       const op = expr.op === '+' ? 'add' : expr.op === '-' ? 'sub' : 'mul'
-      const left = compileGenerator(expr.left, capturedCtx, codeVars)
-      const right = compileGenerator(expr.right, capturedCtx, codeVars)
+      const left = compileGeneratorCore(expr.left, capturedCtx, codeVars)
+      const right = compileGeneratorCore(expr.right, capturedCtx, codeVars)
       const program = [
         ...emitSequence([{ op: 'push' }]),
         ...left.program,
@@ -193,7 +198,7 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       ])
     }
     case 'code': {
-      const nested = compileGenerator(expr.body, capturedCtx, codeVars)
+      const nested = compileGeneratorCore(expr.body, capturedCtx, codeVars)
       const program: Instruction[] = [{ op: 'merge', program: [...nested.program, { op: 'snd' }] }]
       return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, capturedCtx, codeVars)}; snd))`, program, [
         { placeholder: formatGeneratorJudgement(expr.body, capturedCtx, codeVars), trace: nested.trace },

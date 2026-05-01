@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compile } from './compiler'
+import { compile, compileGenerator } from './compiler'
 import { formatProgram, formatValue, run } from './ccam'
 import { parse } from './parser'
 
@@ -164,89 +164,84 @@ describe('ML^box parser/compiler/CCAM', () => {
     })
 
     it('compiles generator value variables by emitting environment selections', () => {
-      const compiled = compile(parse('fn x => code x'))
+      const compiled = compileGenerator(parse('x'), [{ name: 'x', isCode: false }])
 
-      expectLinesInOrder(compiled.log, ['Cur([[ code x ]] Ω=x)', 'Cur(Cur(emit(snd); snd))'])
-      expect(formatProgram(compiled.program)).toBe('Cur(Cur(emit(snd); snd))')
+      expectLinesInOrder(compiled.log, ['[[ x ]] Ω=x Λ=∅', 'emit(snd)'])
+      expect(formatProgram(compiled.program)).toBe('emit(snd)')
     })
 
     it('compiles generator lambdas by merging a generated Cur body', () => {
-      const compiled = compile(parse('code (fn x => x)'))
+      const compiled = compileGenerator(parse('fn x => x'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur([[ fn x => x ]] Ω=∅ Λ=∅; snd)',
-        'Cur(merge(Cur(snd)); snd)',
+        '[[ fn x => x ]] Ω=∅ Λ=∅',
+        'merge(Cur(snd))',
       ])
-      expect(formatProgram(compiled.program)).toBe('Cur(merge(Cur(snd)); snd)')
+      expect(formatProgram(compiled.program)).toBe('merge(Cur(snd))')
     })
 
     it('compiles generator applications by emitting push, swap, cons, and app', () => {
-      const compiled = compile(parse('code ((fn x => x) 1)'))
+      const compiled = compileGenerator(parse('(fn x => x) 1'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur(emit(push); [[ fn x => x ]] Ω=∅ Λ=∅; emit(swap); [[ 1 ]] Ω=∅ Λ=∅; emit(cons); emit(app); snd)',
-        "Cur(emit(push); emit(Cur(snd)); emit(swap); emit('1); emit(cons); emit(app); snd)",
+        'emit(push); [[ fn x => x ]] Ω=∅ Λ=∅; emit(swap); [[ 1 ]] Ω=∅ Λ=∅; emit(cons); emit(app)',
+        "emit(push); emit(Cur(snd)); emit(swap); emit('1); emit(cons); emit(app)",
       ])
       expect(formatProgram(compiled.program)).toBe(
-        "Cur(emit(push); emit(Cur(snd)); emit(swap); emit('1); emit(cons); emit(app); snd)",
+        "emit(push); emit(Cur(snd)); emit(swap); emit('1); emit(cons); emit(app)",
       )
     })
 
     it('compiles generator code variables in Omega by emitting future generator activation', () => {
-      const compiled = compile(parse('code (let cogen u = code 1 in u end)'))
+      const compiled = compileGenerator(parse('let cogen u = code 1 in u end'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur([[ let cogen u = code 1 in u end ]] Ω=∅ Λ=∅; snd)',
-        "Cur(emit(push); emit(Cur(emit('1); snd)); emit(cons); emit(snd); emit(arena); emit(cons); emit(app); emit(call); snd)",
+        '[[ let cogen u = code 1 in u end ]] Ω=∅ Λ=∅',
+        "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit(snd); emit(arena); emit(cons); emit(app); emit(call)",
       ])
       expect(formatProgram(compiled.program)).toBe(
-        "Cur(emit(push); emit(Cur(emit('1); snd)); emit(cons); emit(snd); emit(arena); emit(cons); emit(app); emit(call); snd)",
+        "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit(snd); emit(arena); emit(cons); emit(app); emit(call)",
       )
     })
 
     it('compiles generator code variables in Lambda by substituting the captured generator', () => {
-      const compiled = compile(parse('let cogen u = code 1 in code u end'))
+      const compiled = compileGenerator(parse('u'), [{ name: 'u', isCode: true }], ['u'])
 
-      expect(compiled.log.some((line) => line.includes('Cur([[ u ]] Ω=∅ Λ=u; snd)'))).toBe(true)
-      expect(compiled.log.some((line) => line.includes('Cur(push; push; fst; snd; swap; snd; cons; app; swap; snd)'))).toBe(
-        true,
-      )
-      expect(formatProgram(compiled.program)).toBe(
-        "push; Cur(emit('1); snd); cons; Cur(push; push; fst; snd; swap; snd; cons; app; swap; snd)",
-      )
+      expectLinesInOrder(compiled.log, ['[[ u ]] Ω=∅ Λ=u', 'push; push; fst; snd; swap; snd; cons; app; swap'])
+      expect(formatProgram(compiled.program)).toBe('push; push; fst; snd; swap; snd; cons; app; swap')
     })
 
     it('compiles nested generator code by lifting and applying a generator closure', () => {
-      const compiled = compile(parse('code (code 1)'))
+      const compiled = compileGenerator(parse('code 1'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur([[ code 1 ]] Ω=∅ Λ=∅; snd)',
-        "Cur(push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app; snd)",
+        '[[ code 1 ]] Ω=∅ Λ=∅',
+        "push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app",
       ])
       expect(formatProgram(compiled.program)).toBe(
-        "Cur(push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app; snd)",
+        "push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app",
       )
     })
 
     it('compiles generator lift by evaluating the source term into the current block', () => {
-      const compiled = compile(parse('code (lift (1 + 2))'))
+      const compiled = compileGenerator(parse('lift (1 + 2)'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur([[ lift (1 + 2) ]] Ω=∅ Λ=∅; snd)',
-        "Cur(lift[push; '1; swap; '2; cons; add]; snd)",
+        '[[ lift (1 + 2) ]] Ω=∅ Λ=∅',
+        "lift[push; '1; swap; '2; cons; add]",
       ])
-      expect(formatProgram(compiled.program)).toBe("Cur(lift[push; '1; swap; '2; cons; add]; snd)")
+      expect(formatProgram(compiled.program)).toBe("lift[push; '1; swap; '2; cons; add]")
     })
 
     it('compiles generator let cogen by emitting the normal let cogen compilation', () => {
-      const compiled = compile(parse('code (let cogen u = code 1 in 2 end)'))
+      const compiled = compileGenerator(parse('let cogen u = code 1 in 2 end'))
 
       expectLinesInOrder(compiled.log, [
-        'Cur([[ let cogen u = code 1 in 2 end ]] Ω=∅ Λ=∅; snd)',
-        "Cur(emit(push); emit(Cur(emit('1); snd)); emit(cons); emit('2); snd)",
+        '[[ let cogen u = code 1 in 2 end ]] Ω=∅ Λ=∅',
+        "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit('2)",
       ])
       expect(formatProgram(compiled.program)).toBe(
-        "Cur(emit(push); emit(Cur(emit('1); snd)); emit(cons); emit('2); snd)",
+        "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit('2)",
       )
     })
   })
