@@ -222,45 +222,21 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
 }
 
 function leaf(judgement: string, program: Instruction[]): Compiled {
-  return { program, trace: [judgement, ...sequencePrefixes(formatProgram(program))] }
+  return { program, trace: [judgement, formatProgram(program)] }
 }
 
 function composite(judgement: string, expansion: string, program: Instruction[], children: ChildTrace[]): Compiled {
   const trace = [judgement]
-  let current = ''
-  let childIndex = 0
+  let current = expansion
+  trace.push(current)
 
-  for (const part of splitTopLevelSequence(expansion)) {
-    current = appendSequencePart(current, part)
-    trace.push(current)
-
-    const child = children[childIndex]
-    if (child && part.includes(child.placeholder)) {
-      current = replaceOnce(current, child.placeholder, markChild(child.placeholder, childIndex)).value
-      let childCurrent = child.placeholder
-      for (const replacement of child.trace.slice(1)) {
-        const replaced = replaceOnce(current, markChild(childCurrent, childIndex), markChild(replacement, childIndex))
-        current = replaced.value
-        if (replaced.didReplace) childCurrent = replacement
-        trace.push(unmarkChildren(current))
-      }
-      current = unmarkChildren(current)
-      childIndex += 1
-    }
-  }
-
-  for (const [offset, child] of children.slice(childIndex).entries()) {
-    const markerIndex = childIndex + offset
-    current = replaceOnce(current, child.placeholder, markChild(child.placeholder, markerIndex)).value
+  for (const [childIndex, child] of children.entries()) {
+    current = replaceOnce(current, child.placeholder, markChild(child.placeholder, childIndex)).value
     let childCurrent = child.placeholder
     for (const replacement of child.trace.slice(1)) {
-      const replaced = replaceOnce(current, markChild(childCurrent, markerIndex), markChild(replacement, markerIndex))
+      const replaced = replaceOnce(current, markChild(childCurrent, childIndex), markChild(replacement, childIndex))
       current = replaced.value
-      if (replaced.didReplace) {
-        childCurrent = replacement
-      } else {
-        current = appendSequencePart(current, replacement)
-      }
+      if (replaced.didReplace) childCurrent = replacement
       trace.push(unmarkChildren(current))
     }
     current = unmarkChildren(current)
@@ -284,41 +260,12 @@ function dedupeAdjacent(lines: string[]): string[] {
   return lines.filter((line, index) => index === 0 || line !== lines[index - 1])
 }
 
-function appendSequencePart(sequence: string, part: string): string {
-  return sequence.length === 0 ? part : `${sequence}; ${part}`
-}
-
-function sequencePrefixes(sequence: string): string[] {
-  const parts = splitTopLevelSequence(sequence)
-  return parts.map((_, index) => parts.slice(0, index + 1).join('; '))
-}
-
 function markChild(value: string, index: number): string {
   return `__TRACE_CHILD_${index}_START__${value}__TRACE_CHILD_${index}_END__`
 }
 
 function unmarkChildren(value: string): string {
   return value.replaceAll(/__TRACE_CHILD_\d+_(?:START|END)__/g, '')
-}
-
-function splitTopLevelSequence(sequence: string): string[] {
-  const parts: string[] = []
-  let start = 0
-  let depth = 0
-
-  for (let index = 0; index < sequence.length; index += 1) {
-    const char = sequence[index]
-    if (char === '(' || char === '[') depth += 1
-    if (char === ')' || char === ']') depth -= 1
-    if (depth === 0 && sequence.startsWith('; ', index)) {
-      parts.push(sequence.slice(start, index))
-      start = index + 2
-      index += 1
-    }
-  }
-
-  parts.push(sequence.slice(start))
-  return parts
 }
 
 function emittedProgram(program: Instruction[]): Instruction[] {

@@ -59,12 +59,12 @@ describe('ML^box parser/compiler/CCAM', () => {
 
     expect(compiled.log[0]).toBe('[[ (fn x => x + 1) 41 ]] Ω=∅ Λ=∅')
     expectLinesInOrder(compiled.log, [
-      'push',
-      'push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅',
-      'push; Cur([[ x + 1 ]] Ω=x Λ=∅)',
+      'push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅; swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app',
+      'push; Cur([[ x + 1 ]] Ω=x Λ=∅); swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app',
       'push; Cur(push; snd; swap; \'1; cons; add); swap; \'41; cons; app',
     ])
     expect(compiled.log.some((line) => line.includes('Cur(') && line.includes('[[ 41 ]] Ω=∅ Λ=∅'))).toBe(true)
+    expect(compiled.log).not.toContain('push')
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
 
@@ -73,18 +73,21 @@ describe('ML^box parser/compiler/CCAM', () => {
     const compiled = compile(ast)
 
     expectLinesInOrder(compiled.log, [
-      'push; [[ lift (6 * 7) ]] Ω=∅ Λ=∅',
-      'push; [[ 6 * 7 ]] Ω=∅ Λ=∅',
-      'push; push',
-      'push; push; [[ 6 ]] Ω=∅ Λ=∅',
-      'push; push; \'6',
-      'push; push; \'6; swap',
-      'push; push; \'6; swap; [[ 7 ]] Ω=∅ Λ=∅',
-      'push; push; \'6; swap; \'7',
-      'push; push; \'6; swap; \'7; cons',
-      'push; push; \'6; swap; \'7; cons; mul',
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd)',
+      'push; [[ lift (6 * 7) ]] Ω=∅ Λ=∅; cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; [[ 6 * 7 ]] Ω=∅ Λ=∅; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; [[ 6 ]] Ω=∅ Λ=∅; swap; [[ 7 ]] Ω=∅ Λ=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; \'6; swap; [[ 7 ]] Ω=∅ Λ=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur([[ a + 8 ]] Ω=∅ Λ=a; snd); arena; cons; app; call',
     ])
+    expectLinesInOrder(compiled.log, [
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); [[ a ]] Ω=∅ Λ=a; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; push; fst; snd; swap; snd; cons; app; swap; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
+    ])
+    expect(compiled.log).not.toContain(
+      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
+    )
+    expect(compiled.log).not.toContain('push')
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
 })
