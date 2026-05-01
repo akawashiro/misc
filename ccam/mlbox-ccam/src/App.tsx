@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import './App.css'
 import { compile } from './core/compiler'
-import { formatProgram, formatValue, run } from './core/ccam'
+import { formatValue, run } from './core/ccam'
 import { parse } from './core/parser'
 
 const samples = [
@@ -108,19 +108,13 @@ function App() {
           {result.error ? (
             <pre className="error">{result.error}</pre>
           ) : (
-            <>
-              <div className="summary">
-                <span>CCAM program</span>
-                <code>{formatProgram(result.compiled!.program)}</code>
-              </div>
-              <ol className="trace-list">
-                {result.compiled!.log.map((line, index) => (
-                  <li key={`${index}-${line}`}>
-                    <code>{line}</code>
-                  </li>
-                ))}
-              </ol>
-            </>
+            <ol className="trace-list">
+              {result.compiled!.log.map((line, index) => (
+                <li key={`${index}-${line}`}>
+                  <code>{line}</code>
+                </li>
+              ))}
+            </ol>
           )}
         </section>
 

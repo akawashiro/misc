@@ -31,4 +31,14 @@ describe('ML^box parser/compiler/CCAM', () => {
     expect(formatValue(result.value)).toBe('50')
     expect(formatProgram(result.compiled.program)).toContain('app')
   })
+
+  it('formats compile traces from source term to final CCAM program', () => {
+    const ast = parse('(fn x => x + 1) 41')
+    const compiled = compile(ast)
+
+    expect(compiled.log[0]).toBe('[[ (fn x => x + 1) 41 ]] Ω=∅ Λ=∅')
+    expect(compiled.log[1]).toBe('push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅; swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app')
+    expect(compiled.log.some((line) => line.includes('Cur(') && line.includes('[[ 41 ]] Ω=∅ Λ=∅'))).toBe(true)
+    expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
+  })
 })
