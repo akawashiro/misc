@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compile, compileGenerator } from './compiler'
+import { compile, compileGenerator, compileNormalTerm } from './compiler'
 import { formatProgram, formatValue, run } from './ccam'
 import { parse } from './parser'
 
@@ -100,37 +100,37 @@ describe('ML^box parser/compiler/CCAM', () => {
 
   describe('Figure 4 compilation rules', () => {
     it('compiles a value variable by selecting it from the environment', () => {
-      const compiled = compile(parse('fn x => x'))
-      expect(formatProgram(compiled.program)).toBe('Cur(snd)')
+      const compiled = compileNormalTerm(parse('x'), [{ name: 'x', isCode: false }])
+      expect(formatProgram(compiled.program)).toBe('snd')
     })
 
     it('compiles a lambda as a Cur instruction over the compiled body', () => {
-      const compiled = compile(parse('fn x => x + 1'))
+      const compiled = compileNormalTerm(parse('fn x => x + 1'), [])
       expect(formatProgram(compiled.program)).toBe("Cur(push; snd; swap; '1; cons; add)")
     })
 
     it('compiles an application by evaluating function and argument before app', () => {
-      const compiled = compile(parse('(fn x => x) 1'))
+      const compiled = compileNormalTerm(parse('(fn x => x) 1'), [])
       expect(formatProgram(compiled.program)).toBe("push; Cur(snd); swap; '1; cons; app")
     })
 
     it('compiles a code variable by activating its generator in a fresh arena', () => {
-      const compiled = compile(parse('let cogen u = code 1 in u end'))
-      expect(formatProgram(compiled.program)).toBe("push; Cur(emit('1); snd); cons; snd; arena; cons; app; call")
+      const compiled = compileNormalTerm(parse('u'), [{ name: 'u', isCode: true }])
+      expect(formatProgram(compiled.program)).toBe('snd; arena; cons; app; call')
     })
 
     it('compiles code as a Cur instruction around generator compilation', () => {
-      const compiled = compile(parse('code 1'))
+      const compiled = compileNormalTerm(parse('code 1'), [])
       expect(formatProgram(compiled.program)).toBe("Cur(emit('1); snd)")
     })
 
     it('compiles lift by compiling the source term and wrapping lift in Cur', () => {
-      const compiled = compile(parse('lift (1 + 2)'))
+      const compiled = compileNormalTerm(parse('lift (1 + 2)'), [])
       expect(formatProgram(compiled.program)).toBe("push; '1; swap; '2; cons; add; Cur(lift; snd)")
     })
 
     it('compiles let cogen by pairing the generated binding with the body environment', () => {
-      const compiled = compile(parse('let cogen u = code 1 in 2 end'))
+      const compiled = compileNormalTerm(parse('let cogen u = code 1 in 2 end'), [])
       expect(formatProgram(compiled.program)).toBe("push; Cur(emit('1); snd); cons; '2")
     })
 

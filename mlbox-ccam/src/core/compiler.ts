@@ -18,7 +18,11 @@ type ChildTrace = {
 }
 
 export function compile(expr: Expr): CompileResult {
-  const compiled = compileCore(expr, [])
+  return compileNormalTerm(expr, [])
+}
+
+export function compileNormalTerm(expr: Expr, ctx: ContextEntry[]): CompileResult {
+  const compiled = compileNormalTermCore(expr, ctx)
   return { program: compiled.program, log: compiled.trace }
 }
 
@@ -27,7 +31,7 @@ export function compileGenerator(expr: Expr, capturedCtx: ContextEntry[] = [], c
   return { program: compiled.program, log: compiled.trace }
 }
 
-function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
+function compileNormalTermCore(expr: Expr, ctx: ContextEntry[]): Compiled {
   const judgement = formatJudgement(expr, ctx, [])
 
   switch (expr.type) {
@@ -43,15 +47,15 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
     }
     case 'lambda': {
       const bodyCtx = [...ctx, { name: expr.param, isCode: false }]
-      const body = compileCore(expr.body, bodyCtx)
+      const body = compileNormalTermCore(expr.body, bodyCtx)
       const program: Instruction[] = [{ op: 'cur', program: body.program }]
       return composite(judgement, `Cur(${formatJudgement(expr.body, bodyCtx, [])})`, program, [
         { placeholder: formatJudgement(expr.body, bodyCtx, []), trace: body.trace },
       ])
     }
     case 'app': {
-      const fn = compileCore(expr.fn, ctx)
-      const arg = compileCore(expr.arg, ctx)
+      const fn = compileNormalTermCore(expr.fn, ctx)
+      const arg = compileNormalTermCore(expr.arg, ctx)
       const program: Instruction[] = [
         { op: 'push' },
         ...fn.program,
@@ -72,8 +76,8 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
     }
     case 'binary': {
       const op = expr.op === '+' ? 'add' : expr.op === '-' ? 'sub' : 'mul'
-      const left = compileCore(expr.left, ctx)
-      const right = compileCore(expr.right, ctx)
+      const left = compileNormalTermCore(expr.left, ctx)
+      const right = compileNormalTermCore(expr.right, ctx)
       const program: Instruction[] = [
         { op: 'push' },
         ...left.program,
@@ -101,16 +105,16 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
       ])
     }
     case 'lift': {
-      const body = compileCore(expr.body, ctx)
+      const body = compileNormalTermCore(expr.body, ctx)
       const program: Instruction[] = [...body.program, { op: 'cur', program: [{ op: 'lift' }, { op: 'snd' }] }]
       return composite(judgement, `${formatJudgement(expr.body, ctx, [])}; Cur(lift; snd)`, program, [
         { placeholder: formatJudgement(expr.body, ctx, []), trace: body.trace },
       ])
     }
     case 'letCogen': {
-      const generator = compileCore(expr.generator, ctx)
+      const generator = compileNormalTermCore(expr.generator, ctx)
       const bodyCtx = [...ctx, { name: expr.name, isCode: true }]
-      const body = compileCore(expr.body, bodyCtx)
+      const body = compileNormalTermCore(expr.body, bodyCtx)
       const program: Instruction[] = [{ op: 'push' }, ...generator.program, { op: 'cons' }, ...body.program]
       return composite(
         judgement,
@@ -191,7 +195,7 @@ function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars:
       )
     }
     case 'lift': {
-      const body = compileCore(expr.body, capturedCtx)
+      const body = compileNormalTermCore(expr.body, capturedCtx)
       const program: Instruction[] = [{ op: 'evalLift', program: body.program }]
       return composite(judgement, `lift[${formatJudgement(expr.body, capturedCtx, [])}]`, program, [
         { placeholder: formatJudgement(expr.body, capturedCtx, []), trace: body.trace },
@@ -205,7 +209,7 @@ function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars:
       ])
     }
     case 'letCogen': {
-      const generated = compileCore(expr, capturedCtx)
+      const generated = compileNormalTermCore(expr, capturedCtx)
       return composite(judgement, `emit(${formatJudgement(expr, capturedCtx, [])})`, emitSequence(generated.program), [
         { placeholder: formatJudgement(expr, capturedCtx, []), trace: generated.trace },
       ])
