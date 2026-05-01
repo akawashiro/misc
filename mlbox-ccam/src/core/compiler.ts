@@ -196,8 +196,11 @@ function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars:
     }
     case 'lift': {
       const body = compileNormalTermCore(expr.body, capturedCtx)
-      const program: Instruction[] = [{ op: 'evalLift', program: body.program }]
-      return composite(judgement, `lift[${formatJudgement(expr.body, capturedCtx, [])}]`, program, [
+      const program: Instruction[] = [
+        ...body.program,
+        { op: 'merge', program: [{ op: 'fst' }, { op: 'arena' }, { op: 'lift' }, { op: 'snd' }, { op: 'id' }] },
+      ]
+      return composite(judgement, `${formatJudgement(expr.body, capturedCtx, [])}; merge(Cur(fst; arena; lift; snd; id))`, program, [
         { placeholder: formatJudgement(expr.body, capturedCtx, []), trace: body.trace },
       ])
     }

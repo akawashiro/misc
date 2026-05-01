@@ -20,7 +20,6 @@ export type Instruction =
   | { op: 'arena' }
   | { op: 'merge'; program: Instruction[] }
   | { op: 'call' }
-  | { op: 'evalLift'; program: Instruction[] }
   | { op: 'add' }
   | { op: 'sub' }
   | { op: 'mul' }
@@ -113,12 +112,6 @@ function execute(instruction: Instruction, stack: Value[], prepend: (program: In
       prepend(block.program)
       return
     }
-    case 'evalLift': {
-      const env = asPair(stack[0])
-      const result = run(instruction.program, env.left).value
-      asBlock(env.right).program.push({ op: 'quote', value: result })
-      return
-    }
     case 'add':
     case 'sub':
     case 'mul': {
@@ -179,8 +172,6 @@ export function formatInstruction(instruction: Instruction): string {
       return `emit(${formatInstruction(instruction.instruction)})`
     case 'merge':
       return `merge(Cur(${formatProgram(instruction.program)}))`
-    case 'evalLift':
-      return `lift[${formatProgram(instruction.program)}]`
     default:
       return instruction.op
   }
