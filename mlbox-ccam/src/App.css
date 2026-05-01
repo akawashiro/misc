@@ -83,6 +83,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 0 1 360px;
 }
 
 .sample-picker span {
@@ -92,7 +93,9 @@
 }
 
 .sample-picker select {
-  max-width: 190px;
+  width: 100%;
+  min-width: 240px;
+  max-width: 320px;
   height: 30px;
   border: 1px solid #cfd6e3;
   border-radius: 6px;
