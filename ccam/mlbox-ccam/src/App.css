@@ -73,6 +73,35 @@
   font-size: 13px;
 }
 
+.sample-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sample-picker span {
+  color: #667085;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.sample-picker select {
+  max-width: 190px;
+  height: 30px;
+  border: 1px solid #cfd6e3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d2433;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.sample-picker select:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
 textarea {
   width: 100%;
   min-height: 300px;
@@ -187,5 +216,18 @@ code {
 
   .row {
     grid-template-columns: 42px minmax(220px, 1fr) minmax(260px, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sample-picker,
+  .sample-picker select {
+    width: 100%;
+    max-width: none;
   }
 }

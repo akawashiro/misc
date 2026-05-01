@@ -4,14 +4,45 @@ import { compile } from './core/compiler'
 import { formatProgram, formatValue, run } from './core/ccam'
 import { parse } from './core/parser'
 
-const sample = `eval (
+const samples = [
+  {
+    name: 'let cogen + lift',
+    source: `eval (
   let cogen a = lift (6 * 7) in
     code (a + 8)
   end
-)`
+)`,
+  },
+  {
+    name: 'arithmetic',
+    source: `6 * 7 + 8`,
+  },
+  {
+    name: 'lambda application',
+    source: `(fn x => x * x + 1) 9`,
+  },
+  {
+    name: 'code + eval',
+    source: `eval (code ((20 + 1) * 2))`,
+  },
+  {
+    name: 'generated function',
+    source: `(eval (code (fn x => x + 10))) 32`,
+  },
+  {
+    name: 'code substitution',
+    source: `eval (
+  let cogen base = lift 40 in
+    let cogen delta = lift 2 in
+      code (base + delta)
+    end
+  end
+)`,
+  },
+]
 
 function App() {
-  const [source, setSource] = useState(sample)
+  const [source, setSource] = useState(samples[0].source)
 
   const result = useMemo(() => {
     try {
@@ -37,6 +68,23 @@ function App() {
         <section className="panel input-panel">
           <div className="panel-header">
             <h2>ML^box Input</h2>
+            <label className="sample-picker">
+              <span>Sample</span>
+              <select
+                value={samples.find((sample) => sample.source === source)?.name ?? 'custom'}
+                onChange={(event) => {
+                  const sample = samples.find((item) => item.name === event.target.value)
+                  if (sample) setSource(sample.source)
+                }}
+              >
+                {samples.find((sample) => sample.source === source) ? null : <option value="custom">Custom</option>}
+                {samples.map((sample) => (
+                  <option key={sample.name} value={sample.name}>
+                    {sample.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <textarea
             value={source}
