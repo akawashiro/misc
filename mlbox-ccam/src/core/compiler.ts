@@ -147,10 +147,23 @@ function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars:
       const bodyCtx = [...capturedCtx, { name: expr.param, isCode: false }]
       const body = compileGeneratorCore(expr.body, bodyCtx, codeVars)
       const bodyProgram = emittedProgram(body.program)
-      const program: Instruction[] = [{ op: 'merge', program: bodyProgram }]
-      return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, bodyCtx, codeVars)}))`, program, [
-        { placeholder: formatGeneratorJudgement(expr.body, bodyCtx, codeVars), trace: body.trace },
-      ])
+      const program: Instruction[] = [
+        { op: 'push' },
+        { op: 'fst' },
+        { op: 'arena' },
+        ...body.program,
+        { op: 'snd' },
+        { op: 'swap' },
+        { op: 'id' },
+        { op: 'cons' },
+        { op: 'merge', program: bodyProgram },
+      ]
+      return composite(
+        judgement,
+        `push; fst; arena; ${formatGeneratorJudgement(expr.body, bodyCtx, codeVars)}; snd; swap; id; cons; merge(Cur(${formatProgram(bodyProgram)}))`,
+        program,
+        [{ placeholder: formatGeneratorJudgement(expr.body, bodyCtx, codeVars), trace: body.trace }],
+      )
     }
     case 'app': {
       const fn = compileGeneratorCore(expr.fn, capturedCtx, codeVars)
@@ -206,10 +219,34 @@ function compileGeneratorCore(expr: Expr, capturedCtx: ContextEntry[], codeVars:
     }
     case 'code': {
       const nested = compileGeneratorCore(expr.body, capturedCtx, codeVars)
-      const program: Instruction[] = [{ op: 'merge', program: [...nested.program, { op: 'snd' }] }]
-      return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, capturedCtx, codeVars)}; snd))`, program, [
-        { placeholder: formatGeneratorJudgement(expr.body, capturedCtx, codeVars), trace: nested.trace },
-      ])
+      const program: Instruction[] = [
+        { op: 'push' },
+        { op: 'fst' },
+        { op: 'push' },
+        { op: 'quote', value: { type: 'unit' } },
+        {
+          op: 'cur',
+          program: [
+            { op: 'fst' },
+            { op: 'cur', program: [...nested.program, { op: 'snd' }] },
+          ],
+        },
+        { op: 'swap' },
+        { op: 'snd' },
+        { op: 'cons' },
+        { op: 'lift' },
+        { op: 'snd' },
+        { op: 'swap' },
+        { op: 'id' },
+        { op: 'cons' },
+        { op: 'app' },
+      ]
+      return composite(
+        judgement,
+        `push; fst; push; '(); Cur(fst; Cur(${formatGeneratorJudgement(expr.body, capturedCtx, codeVars)}; snd)); swap; snd; cons; lift; snd; swap; id; cons; app`,
+        program,
+        [{ placeholder: formatGeneratorJudgement(expr.body, capturedCtx, codeVars), trace: nested.trace }],
+      )
     }
     case 'letCogen': {
       const generated = compileNormalTermCore(expr, capturedCtx)
@@ -268,6 +305,9 @@ function unmarkChildren(value: string): string {
 }
 
 function emittedProgram(program: Instruction[]): Instruction[] {
+  const lastInstruction = program.at(-1)
+  if (lastInstruction?.op === 'merge') return [{ op: 'cur', program: lastInstruction.program }]
+
   return program.flatMap((instruction) => {
     if (instruction.op === 'emit') return [instruction.instruction]
     if (instruction.op === 'merge') return [{ op: 'cur', program: instruction.program } as Instruction]
