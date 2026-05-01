@@ -97,13 +97,6 @@ function App() {
             spellCheck={false}
             aria-label="ML box source"
           />
-          <div className="syntax">
-            <code>fn x =&gt; M</code>
-            <code>code M</code>
-            <code>lift M</code>
-            <code>let cogen u = M in N end</code>
-            <code>eval M</code>
-          </div>
         </section>
 
         <section className="panel">
