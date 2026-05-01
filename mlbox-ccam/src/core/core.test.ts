@@ -57,13 +57,13 @@ describe('ML^box parser/compiler/CCAM', () => {
     const ast = parse('(fn x => x + 1) 41')
     const compiled = compile(ast)
 
-    expect(compiled.log[0]).toBe('[[ (fn x => x + 1) 41 ]] Ω=∅ Λ=∅')
+    expect(compiled.log[0]).toBe('[[ (fn x => x + 1) 41 ]] Ω=∅')
     expectLinesInOrder(compiled.log, [
-      'push; [[ fn x => x + 1 ]] Ω=∅ Λ=∅; swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app',
-      'push; Cur([[ x + 1 ]] Ω=x Λ=∅); swap; [[ 41 ]] Ω=∅ Λ=∅; cons; app',
+      'push; [[ fn x => x + 1 ]] Ω=∅; swap; [[ 41 ]] Ω=∅; cons; app',
+      'push; Cur([[ x + 1 ]] Ω=x); swap; [[ 41 ]] Ω=∅; cons; app',
       'push; Cur(push; snd; swap; \'1; cons; add); swap; \'41; cons; app',
     ])
-    expect(compiled.log.some((line) => line.includes('Cur(') && line.includes('[[ 41 ]] Ω=∅ Λ=∅'))).toBe(true)
+    expect(compiled.log.some((line) => line.includes('Cur(') && line.includes('[[ 41 ]] Ω=∅'))).toBe(true)
     expect(compiled.log).not.toContain('push')
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
@@ -73,10 +73,10 @@ describe('ML^box parser/compiler/CCAM', () => {
     const compiled = compile(ast)
 
     expectLinesInOrder(compiled.log, [
-      'push; [[ lift (6 * 7) ]] Ω=∅ Λ=∅; cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; [[ 6 * 7 ]] Ω=∅ Λ=∅; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; [[ 6 ]] Ω=∅ Λ=∅; swap; [[ 7 ]] Ω=∅ Λ=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; \'6; swap; [[ 7 ]] Ω=∅ Λ=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; [[ lift (6 * 7) ]] Ω=∅; cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; [[ 6 * 7 ]] Ω=∅; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; [[ 6 ]] Ω=∅; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
+      'push; push; \'6; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
       'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
       'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur([[ a + 8 ]] Ω=∅ Λ=a; snd); arena; cons; app; call',
     ])

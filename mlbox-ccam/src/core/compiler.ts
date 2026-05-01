@@ -91,8 +91,8 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
       const codeVars = ctx.filter((entry) => entry.isCode).map((entry) => entry.name)
       const body = compileGenerator(expr.body, ctx, codeVars)
       const program: Instruction[] = [{ op: 'cur', program: [...body.program, { op: 'snd' }] }]
-      return composite(judgement, `Cur(${formatJudgement(expr.body, ctx, codeVars)}; snd)`, program, [
-        { placeholder: formatJudgement(expr.body, ctx, codeVars), trace: body.trace },
+      return composite(judgement, `Cur(${formatGeneratorJudgement(expr.body, ctx, codeVars)}; snd)`, program, [
+        { placeholder: formatGeneratorJudgement(expr.body, ctx, codeVars), trace: body.trace },
       ])
     }
     case 'lift': {
@@ -128,7 +128,7 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
 }
 
 function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: string[]): Compiled {
-  const judgement = formatJudgement(expr, capturedCtx, codeVars)
+  const judgement = formatGeneratorJudgement(expr, capturedCtx, codeVars)
 
   switch (expr.type) {
     case 'int':
@@ -146,8 +146,8 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       const body = compileGenerator(expr.body, bodyCtx, codeVars)
       const bodyProgram = emittedProgram(body.program)
       const program: Instruction[] = [{ op: 'merge', program: bodyProgram }]
-      return composite(judgement, `merge(Cur(${formatJudgement(expr.body, bodyCtx, codeVars)}))`, program, [
-        { placeholder: formatJudgement(expr.body, bodyCtx, codeVars), trace: body.trace },
+      return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, bodyCtx, codeVars)}))`, program, [
+        { placeholder: formatGeneratorJudgement(expr.body, bodyCtx, codeVars), trace: body.trace },
       ])
     }
     case 'app': {
@@ -163,11 +163,11 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       ])
       return composite(
         judgement,
-        `emit(push); ${formatJudgement(expr.fn, capturedCtx, codeVars)}; emit(swap); ${formatJudgement(expr.arg, capturedCtx, codeVars)}; emit(cons); emit(app)`,
+        `emit(push); ${formatGeneratorJudgement(expr.fn, capturedCtx, codeVars)}; emit(swap); ${formatGeneratorJudgement(expr.arg, capturedCtx, codeVars)}; emit(cons); emit(app)`,
         program,
         [
-          { placeholder: formatJudgement(expr.fn, capturedCtx, codeVars), trace: fn.trace },
-          { placeholder: formatJudgement(expr.arg, capturedCtx, codeVars), trace: arg.trace },
+          { placeholder: formatGeneratorJudgement(expr.fn, capturedCtx, codeVars), trace: fn.trace },
+          { placeholder: formatGeneratorJudgement(expr.arg, capturedCtx, codeVars), trace: arg.trace },
         ],
       )
     }
@@ -184,11 +184,11 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       ] as Instruction[]
       return composite(
         judgement,
-        `emit(push); ${formatJudgement(expr.left, capturedCtx, codeVars)}; emit(swap); ${formatJudgement(expr.right, capturedCtx, codeVars)}; emit(cons); emit(${op})`,
+        `emit(push); ${formatGeneratorJudgement(expr.left, capturedCtx, codeVars)}; emit(swap); ${formatGeneratorJudgement(expr.right, capturedCtx, codeVars)}; emit(cons); emit(${op})`,
         program,
         [
-          { placeholder: formatJudgement(expr.left, capturedCtx, codeVars), trace: left.trace },
-          { placeholder: formatJudgement(expr.right, capturedCtx, codeVars), trace: right.trace },
+          { placeholder: formatGeneratorJudgement(expr.left, capturedCtx, codeVars), trace: left.trace },
+          { placeholder: formatGeneratorJudgement(expr.right, capturedCtx, codeVars), trace: right.trace },
         ],
       )
     }
@@ -202,8 +202,8 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
     case 'code': {
       const nested = compileGenerator(expr.body, capturedCtx, codeVars)
       const program: Instruction[] = [{ op: 'merge', program: [...nested.program, { op: 'snd' }] }]
-      return composite(judgement, `merge(Cur(${formatJudgement(expr.body, capturedCtx, codeVars)}; snd))`, program, [
-        { placeholder: formatJudgement(expr.body, capturedCtx, codeVars), trace: nested.trace },
+      return composite(judgement, `merge(Cur(${formatGeneratorJudgement(expr.body, capturedCtx, codeVars)}; snd))`, program, [
+        { placeholder: formatGeneratorJudgement(expr.body, capturedCtx, codeVars), trace: nested.trace },
       ])
     }
     case 'letCogen': {
@@ -341,14 +341,19 @@ function parenthesize(expr: Expr): string {
   return `(${formatExpr(expr)})`
 }
 
-function formatContexts(ctx: ContextEntry[], codeVars: string[]): string {
+function formatContexts(ctx: ContextEntry[], codeVars: string[], includeLambda: boolean): string {
   const omega = ctx.filter((entry) => !entry.isCode).map((entry) => entry.name)
   const lambda = ctx.filter((entry) => entry.isCode || codeVars.includes(entry.name)).map((entry) => entry.name)
-  return `Ω=${formatContext(omega)} Λ=${formatContext(lambda)}`
+  const lambdaPart = includeLambda || lambda.length > 0 ? ` Λ=${formatContext(lambda)}` : ''
+  return `Ω=${formatContext(omega)}${lambdaPart}`
 }
 
-function formatJudgement(expr: Expr, ctx: ContextEntry[], codeVars: string[]): string {
-  return `[[ ${formatExpr(expr)} ]] ${formatContexts(ctx, codeVars)}`
+function formatJudgement(expr: Expr, ctx: ContextEntry[], codeVars: string[], includeLambda = false): string {
+  return `[[ ${formatExpr(expr)} ]] ${formatContexts(ctx, codeVars, includeLambda)}`
+}
+
+function formatGeneratorJudgement(expr: Expr, ctx: ContextEntry[], codeVars: string[]): string {
+  return formatJudgement(expr, ctx, codeVars, true)
 }
 
 function formatContext(names: string[]): string {
