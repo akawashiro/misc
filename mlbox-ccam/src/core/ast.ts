@@ -7,7 +7,6 @@ export type Expr =
   | { type: 'code'; body: Expr }
   | { type: 'lift'; body: Expr }
   | { type: 'letCogen'; name: string; generator: Expr; body: Expr }
-  | { type: 'eval'; body: Expr }
 
 export type ContextEntry = {
   name: string

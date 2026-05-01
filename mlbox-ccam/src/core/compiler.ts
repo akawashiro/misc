@@ -117,13 +117,6 @@ function compileCore(expr: Expr, ctx: ContextEntry[]): Compiled {
         ],
       )
     }
-    case 'eval': {
-      const body = compileCore(expr.body, ctx)
-      const program: Instruction[] = [...body.program, { op: 'arena' }, { op: 'cons' }, { op: 'app' }, { op: 'call' }]
-      return composite(judgement, `${formatJudgement(expr.body, ctx, [])}; arena; cons; app; call`, program, [
-        { placeholder: formatJudgement(expr.body, ctx, []), trace: body.trace },
-      ])
-    }
   }
 }
 
@@ -207,12 +200,6 @@ function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: str
       ])
     }
     case 'letCogen': {
-      const generated = compileCore(expr, capturedCtx)
-      return composite(judgement, `emit(${formatJudgement(expr, capturedCtx, [])})`, emitSequence(generated.program), [
-        { placeholder: formatJudgement(expr, capturedCtx, []), trace: generated.trace },
-      ])
-    }
-    case 'eval': {
       const generated = compileCore(expr, capturedCtx)
       return composite(judgement, `emit(${formatJudgement(expr, capturedCtx, [])})`, emitSequence(generated.program), [
         { placeholder: formatJudgement(expr, capturedCtx, []), trace: generated.trace },
@@ -331,8 +318,6 @@ function formatExpr(expr: Expr): string {
       return `lift ${parenthesize(expr.body)}`
     case 'letCogen':
       return `let cogen ${expr.name} = ${formatExpr(expr.generator)} in ${formatExpr(expr.body)} end`
-    case 'eval':
-      return `eval ${parenthesize(expr.body)}`
   }
 }
 

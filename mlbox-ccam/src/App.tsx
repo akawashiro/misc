@@ -6,24 +6,30 @@ import { parse } from './core/parser'
 
 const samples = [
   {
-    name: 'minimal code eval',
-    source: `eval (code 1)`,
+    name: 'minimal code run',
+    source: `let cogen result = code 1 in
+  result
+end`,
   },
   {
     name: 'let cogen + lift',
-    source: `eval (
+    source: `let cogen result = (
   let cogen a = lift (6 * 7) in
     code (a + 8)
   end
-)`,
+) in
+  result
+end`,
   },
   {
     name: 'let cogen + code',
-    source: `eval (
+    source: `let cogen result = (
   let cogen u = code 1 in
     code u
   end
-)`,
+) in
+  result
+end`,
   },
   {
     name: 'arithmetic',
@@ -34,22 +40,28 @@ const samples = [
     source: `(fn x => x * x + 1) 9`,
   },
   {
-    name: 'code + eval',
-    source: `eval (code ((20 + 1) * 2))`,
+    name: 'code run',
+    source: `let cogen result = code ((20 + 1) * 2) in
+  result
+end`,
   },
   {
     name: 'generated function',
-    source: `(eval (code (fn x => x + 10))) 32`,
+    source: `(let cogen f = code (fn x => x + 10) in
+  f
+end) 32`,
   },
   {
     name: 'code substitution',
-    source: `eval (
+    source: `let cogen result = (
   let cogen base = lift 40 in
     let cogen delta = lift 2 in
       code (base + delta)
     end
   end
-)`,
+) in
+  result
+end`,
   },
 ]
 

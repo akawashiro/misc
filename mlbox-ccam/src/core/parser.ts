@@ -143,7 +143,6 @@ class Parser {
     }
     if (this.matchKeyword('code')) return { type: 'code', body: this.parseAtom() }
     if (this.matchKeyword('lift')) return { type: 'lift', body: this.parseAtom() }
-    if (this.matchKeyword('eval')) return { type: 'eval', body: this.parseAtom() }
     if (this.matchSymbol('(')) {
       const expr = this.parseExpr()
       this.expectSymbol(')')
@@ -156,7 +155,7 @@ class Parser {
     return (
       token.type === 'number' ||
       token.type === 'ident' ||
-      (token.type === 'keyword' && ['code', 'lift', 'eval'].includes(token.value)) ||
+      (token.type === 'keyword' && ['code', 'lift'].includes(token.value)) ||
       (token.type === 'symbol' && token.value === '(')
     )
   }

@@ -30,18 +30,18 @@ describe('ML^box parser/compiler/CCAM', () => {
   })
 
   it('evaluates a generated code block', () => {
-    const result = execute('eval (code (40 + 2))')
+    const result = execute('let cogen result = code (40 + 2) in result end')
     expect(formatValue(result.value)).toBe('42')
     expect(result.transitions.length).toBeGreaterThan(1)
   })
 
   it('evaluates the minimal generated code sample', () => {
-    const result = execute('eval (code 1)')
+    const result = execute('let cogen result = code 1 in result end')
     expect(formatValue(result.value)).toBe('1')
   })
 
   it('specializes a code variable with let cogen', () => {
-    const result = execute('eval (let cogen a = lift (6 * 7) in code (a + 8) end)')
+    const result = execute('let cogen result = (let cogen a = lift (6 * 7) in code (a + 8) end) in result end')
     expect(formatValue(result.value)).toBe('50')
     expect(formatProgram(result.compiled.program)).toContain('app')
     expect(formatProgram(result.compiled.program)).not.toContain('splice')
@@ -49,8 +49,12 @@ describe('ML^box parser/compiler/CCAM', () => {
   })
 
   it('specializes a cogen binding produced from code', () => {
-    const result = execute('eval (let cogen u = code 1 in code u end)')
+    const result = execute('let cogen result = (let cogen u = code 1 in code u end) in result end')
     expect(formatValue(result.value)).toBe('1')
+  })
+
+  it('rejects eval because it is not an ML^box primitive', () => {
+    expect(() => parse('eval (code 1)')).toThrow('Expected expression')
   })
 
   it('formats compile traces from source term to final CCAM program', () => {
@@ -69,24 +73,27 @@ describe('ML^box parser/compiler/CCAM', () => {
   })
 
   it('expands let cogen and lift compile traces one instruction at a time', () => {
-    const ast = parse('eval (let cogen a = lift (6 * 7) in code (a + 8) end)')
+    const ast = parse('let cogen result = (let cogen a = lift (6 * 7) in code (a + 8) end) in result end')
     const compiled = compile(ast)
 
     expectLinesInOrder(compiled.log, [
-      'push; [[ lift (6 * 7) ]] Ω=∅; cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; [[ 6 * 7 ]] Ω=∅; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; [[ 6 ]] Ω=∅; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; \'6; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; arena; cons; app; call',
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur([[ a + 8 ]] Ω=∅ Λ=a; snd); arena; cons; app; call',
+      'push; [[ let cogen a = lift (6 * 7) in code (a + 8) end ]] Ω=∅; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; [[ lift (6 * 7) ]] Ω=∅; cons; [[ code (a + 8) ]] Ω=∅ Λ=a; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; [[ 6 * 7 ]] Ω=∅; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; [[ 6 ]] Ω=∅; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; \'6; swap; [[ 7 ]] Ω=∅; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; [[ code (a + 8) ]] Ω=∅ Λ=a; cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur([[ a + 8 ]] Ω=∅ Λ=a; snd); cons; [[ result ]] Ω=∅ Λ=result',
     ])
     expectLinesInOrder(compiled.log, [
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); [[ a ]] Ω=∅ Λ=a; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; push; fst; snd; swap; snd; cons; app; swap; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); [[ a ]] Ω=∅ Λ=a; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; push; fst; snd; swap; snd; cons; app; swap; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); cons; [[ result ]] Ω=∅ Λ=result',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; push; fst; snd; swap; snd; cons; app; swap; emit(swap); emit(\'8); emit(cons); emit(add); snd); cons; snd; arena; cons; app; call',
     ])
     expect(compiled.log).not.toContain(
-      'push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); arena; cons; app; call',
+      'push; push; push; \'6; swap; \'7; cons; mul; Cur(lift; snd); cons; Cur(emit(push); push; emit(swap); [[ 8 ]] Ω=∅ Λ=a; emit(cons); emit(add); snd); cons; snd; arena; cons; app; call',
     )
+    expect(compiled.log.join('\n')).not.toContain('eval')
     expect(compiled.log).not.toContain('push')
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
