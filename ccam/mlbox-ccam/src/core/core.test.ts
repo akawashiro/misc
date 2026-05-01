@@ -26,6 +26,11 @@ describe('ML^box parser/compiler/CCAM', () => {
     expect(result.transitions.length).toBeGreaterThan(1)
   })
 
+  it('evaluates the minimal generated code sample', () => {
+    const result = execute('eval (code 1)')
+    expect(formatValue(result.value)).toBe('1')
+  })
+
   it('specializes a code variable with let cogen', () => {
     const result = execute('eval (let cogen a = lift (6 * 7) in code (a + 8) end)')
     expect(formatValue(result.value)).toBe('50')

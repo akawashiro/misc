@@ -6,6 +6,10 @@ import { parse } from './core/parser'
 
 const samples = [
   {
+    name: 'minimal code eval',
+    source: `eval (code 1)`,
+  },
+  {
     name: 'let cogen + lift',
     source: `eval (
   let cogen a = lift (6 * 7) in
