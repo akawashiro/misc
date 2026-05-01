@@ -18,6 +18,14 @@ const samples = [
 )`,
   },
   {
+    name: 'let cogen + code',
+    source: `eval (
+  let cogen u = code 1 in
+    code u
+  end
+)`,
+  },
+  {
     name: 'arithmetic',
     source: `6 * 7 + 8`,
   },

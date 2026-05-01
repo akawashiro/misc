@@ -48,6 +48,11 @@ describe('ML^box parser/compiler/CCAM', () => {
     expect(result.compiled.log.join('\n')).not.toContain('splice')
   })
 
+  it('specializes a cogen binding produced from code', () => {
+    const result = execute('eval (let cogen u = code 1 in code u end)')
+    expect(formatValue(result.value)).toBe('1')
+  })
+
   it('formats compile traces from source term to final CCAM program', () => {
     const ast = parse('(fn x => x + 1) 41')
     const compiled = compile(ast)
