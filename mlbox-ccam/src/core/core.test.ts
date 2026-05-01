@@ -170,14 +170,14 @@ describe('ML^box parser/compiler/CCAM', () => {
       expect(formatProgram(compiled.program)).toBe('emit(snd)')
     })
 
-    it('compiles generator lambdas by merging a generated Cur body', () => {
+    it('compiles generator lambdas by generating the body in a fresh arena before merge', () => {
       const compiled = compileGenerator(parse('fn x => x'))
 
       expectLinesInOrder(compiled.log, [
         '[[ fn x => x ]] Ω=∅ Λ=∅',
-        'merge(Cur(snd))',
+        'push; fst; arena; emit(snd); snd; swap; id; cons; merge(Cur(snd))',
       ])
-      expect(formatProgram(compiled.program)).toBe('merge(Cur(snd))')
+      expect(formatProgram(compiled.program)).toBe('push; fst; arena; emit(snd); snd; swap; id; cons; merge(Cur(snd))')
     })
 
     it('compiles generator applications by emitting push, swap, cons, and app', () => {
@@ -224,13 +224,13 @@ describe('ML^box parser/compiler/CCAM', () => {
     })
 
     it('compiles generator lift by evaluating the source term into the current block', () => {
-      const compiled = compileGenerator(parse('lift (1 + 2)'))
+      const compiled = compileGenerator(parse('lift 1'))
 
       expectLinesInOrder(compiled.log, [
-        '[[ lift (1 + 2) ]] Ω=∅ Λ=∅',
-        "lift[push; '1; swap; '2; cons; add]",
+        '[[ lift 1 ]] Ω=∅ Λ=∅',
+        "'1; merge(Cur(fst; arena; lift; snd; id))",
       ])
-      expect(formatProgram(compiled.program)).toBe("lift[push; '1; swap; '2; cons; add]")
+      expect(formatProgram(compiled.program)).toBe("'1; merge(Cur(fst; arena; lift; snd; id))")
     })
 
     it('compiles generator let cogen by emitting the normal let cogen compilation', () => {
