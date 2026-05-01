@@ -1,0 +1,17 @@
+#cloud-config
+ssh_pwauth: true
+disable_root: false
+
+chpasswd:
+  list: |
+    root:pass
+  expire: false
+
+users:
+  - name: root
+    lock_passwd: false
+
+runcmd:
+  - |
+    printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' >/etc/ssh/sshd_config.d/99-root-password.conf
+    systemctl restart ssh || service ssh restart
