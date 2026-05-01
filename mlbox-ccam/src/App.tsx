@@ -63,7 +63,79 @@ end) 32`,
   result
 end`,
   },
+  {
+    name: 'Figure 4: normal variable',
+    source: `fn x => x`,
+  },
+  {
+    name: 'Figure 4: normal lambda',
+    source: `fn x => x + 1`,
+  },
+  {
+    name: 'Figure 4: normal application',
+    source: `(fn x => x) 1`,
+  },
+  {
+    name: 'Figure 4: normal code variable',
+    source: `let cogen u = code 1 in
+  u
+end`,
+  },
+  {
+    name: 'Figure 4: normal code',
+    source: `code 1`,
+  },
+  {
+    name: 'Figure 4: normal lift',
+    source: `lift (1 + 2)`,
+  },
+  {
+    name: 'Figure 4: normal let cogen',
+    source: `let cogen u = code 1 in
+  2
+end`,
+  },
+  {
+    name: 'Figure 4: generator variable',
+    source: `(fn x => code x) 1`,
+  },
+  {
+    name: 'Figure 4: generator lambda',
+    source: `code (fn x => x)`,
+  },
+  {
+    name: 'Figure 4: generator application',
+    source: `code ((fn x => x) 1)`,
+  },
+  {
+    name: 'Figure 4: generator code variable in Omega',
+    source: `code (let cogen u = code 1 in
+  u
+end)`,
+  },
+  {
+    name: 'Figure 4: generator code variable in Lambda',
+    source: `let cogen u = code 1 in
+  code u
+end`,
+  },
+  {
+    name: 'Figure 4: generator nested code',
+    source: `code (code 1)`,
+  },
+  {
+    name: 'Figure 4: generator lift',
+    source: `code (lift 1)`,
+  },
+  {
+    name: 'Figure 4: generator let cogen',
+    source: `code (let cogen u = code 1 in
+  2
+end)`,
+  },
 ]
+
+const sortedSamples = [...samples].sort((left, right) => left.name.localeCompare(right.name))
 
 function App() {
   const [source, setSource] = useState(samples[0].source)
@@ -102,12 +174,12 @@ function App() {
               <select
                 value={samples.find((sample) => sample.source === source)?.name ?? 'custom'}
                 onChange={(event) => {
-                  const sample = samples.find((item) => item.name === event.target.value)
+                  const sample = sortedSamples.find((item) => item.name === event.target.value)
                   if (sample) setSource(sample.source)
                 }}
               >
                 {samples.find((sample) => sample.source === source) ? null : <option value="custom">Custom</option>}
-                {samples.map((sample) => (
+                {sortedSamples.map((sample) => (
                   <option key={sample.name} value={sample.name}>
                     {sample.name}
                   </option>
