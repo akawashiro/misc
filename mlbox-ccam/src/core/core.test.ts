@@ -216,14 +216,16 @@ describe('ML^box parser/compiler/CCAM', () => {
       )
     })
 
-    it('compiles nested generator code by merging a lifted generator closure', () => {
+    it('compiles nested generator code by lifting and applying a generator closure', () => {
       const compiled = compile(parse('code (code 1)'))
 
       expectLinesInOrder(compiled.log, [
         'Cur([[ code 1 ]] Ω=∅ Λ=∅; snd)',
-        "Cur(merge(Cur(emit('1); snd)); snd)",
+        "Cur(push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app; snd)",
       ])
-      expect(formatProgram(compiled.program)).toBe("Cur(merge(Cur(emit('1); snd)); snd)")
+      expect(formatProgram(compiled.program)).toBe(
+        "Cur(push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app; snd)",
+      )
     })
 
     it('compiles generator lift by evaluating the source term into the current block', () => {
