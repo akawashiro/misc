@@ -26,7 +26,7 @@ export function compileNormalTerm(expr: Expr, ctx: ContextEntry[]): CompileResul
   return { program: compiled.program, log: compiled.trace }
 }
 
-export function compileGenerator(expr: Expr, capturedCtx: ContextEntry[] = [], codeVars: string[] = []): CompileResult {
+export function compileGenerator(expr: Expr, capturedCtx: ContextEntry[], codeVars: string[]): CompileResult {
   const compiled = compileGeneratorCore(expr, capturedCtx, codeVars)
   return { program: compiled.program, log: compiled.trace }
 }

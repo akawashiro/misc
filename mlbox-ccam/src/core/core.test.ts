@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { compile, compileGenerator, compileNormalTerm } from './compiler'
 import { formatProgram, formatValue, run } from './ccam'
+import type { Instruction, Value } from './ccam'
 import { parse } from './parser'
 
 function execute(source: string) {
@@ -16,6 +17,28 @@ function expectLinesInOrder(log: string[], expected: string[]) {
     expect(index).toBeGreaterThan(previousIndex)
     previousIndex = index
   }
+}
+
+function intValue(value: number): Value {
+  return { type: 'int', value }
+}
+
+function pairValue(left: Value, right: Value): Value {
+  return { type: 'pair', left, right }
+}
+
+function blockValue(program: Instruction[] = []): Value {
+  return { type: 'block', program }
+}
+
+function closureValue(env: Value, program: Instruction[]): Value {
+  return { type: 'closure', env, program }
+}
+
+function finalStack(program: Instruction[], env: Value): string {
+  const transition = run(program, env).transitions.at(-1)
+  if (!transition) throw new Error('missing final transition')
+  return transition.stack
 }
 
 describe('ML^box parser/compiler/CCAM', () => {
@@ -98,6 +121,80 @@ describe('ML^box parser/compiler/CCAM', () => {
     expect(compiled.log.at(-1)).toBe(formatProgram(compiled.program))
   })
 
+  describe('Figure 3 CCAM transitions', () => {
+    it('id leaves the stack unchanged', () => {
+      expect(finalStack([{ op: 'id' }], intValue(1))).toBe('[1]')
+    })
+
+    it('fst projects the left side of a pair', () => {
+      const result = run([{ op: 'fst' }], pairValue(intValue(1), intValue(2)))
+      expect(formatValue(result.value)).toBe('1')
+    })
+
+    it('snd projects the right side of a pair', () => {
+      const result = run([{ op: 'snd' }], pairValue(intValue(1), intValue(2)))
+      expect(formatValue(result.value)).toBe('2')
+    })
+
+    it('quote replaces the top stack value with the quoted value', () => {
+      const result = run([{ op: 'quote', value: intValue(2) }], intValue(1))
+      expect(formatValue(result.value)).toBe('2')
+    })
+
+    it('push duplicates the top stack value', () => {
+      expect(finalStack([{ op: 'push' }], intValue(1))).toBe('[1 :: 1]')
+    })
+
+    it('swap exchanges the top two stack values', () => {
+      const program: Instruction[] = [{ op: 'push' }, { op: 'quote', value: intValue(2) }, { op: 'swap' }]
+      expect(finalStack(program, intValue(1))).toBe('[1 :: 2]')
+    })
+
+    it('cons pairs the top two stack values', () => {
+      const program: Instruction[] = [{ op: 'push' }, { op: 'quote', value: intValue(2) }, { op: 'cons' }]
+      const result = run(program, intValue(1))
+      expect(formatValue(result.value)).toBe('(1, 2)')
+    })
+
+    it('cur closes the current environment over a program', () => {
+      const result = run([{ op: 'cur', program: [{ op: 'quote', value: intValue(2) }] }], intValue(1))
+      expect(formatValue(result.value)).toBe("[1 : '2]")
+    })
+
+    it('app installs a closure environment and prepends its program', () => {
+      const env = pairValue(closureValue(intValue(5), [{ op: 'snd' }]), intValue(9))
+      const result = run([{ op: 'app' }], env)
+      expect(formatValue(result.value)).toBe('9')
+    })
+
+    it('arena pushes a fresh empty code block', () => {
+      expect(finalStack([{ op: 'arena' }], intValue(1))).toBe('[{.} :: 1]')
+    })
+
+    it('emit appends an instruction to the current code block', () => {
+      const env = pairValue(intValue(1), blockValue())
+      const result = run([{ op: 'emit', instruction: { op: 'quote', value: intValue(2) } }], env)
+      expect(formatValue(result.value)).toBe("(1, {'2})")
+    })
+
+    it('lift appends a quote of the current value to the current code block', () => {
+      const env = pairValue(intValue(7), blockValue())
+      const result = run([{ op: 'lift' }], env)
+      expect(formatValue(result.value)).toBe("(7, {'7})")
+    })
+
+    it('merge appends a Cur instruction to the current code block', () => {
+      const env = pairValue(intValue(1), blockValue([{ op: 'quote', value: intValue(2) }]))
+      const result = run([{ op: 'merge', program: [{ op: 'snd' }] }], env)
+      expect(formatValue(result.value)).toBe("(1, {'2; Cur(snd)})")
+    })
+
+    it('call prepends the current code block to the instruction stream', () => {
+      const result = run([{ op: 'call' }], blockValue([{ op: 'quote', value: intValue(3) }]))
+      expect(formatValue(result.value)).toBe('3')
+    })
+  })
+
   describe('Figure 4 compilation rules', () => {
     it('compiles a value variable by selecting it from the environment', () => {
       const compiled = compileNormalTerm(parse('x'), [{ name: 'x', isCode: false }])
@@ -135,24 +232,24 @@ describe('ML^box parser/compiler/CCAM', () => {
     })
 
     it('compiles generator value variables by emitting environment selections', () => {
-      const compiled = compileGenerator(parse('x'), [{ name: 'x', isCode: false }])
+      const compiled = compileGenerator(parse('x'), [{ name: 'x', isCode: false }], [])
       expect(formatProgram(compiled.program)).toBe('emit(snd)')
     })
 
     it('compiles generator lambdas by generating the body in a fresh arena before merge', () => {
-      const compiled = compileGenerator(parse('fn x => x'))
+      const compiled = compileGenerator(parse('fn x => x'), [], [])
       expect(formatProgram(compiled.program)).toBe('push; fst; arena; emit(snd); snd; swap; id; cons; merge(Cur(snd))')
     })
 
     it('compiles generator applications by emitting push, swap, cons, and app', () => {
-      const compiled = compileGenerator(parse('(fn x => x) 1'))
+      const compiled = compileGenerator(parse('(fn x => x) 1'), [], [])
       expect(formatProgram(compiled.program)).toBe(
         "emit(push); emit(Cur(snd)); emit(swap); emit('1); emit(cons); emit(app)",
       )
     })
 
     it('compiles generator code variables in Omega by emitting future generator activation', () => {
-      const compiled = compileGenerator(parse('let cogen u = code 1 in u end'))
+      const compiled = compileGenerator(parse('let cogen u = code 1 in u end'), [], [])
       expect(formatProgram(compiled.program)).toBe(
         "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit(snd); emit(arena); emit(cons); emit(app); emit(call)",
       )
@@ -164,19 +261,19 @@ describe('ML^box parser/compiler/CCAM', () => {
     })
 
     it('compiles nested generator code by lifting and applying a generator closure', () => {
-      const compiled = compileGenerator(parse('code 1'))
+      const compiled = compileGenerator(parse('code 1'), [], [])
       expect(formatProgram(compiled.program)).toBe(
         "push; fst; push; '(); Cur(fst; Cur(emit('1); snd)); swap; snd; cons; lift; snd; swap; id; cons; app",
       )
     })
 
     it('compiles generator lift by evaluating the source term into the current block', () => {
-      const compiled = compileGenerator(parse('lift 1'))
+      const compiled = compileGenerator(parse('lift 1'), [], [])
       expect(formatProgram(compiled.program)).toBe("'1; merge(Cur(fst; arena; lift; snd; id))")
     })
 
     it('compiles generator let cogen by emitting the normal let cogen compilation', () => {
-      const compiled = compileGenerator(parse('let cogen u = code 1 in 2 end'))
+      const compiled = compileGenerator(parse('let cogen u = code 1 in 2 end'), [], [])
       expect(formatProgram(compiled.program)).toBe(
         "emit(push); emit(Cur(emit('1); snd)); emit(cons); emit('2)",
       )
