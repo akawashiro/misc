@@ -50,11 +50,6 @@
   overflow: hidden;
 }
 
-.input-panel {
-  position: sticky;
-  top: 14px;
-}
-
 .run-panel {
   grid-column: 1 / -1;
 }
@@ -210,10 +205,6 @@ code {
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: 1fr;
-  }
-
-  .input-panel {
-    position: static;
   }
 
   .row {
