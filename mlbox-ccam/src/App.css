@@ -238,6 +238,11 @@ code {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.riscv-sample-picker {
+  flex: 1 1 260px;
 }
 
 .riscv-toolbar button {

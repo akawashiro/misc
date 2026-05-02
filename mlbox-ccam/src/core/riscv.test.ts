@@ -68,6 +68,10 @@ function runAssembly(source: string, limit = 1000) {
   return { state, steps }
 }
 
+function readUint32(bytes: Uint8Array, address: number): number {
+  return (bytes[address] | (bytes[address + 1] << 8) | (bytes[address + 2] << 16) | (bytes[address + 3] << 24)) >>> 0
+}
+
 describe('RV32I emulator', () => {
   it('executes one instruction at a time and reports snapshots', () => {
     const state = createRv32Machine([i(41, 0, 0, 1), i(1, 1, 0, 2)])
@@ -408,6 +412,61 @@ describe('RV32I emulator', () => {
       const breakpoint = runAssembly('ebreak')
       expect(breakpoint.steps.at(-1)?.trap?.reason).toBe('ebreak')
       expect(breakpoint.state.halted).toBe(true)
+    })
+
+    it('executes the Fib(10) loop sample', () => {
+      const { state, steps } = runAssembly(
+        [
+          '# Fib(10): result is x6 = 55',
+          'addi x5, x0, 10',
+          'addi x6, x0, 0',
+          'addi x7, x0, 1',
+          'add x8, x6, x7',
+          'add x6, x7, x0',
+          'add x7, x8, x0',
+          'addi x5, x5, -1',
+          'bne x5, x0, -16',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(steps.at(-1)?.trap?.reason).toBe('ecall')
+      expect(state.regs[6]).toBe(55)
+      expect(state.regs[7]).toBe(89)
+    })
+
+    it('executes the stack-machine-style addition sample', () => {
+      const regs = new Uint32Array(32)
+      regs[2] = 64 * 1024
+      const state = createRv32Machine(
+        wordsFromBytes(
+          assembleRv32(
+            [
+              '# Stack machine style: computes 1 + 2',
+              'addi x2, x2, -4',
+              'addi x5, x0, 1',
+              'sw x5, 0(x2)',
+              'addi x2, x2, -4',
+              'addi x5, x0, 2',
+              'sw x5, 0(x2)',
+              'lw x5, 0(x2)',
+              'addi x2, x2, 4',
+              'lw x6, 0(x2)',
+              'addi x2, x2, 4',
+              'add x7, x6, x5',
+              'addi x2, x2, -4',
+              'sw x7, 0(x2)',
+              'ecall',
+            ].join('\n'),
+          ),
+        ),
+        { regs },
+      )
+      const steps = runRv32(state)
+
+      expect(steps.at(-1)?.trap?.reason).toBe('ecall')
+      expect(state.regs[7]).toBe(3)
+      expect(readUint32(state.memory, state.regs[2])).toBe(3)
     })
   })
 })

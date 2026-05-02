@@ -151,11 +151,50 @@ const rv32MemorySize = 64 * 1024
 const rv32InitialSp = rv32MemorySize
 const rv32DisassemblyRadius = 3
 
-const defaultRv32Source = `addi x1, x0, 42
+const rv32Samples = [
+  {
+    name: 'Load/store round trip',
+    source: `addi x1, x0, 42
 addi x2, x2, -16
 sw x1, 12(x2)
 lw x3, 12(x2)
-ecall`
+ecall`,
+  },
+  {
+    name: 'Fib(10) loop',
+    source: `# Fib(10): result is x6 = 55
+addi x5, x0, 10
+addi x6, x0, 0
+addi x7, x0, 1
+add x8, x6, x7
+add x6, x7, x0
+add x7, x8, x0
+addi x5, x5, -1
+bne x5, x0, -16
+ecall`,
+  },
+  {
+    name: 'Stack machine 1 + 2',
+    source: `# Stack machine style: computes 1 + 2
+addi x2, x2, -4
+addi x5, x0, 1
+sw x5, 0(x2)
+addi x2, x2, -4
+addi x5, x0, 2
+sw x5, 0(x2)
+lw x5, 0(x2)
+addi x2, x2, 4
+lw x6, 0(x2)
+addi x2, x2, 4
+add x7, x6, x5
+addi x2, x2, -4
+sw x7, 0(x2)
+ecall`,
+  },
+]
+
+const sortedRv32Samples = [...rv32Samples].sort((left, right) => left.name.localeCompare(right.name))
+const defaultRv32Source = rv32Samples[0].source
 
 type Rv32UiState = {
   machine: Rv32State | null
@@ -283,6 +322,13 @@ function App() {
     setRv32State(createRv32UiState(rv32Source))
   }
 
+  function selectRv32Sample(name: string): void {
+    const sample = sortedRv32Samples.find((item) => item.name === name)
+    if (!sample) return
+    setRv32Source(sample.source)
+    setRv32State(createRv32UiState(sample.source))
+  }
+
   function stepRv32Once(): void {
     setRv32State((current) => {
       if (!current.machine || current.machine.halted) return current
@@ -391,6 +437,20 @@ function App() {
           <div className="riscv-layout">
             <div className="riscv-editor">
               <div className="riscv-toolbar">
+                <label className="sample-picker riscv-sample-picker">
+                  <span>Sample</span>
+                  <select
+                    value={rv32Samples.find((sample) => sample.source === rv32Source)?.name ?? 'custom'}
+                    onChange={(event) => selectRv32Sample(event.target.value)}
+                  >
+                    {rv32Samples.find((sample) => sample.source === rv32Source) ? null : <option value="custom">Custom</option>}
+                    {sortedRv32Samples.map((sample) => (
+                      <option key={sample.name} value={sample.name}>
+                        {sample.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <button type="button" onClick={resetRv32}>
                   Reset
                 </button>
