@@ -54,6 +54,10 @@
   grid-column: 1 / -1;
 }
 
+.riscv-panel {
+  grid-column: 1 / -1;
+}
+
 .panel-header {
   min-height: 46px;
   padding: 12px 14px;
@@ -205,6 +209,181 @@ code {
   white-space: pre-wrap;
 }
 
+.trap {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #fecdd3;
+  border-radius: 6px;
+  color: #991b1b;
+  background: #fff1f2;
+  white-space: pre-wrap;
+}
+
+.riscv-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.45fr) minmax(520px, 1fr);
+  min-height: 560px;
+}
+
+.riscv-editor {
+  border-right: 1px solid #e4e8f0;
+  background: #fbfcfe;
+  min-width: 0;
+}
+
+.riscv-toolbar {
+  min-height: 46px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e4e8f0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.riscv-toolbar button {
+  height: 30px;
+  border: 1px solid #c4ccda;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d2433;
+  padding: 0 12px;
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.riscv-toolbar button:hover:not(:disabled) {
+  background: #f2f5f9;
+}
+
+.riscv-toolbar button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.riscv-toolbar button:disabled {
+  color: #98a2b3;
+  cursor: not-allowed;
+}
+
+.riscv-source {
+  min-height: 500px;
+}
+
+.riscv-state {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.riscv-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.riscv-status > div {
+  min-width: 0;
+  border: 1px solid #e4e8f0;
+  border-radius: 6px;
+  padding: 8px;
+  display: grid;
+  gap: 5px;
+  background: #ffffff;
+}
+
+.riscv-status span,
+.register-cell span,
+.disassembly-row span,
+.memory-row span {
+  color: #667085;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.riscv-status code,
+.register-cell code,
+.disassembly-row code,
+.memory-row code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.riscv-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.riscv-block {
+  min-width: 0;
+}
+
+.riscv-block h3 {
+  margin: 0 0 8px;
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.register-cell {
+  min-width: 0;
+  border: 1px solid #edf0f5;
+  border-radius: 6px;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  background: #fbfcfe;
+}
+
+.disassembly-list,
+.memory-dump {
+  display: grid;
+  border: 1px solid #e4e8f0;
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.disassembly-row {
+  display: grid;
+  grid-template-columns: 30px 102px 102px minmax(180px, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf0f5;
+  background: #ffffff;
+}
+
+.disassembly-row:last-child,
+.memory-row:last-child {
+  border-bottom: 0;
+}
+
+.disassembly-row.current,
+.memory-row.current {
+  background: #eef6ff;
+}
+
+.memory-row {
+  display: grid;
+  grid-template-columns: 30px 102px minmax(360px, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf0f5;
+  background: #ffffff;
+}
+
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: 1fr;
@@ -212,6 +391,20 @@ code {
 
   .row {
     grid-template-columns: 42px minmax(220px, 1fr) minmax(260px, 1fr);
+  }
+
+  .riscv-layout,
+  .riscv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .riscv-editor {
+    border-right: 0;
+    border-bottom: 1px solid #e4e8f0;
+  }
+
+  .riscv-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -225,5 +418,21 @@ code {
   .sample-picker select {
     width: 100%;
     max-width: none;
+  }
+
+  .register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .riscv-status {
+    grid-template-columns: 1fr;
+  }
+
+  .disassembly-row {
+    grid-template-columns: 28px 96px 96px minmax(160px, 1fr);
+  }
+
+  .memory-row {
+    grid-template-columns: 28px 96px minmax(300px, 1fr);
   }
 }

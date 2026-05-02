@@ -3,6 +3,16 @@ import './App.css'
 import { compile } from './core/compiler'
 import { formatValue, run } from './core/ccam'
 import { parse } from './core/parser'
+import {
+  assembleRv32,
+  createRv32Machine,
+  disassembleRv32Word,
+  formatRv32Instruction,
+  formatRv32Register,
+  formatRv32Word,
+  stepRv32,
+} from './core/riscv'
+import type { Rv32State, Rv32StepResult } from './core/riscv'
 
 const samples = [
   {
@@ -137,8 +147,120 @@ end)`,
 
 const sortedSamples = [...samples].sort((left, right) => left.name.localeCompare(right.name))
 
+const rv32MemorySize = 64 * 1024
+const rv32InitialSp = rv32MemorySize
+const rv32DisassemblyRadius = 3
+
+const defaultRv32Source = `addi x1, x0, 42
+addi x2, x2, -16
+sw x1, 12(x2)
+lw x3, 12(x2)
+ecall`
+
+type Rv32UiState = {
+  machine: Rv32State | null
+  steps: Rv32StepResult[]
+  error: string | null
+}
+
+type Rv32DisassemblyRow = {
+  address: number
+  word: number | null
+  text: string
+  current: boolean
+}
+
+type Rv32MemoryRow = {
+  address: number
+  bytes: string[]
+  includesSp: boolean
+}
+
+function createRv32UiState(source: string): Rv32UiState {
+  try {
+    const program = wordsFromBytes(assembleRv32(source))
+    const regs = new Uint32Array(32)
+    regs[2] = rv32InitialSp
+    return {
+      machine: createRv32Machine(program, { regs, memorySize: rv32MemorySize }),
+      steps: [],
+      error: null,
+    }
+  } catch (error) {
+    return {
+      machine: null,
+      steps: [],
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+function wordsFromBytes(bytes: Uint8Array): number[] {
+  const words: number[] = []
+  for (let index = 0; index < bytes.length; index += 4) {
+    words.push(readUint32(bytes, index))
+  }
+  return words
+}
+
+function rv32DisassemblyRows(machine: Rv32State): Rv32DisassemblyRow[] {
+  const pc = machine.pc
+  const center = Math.floor(pc / 4) * 4
+  const start = Math.max(0, center - rv32DisassemblyRadius * 4)
+  const rows: Rv32DisassemblyRow[] = []
+
+  for (let address = start; address <= center + rv32DisassemblyRadius * 4; address += 4) {
+    if (address > machine.memory.length - 4) {
+      rows.push({ address, word: null, text: 'outside memory', current: address === center })
+      continue
+    }
+
+    const word = readUint32(machine.memory, address)
+    try {
+      rows.push({ address, word, text: disassembleRv32Word(word, address), current: address === center })
+    } catch (error) {
+      rows.push({
+        address,
+        word,
+        text: error instanceof Error ? error.message : String(error),
+        current: address === center,
+      })
+    }
+  }
+
+  return rows
+}
+
+function rv32StackRows(machine: Rv32State): Rv32MemoryRow[] {
+  const sp = machine.regs[2]
+  const rowSize = 16
+  const start = alignDown(Math.min(sp, machine.memory.length - 1), rowSize)
+  const clampedStart = Math.max(0, Math.min(machine.memory.length - rowSize, start - rowSize * 2))
+  const rows: Rv32MemoryRow[] = []
+
+  for (let address = clampedStart; address < clampedStart + rowSize * 5 && address < machine.memory.length; address += rowSize) {
+    const bytes: string[] = []
+    for (let offset = 0; offset < rowSize && address + offset < machine.memory.length; offset += 1) {
+      bytes.push(machine.memory[address + offset].toString(16).padStart(2, '0'))
+    }
+    rows.push({ address, bytes, includesSp: sp >= address && sp < address + rowSize })
+  }
+
+  return rows
+}
+
+function readUint32(bytes: Uint8Array, address: number): number {
+  return (bytes[address] | (bytes[address + 1] << 8) | (bytes[address + 2] << 16) | (bytes[address + 3] << 24)) >>> 0
+}
+
+function alignDown(value: number, alignment: number): number {
+  return value - (value % alignment)
+}
+
 function App() {
   const [source, setSource] = useState(samples[0].source)
+  const [rv32Source, setRv32Source] = useState(defaultRv32Source)
+  const [rv32State, setRv32State] = useState<Rv32UiState>(() => createRv32UiState(defaultRv32Source))
 
   const result = useMemo(() => {
     try {
@@ -150,6 +272,24 @@ function App() {
       return { ast: null, compiled: null, executed: null, error: error instanceof Error ? error.message : String(error) }
     }
   }, [source])
+
+  const rv32Machine = rv32State.machine
+  const rv32Trap = rv32Machine?.trap ?? rv32State.steps.at(-1)?.trap
+  const rv32LastStep = rv32State.steps.at(-1)
+  const rv32Disassembly = rv32Machine ? rv32DisassemblyRows(rv32Machine) : []
+  const rv32Stack = rv32Machine ? rv32StackRows(rv32Machine) : []
+
+  function resetRv32(): void {
+    setRv32State(createRv32UiState(rv32Source))
+  }
+
+  function stepRv32Once(): void {
+    setRv32State((current) => {
+      if (!current.machine || current.machine.halted) return current
+      const step = stepRv32(current.machine)
+      return { ...current, steps: [...current.steps, step], error: null }
+    })
+  }
 
   return (
     <main className="app-shell">
@@ -241,6 +381,98 @@ function App() {
               </div>
             </>
           )}
+        </section>
+
+        <section className="panel riscv-panel">
+          <div className="panel-header">
+            <h2>RISC-V Emulator</h2>
+            <span>{rv32Machine ? `${rv32State.steps.length} steps` : 'not loaded'}</span>
+          </div>
+          <div className="riscv-layout">
+            <div className="riscv-editor">
+              <div className="riscv-toolbar">
+                <button type="button" onClick={resetRv32}>
+                  Reset
+                </button>
+                <button type="button" onClick={stepRv32Once} disabled={!rv32Machine || rv32Machine.halted}>
+                  Step
+                </button>
+              </div>
+              <textarea
+                className="riscv-source"
+                value={rv32Source}
+                onChange={(event) => setRv32Source(event.target.value)}
+                spellCheck={false}
+                aria-label="RISC-V assembly source"
+              />
+              {rv32State.error && <pre className="error">{rv32State.error}</pre>}
+            </div>
+
+            <div className="riscv-state">
+              <div className="riscv-status">
+                <div>
+                  <span>PC</span>
+                  <code>{rv32Machine ? formatRv32Word(rv32Machine.pc) : '-'}</code>
+                </div>
+                <div>
+                  <span>SP</span>
+                  <code>{rv32Machine ? formatRv32Word(rv32Machine.regs[2]) : '-'}</code>
+                </div>
+                <div>
+                  <span>Status</span>
+                  <code>{rv32Machine?.halted ? rv32Trap?.reason ?? 'halted' : 'running'}</code>
+                </div>
+                <div>
+                  <span>Last</span>
+                  <code>{rv32LastStep ? formatRv32Instruction(rv32LastStep.instruction) : '-'}</code>
+                </div>
+              </div>
+              {rv32Trap && <pre className="trap">{rv32Trap.message}</pre>}
+
+              <div className="riscv-grid">
+                <section className="riscv-block">
+                  <h3>Registers</h3>
+                  <div className="register-grid">
+                    {rv32Machine
+                      ? Array.from(rv32Machine.regs).map((value, index) => (
+                          <div className="register-cell" key={index}>
+                            <span>{formatRv32Register(index)}</span>
+                            <code>{formatRv32Word(value)}</code>
+                          </div>
+                        ))
+                      : null}
+                  </div>
+                </section>
+
+                <section className="riscv-block">
+                  <h3>Disassembly</h3>
+                  <div className="disassembly-list">
+                    {rv32Disassembly.map((row) => (
+                      <div className={row.current ? 'disassembly-row current' : 'disassembly-row'} key={row.address}>
+                        <span>{row.current ? 'PC' : ''}</span>
+                        <code>{formatRv32Word(row.address)}</code>
+                        <code>{row.word === null ? '--------' : formatRv32Word(row.word)}</code>
+                        <code>{row.text}</code>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <section className="riscv-block">
+                <h3>Stack Memory</h3>
+                <div className="memory-dump">
+                  {rv32Stack.map((row) => (
+                    <div className={row.includesSp ? 'memory-row current' : 'memory-row'} key={row.address}>
+                      <span>{row.includesSp ? 'SP' : ''}</span>
+                      <code>{formatRv32Word(row.address)}</code>
+                      <code>{row.bytes.join(' ')}</code>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
         </section>
       </section>
     </main>

@@ -91,6 +91,19 @@ describe('RV32I assembler/disassembler', () => {
     expect(Array.from(bytes4)).toEqual(Array.from(bytes2))
   })
 
+  it('ignores hash and semicolon comments in assembly source', () => {
+    const bytes = assembleRv32(
+      [
+        '# full-line comment',
+        'addi x1, x0, 1 # trailing comment',
+        '; another full-line comment',
+        'addi x2, x1, 2 ; semicolon trailing comment',
+      ].join('\n'),
+    )
+
+    expect(disassembleRv32(bytes)).toBe('addi x1, x0, 1\naddi x2, x1, 2')
+  })
+
   it('disassembles single words', () => {
     const word = assembleRv32Line('sub x1, x2, x3')
     expect(disassembleRv32Word(word)).toBe('sub x1, x2, x3')

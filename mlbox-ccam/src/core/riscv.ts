@@ -136,6 +136,7 @@ export function formatRv32Snapshot(snapshot: Rv32Snapshot): string {
 export function assembleRv32(source: string): Uint8Array {
   const words = source
     .split(/\r?\n/)
+    .map(stripRv32Comment)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map(assembleRv32Line)
@@ -144,6 +145,13 @@ export function assembleRv32(source: string): Uint8Array {
     writeUint32(bytes, index * 4, words[index])
   }
   return bytes
+}
+
+function stripRv32Comment(line: string): string {
+  const hash = line.indexOf('#')
+  const semicolon = line.indexOf(';')
+  const indexes = [hash, semicolon].filter((index) => index >= 0)
+  return indexes.length === 0 ? line : line.slice(0, Math.min(...indexes))
 }
 
 export function disassembleRv32(bytes: Uint8Array): string {
