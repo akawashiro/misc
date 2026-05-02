@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assembleRv32,
   createRv32Machine,
   formatRv32Instruction,
   formatRv32Word,
@@ -52,6 +53,20 @@ function j(immediate: number, rd: number): number {
 
 const ecall = 0x00000073
 const ebreak = 0x00100073
+
+function wordsFromBytes(bytes: Uint8Array): number[] {
+  const words: number[] = []
+  for (let index = 0; index < bytes.length; index += 4) {
+    words.push((bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24)) >>> 0)
+  }
+  return words
+}
+
+function runAssembly(source: string, limit = 1000) {
+  const state = createRv32Machine(wordsFromBytes(assembleRv32(source)))
+  const steps = runRv32(state, limit)
+  return { state, steps }
+}
 
 describe('RV32I emulator', () => {
   it('executes one instruction at a time and reports snapshots', () => {
@@ -211,5 +226,188 @@ describe('RV32I emulator', () => {
 
   it('formats words for future UI surfaces', () => {
     expect(formatRv32Word(-1)).toBe('0xffffffff')
+  })
+
+  describe('assembled instruction execution', () => {
+    it('executes assembled lui and auipc', () => {
+      const { state, steps } = runAssembly(
+        [
+          'lui x1, 305418240',
+          'auipc x2, 4096',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(steps.at(-1)?.trap?.reason).toBe('ecall')
+      expect(state.regs[1]).toBe(0x12345000)
+      expect(state.regs[2]).toBe(4100)
+    })
+
+    it('executes assembled jal and jalr', () => {
+      const jump = runAssembly(
+        [
+          'jal x3, 8',
+          'addi x1, x0, 1',
+          'addi x1, x0, 2',
+          'ecall',
+        ].join('\n'),
+      ).state
+
+      expect(jump.regs[1]).toBe(2)
+      expect(jump.regs[3]).toBe(4)
+
+      const indirect = runAssembly(
+        [
+          'addi x5, x0, 12',
+          'jalr x4, 0(x5)',
+          'addi x2, x0, 1',
+          'addi x2, x0, 2',
+          'ecall',
+        ].join('\n'),
+      ).state
+
+      expect(indirect.regs[2]).toBe(2)
+      expect(indirect.regs[4]).toBe(8)
+    })
+
+    it('executes all assembled branch instructions', () => {
+      const { state } = runAssembly(
+        [
+          'addi x1, x0, 1',
+          'addi x2, x0, 1',
+          'addi x3, x0, 2',
+          'addi x4, x0, -1',
+          'beq x1, x2, 8',
+          'addi x10, x0, 99',
+          'addi x10, x0, 1',
+          'bne x1, x3, 8',
+          'addi x11, x0, 99',
+          'addi x11, x0, 1',
+          'blt x4, x1, 8',
+          'addi x12, x0, 99',
+          'addi x12, x0, 1',
+          'bge x1, x4, 8',
+          'addi x13, x0, 99',
+          'addi x13, x0, 1',
+          'bltu x1, x4, 8',
+          'addi x14, x0, 99',
+          'addi x14, x0, 1',
+          'bgeu x4, x1, 8',
+          'addi x15, x0, 99',
+          'addi x15, x0, 1',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(state.regs[10]).toBe(1)
+      expect(state.regs[11]).toBe(1)
+      expect(state.regs[12]).toBe(1)
+      expect(state.regs[13]).toBe(1)
+      expect(state.regs[14]).toBe(1)
+      expect(state.regs[15]).toBe(1)
+    })
+
+    it('executes all assembled load and store instructions', () => {
+      const { state } = runAssembly(
+        [
+          'addi x1, x0, 256',
+          'addi x2, x0, -128',
+          'sb x2, 0(x1)',
+          'lb x3, 0(x1)',
+          'lbu x4, 0(x1)',
+          'addi x5, x0, -1',
+          'sh x5, 2(x1)',
+          'lh x6, 2(x1)',
+          'lhu x7, 2(x1)',
+          'sw x5, 4(x1)',
+          'lw x8, 4(x1)',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(state.regs[3]).toBe(0xffffff80)
+      expect(state.regs[4]).toBe(0x80)
+      expect(state.regs[6]).toBe(0xffffffff)
+      expect(state.regs[7]).toBe(0xffff)
+      expect(state.regs[8]).toBe(0xffffffff)
+      expect(Array.from(state.memory.slice(256, 264))).toEqual([0x80, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+    })
+
+    it('executes all assembled immediate ALU instructions', () => {
+      const { state } = runAssembly(
+        [
+          'addi x1, x0, -1',
+          'addi x2, x0, 1',
+          'slti x3, x1, 1',
+          'sltiu x4, x1, 1',
+          'xori x5, x1, 255',
+          'ori x6, x0, 240',
+          'andi x7, x6, 15',
+          'slli x8, x2, 3',
+          'srli x9, x1, 1',
+          'srai x10, x1, 1',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(state.regs[1]).toBe(0xffffffff)
+      expect(state.regs[3]).toBe(1)
+      expect(state.regs[4]).toBe(0)
+      expect(state.regs[5]).toBe(0xffffff00)
+      expect(state.regs[6]).toBe(240)
+      expect(state.regs[7]).toBe(0)
+      expect(state.regs[8]).toBe(8)
+      expect(state.regs[9]).toBe(0x7fffffff)
+      expect(state.regs[10]).toBe(0xffffffff)
+    })
+
+    it('executes all assembled register ALU instructions', () => {
+      const { state } = runAssembly(
+        [
+          'addi x1, x0, -8',
+          'addi x2, x0, 3',
+          'addi x3, x0, 1',
+          'add x4, x1, x2',
+          'sub x5, x1, x2',
+          'sll x6, x2, x3',
+          'slt x7, x1, x2',
+          'sltu x8, x1, x2',
+          'xor x9, x1, x2',
+          'srl x10, x1, x3',
+          'sra x11, x1, x3',
+          'or x12, x1, x2',
+          'and x13, x1, x2',
+          'ecall',
+        ].join('\n'),
+      )
+
+      expect(state.regs[4]).toBe(0xfffffffb)
+      expect(state.regs[5]).toBe(0xfffffff5)
+      expect(state.regs[6]).toBe(6)
+      expect(state.regs[7]).toBe(1)
+      expect(state.regs[8]).toBe(0)
+      expect(state.regs[9]).toBe(0xfffffffb)
+      expect(state.regs[10]).toBe(0x7ffffffc)
+      expect(state.regs[11]).toBe(0xfffffffc)
+      expect(state.regs[12]).toBe(0xfffffffb)
+      expect(state.regs[13]).toBe(0)
+    })
+
+    it('executes assembled fence, ecall, and ebreak', () => {
+      const fence = runAssembly(
+        [
+          'addi x1, x0, 1',
+          'fence',
+          'addi x1, x1, 1',
+          'ecall',
+        ].join('\n'),
+      )
+      expect(fence.state.regs[1]).toBe(2)
+      expect(fence.steps.at(-1)?.trap?.reason).toBe('ecall')
+
+      const breakpoint = runAssembly('ebreak')
+      expect(breakpoint.steps.at(-1)?.trap?.reason).toBe('ebreak')
+      expect(breakpoint.state.halted).toBe(true)
+    })
   })
 })
