@@ -234,6 +234,16 @@ function createRv32UiState(source: string): Rv32UiState {
   }
 }
 
+function cloneRv32Machine(machine: Rv32State): Rv32State {
+  return {
+    pc: machine.pc,
+    regs: new Uint32Array(machine.regs),
+    memory: new Uint8Array(machine.memory),
+    halted: machine.halted,
+    trap: machine.trap,
+  }
+}
+
 function wordsFromBytes(bytes: Uint8Array): number[] {
   const words: number[] = []
   for (let index = 0; index < bytes.length; index += 4) {
@@ -332,8 +342,9 @@ function App() {
   function stepRv32Once(): void {
     setRv32State((current) => {
       if (!current.machine || current.machine.halted) return current
-      const step = stepRv32(current.machine)
-      return { ...current, steps: [...current.steps, step], error: null }
+      const machine = cloneRv32Machine(current.machine)
+      const step = stepRv32(machine)
+      return { machine, steps: [...current.steps, step], error: null }
     })
   }
 
