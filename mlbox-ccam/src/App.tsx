@@ -149,7 +149,8 @@ const sortedSamples = [...samples].sort((left, right) => left.name.localeCompare
 
 const rv32MemorySize = 64 * 1024
 const rv32InitialSp = rv32MemorySize
-const rv32DisassemblyRadius = 3
+const rv32DisassemblyRadius = 6
+const rv32StackRowCount = 10
 
 const rv32Samples = [
   {
@@ -284,10 +285,11 @@ function rv32StackRows(machine: Rv32State): Rv32MemoryRow[] {
   const sp = machine.regs[2]
   const rowSize = 16
   const start = alignDown(Math.min(sp, machine.memory.length - 1), rowSize)
-  const clampedStart = Math.max(0, Math.min(machine.memory.length - rowSize, start - rowSize * 2))
+  const rowsBeforeSp = Math.floor(rv32StackRowCount / 2)
+  const clampedStart = Math.max(0, Math.min(machine.memory.length - rowSize, start - rowSize * rowsBeforeSp))
   const rows: Rv32MemoryRow[] = []
 
-  for (let address = clampedStart; address < clampedStart + rowSize * 5 && address < machine.memory.length; address += rowSize) {
+  for (let address = clampedStart; address < clampedStart + rowSize * rv32StackRowCount && address < machine.memory.length; address += rowSize) {
     const bytes: string[] = []
     for (let offset = 0; offset < rowSize && address + offset < machine.memory.length; offset += 1) {
       bytes.push(machine.memory[address + offset].toString(16).padStart(2, '0'))
